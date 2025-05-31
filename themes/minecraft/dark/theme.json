@@ -1,0 +1,42 @@
+{
+  "colors": {
+    "background": "#1e1e1e",
+    "primary": "#3CB371",
+    "text": "#eeeeee",
+    "menu_button_height": 40,
+    "menu_button_width": 256,
+    "menu_height": 56,
+    "menu_button_bg": "menu_btn.png",
+    "menu_button_bg_active": "menu_btn_active.png",
+    "menu_button_text": "#eeeeee",
+    "menu_button_text_active": "#242424",
+    "menu": "#242424",
+    "menu_opacity": 0.5
+  },
+"fonts": {
+    "main": "themes/minecraft/fonts/Minecraftia-Regular.ttf",
+    "title": "themes/minecraft/fonts/Minecraftia-Regular.ttf"
+  },
+"images": {
+    "background": "background.png",
+    "overlay_home": "overlay_home.png",
+    "overlay_alarm": "overlay_alarm.png",
+    "overlay_schedule": "overlay_schedule.png",
+    "overlay_weather": "overlay_weather.png",
+    "overlay_pigs": "overlay_pigs.png",
+    "overlay_settings": "overlay_settings.png",
+    "overlay_default": "overlay_default.png",
+    "button_bg": "btn_bg.png",
+    "button_bg_active": "btn_bg_active.png",
+    "menu_button_bg": "menu_btn.png",
+    "menu_button_bg_active": "menu_btn_active.png"
+  },
+"sounds": {
+  "click": "themes/minecraft/sounds/click.ogg",
+  "notify": "themes/minecraft/sounds/notify.ogg",
+  "error": "themes/minecraft/sounds/error.ogg",
+  "confirm": "themes/minecraft/sounds/confirm.ogg",
+  "startup": "themes/minecraft/sounds/startup.ogg"
+}
+
+}

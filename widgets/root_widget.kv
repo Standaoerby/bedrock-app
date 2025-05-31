@@ -1,0 +1,52 @@
+#:import dp kivy.metrics.dp
+#:import Window kivy.core.window.Window
+<MainFrame@BoxLayout>:
+    orientation: 'vertical'
+    padding: [dp(16), dp(16), dp(16), dp(16)]
+    spacing: dp(8)
+
+<RootWidget>:
+    # Класс-контейнер, если используешь его как корневой
+    FloatLayout:
+        Image:
+            id: background_image
+            source: app.theme_manager.get_image("background")
+            allow_stretch: True
+            keep_ratio: False
+            size: self.parent.size
+            pos: self.parent.pos
+
+        Image:
+            id: overlay_image
+            source: app.theme_manager.get_image("overlay_" + root.current_page)
+            allow_stretch: True
+            keep_ratio: False
+            size: self.parent.size
+            pos: self.parent.pos
+
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint: 1, 1
+            pos_hint: {'x': 0, 'y': 0}
+
+            TopMenu:
+                id: topmenu
+                current_page: root.current_page
+                size_hint_y: None
+                height: app.theme_manager.get_param("menu_height") or dp(56)
+                current_page: root.current_page
+
+            ScreenManager:
+                id: sm
+                HomeScreen:
+                    name: "home"
+                AlarmScreen:
+                    name: "alarm"
+                ScheduleScreen:
+                    name: "schedule"
+                WeatherScreen:
+                    name: "weather"
+                PigsScreen:
+                    name: "pigs"
+                SettingsScreen:
+                    name: "settings"

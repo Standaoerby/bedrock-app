@@ -1,0 +1,88 @@
+#:import dp kivy.metrics.dp
+#:import Window kivy.core.window.Window
+
+
+<MenuButton@Button>:
+    active: False
+    size_hint_x: None
+    size_hint_y: None
+    width: app.theme_manager.get_param("menu_button_width") or dp(120)
+    height: app.theme_manager.get_param("menu_button_height") or dp(40)
+    font_size: '16sp'
+    font_name: app.theme_manager.get_font("main")
+    padding: [dp(16), 0]
+    background_normal: app.theme_manager.get_image("menu_button_bg") if not self.active else app.theme_manager.get_image("menu_button_bg_active")
+    background_down: app.theme_manager.get_image("menu_button_bg_active")
+    color: app.theme_manager.get_rgba("menu_button_text_active") if self.active else app.theme_manager.get_rgba("menu_button_text")
+    # Экземпляры MenuButton должны получать свойства active и screen_name
+
+<TopMenu>:
+    orientation: 'vertical'
+    size_hint_y: None
+    height: app.theme_manager.get_param("menu_height") or dp(56)
+    canvas.before:
+        Color:
+            rgba: (*app.theme_manager.get_rgba("menu")[:3], app.theme_manager.get_param("menu_opacity") or 1)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    AnchorLayout:
+        anchor_x: 'center'
+        anchor_y: 'center'
+        size_hint: 1, 1
+
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(8)
+            size_hint: None, None
+            height: app.theme_manager.get_param("menu_button_height") or dp(40)
+            width: min(1024 - dp(16), Window.width - dp(16))
+
+            MenuButton:
+                id: btn_home
+                screen_name: "home"
+                active: root.current_page == "home"
+                on_release:
+                    on_release: root.select("home")
+                    app.audio_service.play(app.theme_manager.get_sound("click"))
+
+            MenuButton:
+                id: btn_alarm
+                screen_name: "alarm"
+                active: root.current_page == "alarm"
+                on_release:
+                    on_release: root.select("alarm")
+                    app.audio_service.play(app.theme_manager.get_sound("click"))
+
+            MenuButton:
+                id: btn_schedule
+                screen_name: "schedule"
+                active: root.current_page == "schedule"
+                on_release:
+                    on_release: root.select("schedule")
+                    app.audio_service.play(app.theme_manager.get_sound("click"))
+
+            MenuButton:
+                id: btn_weather
+                screen_name: "weather"
+                active: root.current_page == "weather"
+                on_release:
+                    on_release: root.select("weather")
+                    app.audio_service.play(app.theme_manager.get_sound("click"))
+
+            MenuButton:
+                id: btn_pigs
+                screen_name: "pigs"
+                active: root.current_page == "pigs"
+                on_release:
+                    on_release: root.select("pigs")
+                    app.audio_service.play(app.theme_manager.get_sound("click"))
+
+            MenuButton:
+                id: btn_settings
+                screen_name: "settings"
+                active: root.current_page == "settings"
+                on_release:
+                    on_release: root.select("settings")
+                    app.audio_service.play(app.theme_manager.get_sound("click"))

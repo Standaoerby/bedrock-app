@@ -1,0 +1,110 @@
+#:import dp kivy.metrics.dp
+
+<HomeScreen>:
+    name: "home"
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [dp(16), dp(16), dp(16), dp(16)]
+        spacing: dp(16)
+
+        # Верхний блок: дата (слева), будильник (справа)
+       
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(8)
+            
+            OverlayCard:
+                size_hint_y: None
+                height: dp(56)
+
+                # Дата слева
+                Label:
+                    id: date_label
+                    text: root.current_date
+                    font_size: '18sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("text")
+                    size_hint_x: 0.6
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+
+            # Будильник справа
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_x: 0.4
+                spacing: dp(8)
+                padding: [dp(8), 0]
+
+                Label:
+                    id: alarm_time_label
+                    text: root.current_alarm_time
+                    font_size: '20sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: (0.6, 1, 0.6, 1) if root.alarm_active else (1, 0.6, 0.6, 1)
+                    size_hint_x: 0.6
+                    halign: 'right'
+                    valign: 'middle'
+                    text_size: self.size
+
+                Button:
+                    id: alarm_toggle_btn
+                    text: app.localizer.t("alarm_enabled") if root.alarm_active else app.localizer.t("cancel")
+                    font_size: '16sp'
+                    font_name: app.theme_manager.get_font("main")
+                    background_normal: app.theme_manager.get_image("menu_button_bg")
+                    background_down: app.theme_manager.get_image("menu_button_bg_active")
+                    color: app.theme_manager.get_rgba("menu_button_text")
+                    size_hint_x: 0.4
+                    on_release: root.toggle_alarm()
+
+
+        FloatLayout:
+            Label:
+                id: clock_label
+                text: root.clock_time
+                font_size: '256sp'
+                font_name: app.theme_manager.get_font("main")
+                color: app.theme_manager.get_rgba("primary")
+                size_hint: None, None
+                size: self.texture_size
+                pos_hint: {"center_y": 0.5}
+                x: self.parent.center_x - dp(100) if self.parent else dp(100)
+                y: self.parent.center_y - self.height / 2 if self.parent else dp(0)
+
+        # Погода (по центру)
+        OverlayCard:
+            size_hint_y: None
+            height: dp(56)
+            BoxLayout:
+                orientation: 'horizontal'
+                spacing: dp(8)
+                padding: [dp(32), 0]
+
+                Label:
+                    id: weather_now_label
+                    text: root.weather_now_str
+                    font_size: '28sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("text")
+                    halign: 'center'
+                    valign: 'middle'
+                    text_size: self.size
+                    size_hint_x: 1
+
+        # Бегущая строка с уведомлением (самый низ)
+        OverlayCard:
+            size_hint_y: None
+            height: dp(32)
+            BoxLayout:
+                orientation: 'horizontal'
+                padding: [dp(8), 0]
+                Label:
+                    id: notification_text_label
+                    text: root.notification_text
+                    font_size: '16sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("text")
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
