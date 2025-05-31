@@ -13,5 +13,7 @@
   "save": "Save",
   "cancel": "Cancel",
   "example_form": "Example form:",
-  "hint_input": "Enter something..."
+  "hint_input": "Enter something...",
+  "in_5h": "in 5h"
+
 }

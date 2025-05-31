@@ -72,7 +72,7 @@
                 x: self.parent.center_x - dp(100) if self.parent else dp(100)
                 y: self.parent.center_y - self.height / 2 if self.parent else dp(0)
 
-        # Погода (по центру)
+        # Блок погоды
         OverlayCard:
             size_hint_y: None
             height: dp(56)
@@ -87,10 +87,32 @@
                     font_size: '28sp'
                     font_name: app.theme_manager.get_font("main")
                     color: app.theme_manager.get_rgba("text")
-                    halign: 'center'
+                    halign: 'left'
                     valign: 'middle'
                     text_size: self.size
-                    size_hint_x: 1
+                    size_hint_x: 0.5
+
+                Label:
+                    id: weather_precip_label
+                    text: root.weather_precip_str
+                    font_size: '20sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("primary")
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                    size_hint_x: 0.2
+
+                Label:
+                    id: weather_5h_label
+                    text: root.weather_5h_str + ' ' + root.weather_trend_arrow
+                    font_size: '20sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("text")
+                    halign: 'right'
+                    valign: 'middle'
+                    text_size: self.size
+                    size_hint_x: 0.3
 
         # Бегущая строка с уведомлением (самый низ)
         OverlayCard:

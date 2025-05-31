@@ -66,23 +66,16 @@ class WeatherService:
         )
 
     def load(self):
-        """Load weather data from cache file"""
         try:
-            if os.path.exists(self.path):
-                with open(self.path, "r", encoding="utf-8") as f:
-                    self.weather = json.load(f)
-                logger.info(f"Loaded cached weather data from {self.path}")
-            else:
-                # Create default data structure
-                self.weather = self._create_default_data()
-                # Create cache directory if it doesn't exist
-                os.makedirs(os.path.dirname(self.path), exist_ok=True)
-                self.save()
-                logger.info("Created default weather data")
+            with open(self.weather_file, "r", encoding="utf-8") as f:
+                data = f.read().strip()
+                if not data:
+                    raise ValueError("weather.json is empty")
+                self.weather = json.loads(data)
         except Exception as e:
-            logger.error(f"Error loading weather data: {e}", exc_info=True)
-            # Fall back to defaults if there's an error
-            self.weather = self._create_default_data()
+            logger.error(f"[Error loading weather data] {e}")
+            self.weather = {}  # чтобы не было падения дальше
+
     
     def _create_default_data(self):
         """Create default weather data structure"""
