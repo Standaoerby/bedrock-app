@@ -11,5 +11,7 @@
   "alarm_time": "Alarm time",
   "alarm_enabled": "Alarm enabled",
   "save": "Save",
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "example_form": "Example form:",
+  "hint_input": "Enter something..."
 }

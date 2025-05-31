@@ -1,5 +1,7 @@
 import os
 from pygame import mixer
+from app.logger import app_logger as logger
+
 
 class AudioService:
     def __init__(self):

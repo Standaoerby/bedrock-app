@@ -6,12 +6,11 @@
     "menu_button_height": 40,
     "menu_button_width": 256,
     "menu_height": 56,
-    "menu_button_bg": "menu_btn.png",
-    "menu_button_bg_active": "menu_btn_active.png",
     "menu_button_text": "#eeeeee",
     "menu_button_text_active": "#242424",
     "menu": "#242424",
-    "menu_opacity": 0.5
+    "menu_opacity": 0.5,
+    "overlay_card": "#25252550"
   },
 "fonts": {
     "main": "themes/minecraft/fonts/Minecraftia-Regular.ttf",

@@ -1,0 +1,15 @@
+{
+  "current": {
+    "time": "2025-05-31T18:45:08.930177",
+    "temperature": 20.0,
+    "condition": "Unknown",
+    "precipitation_probability": 0
+  },
+  "forecast_5h": {
+    "temperature": 20.0,
+    "condition": "Unknown",
+    "precipitation_probability": 0
+  },
+  "weekly_forecast": [],
+  "updated": "2025-05-31T18:45:08.930182"
+}

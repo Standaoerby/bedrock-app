@@ -5,9 +5,21 @@ from app.event_bus import event_bus
 
 def hex_to_rgba(hex_str, alpha=1.0):
     hex_str = hex_str.lstrip('#')
-    lv = len(hex_str)
-    rgb = tuple(int(hex_str[i:i + lv // 3], 16) / 255 for i in range(0, lv, lv // 3))
-    return (*rgb, alpha)
+    if len(hex_str) == 8:  # #RRGGBBAA
+        r = int(hex_str[0:2], 16) / 255.0
+        g = int(hex_str[2:4], 16) / 255.0
+        b = int(hex_str[4:6], 16) / 255.0
+        a = int(hex_str[6:8], 16) / 255.0
+        return (r, g, b, a)
+    elif len(hex_str) == 6:  # #RRGGBB
+        r = int(hex_str[0:2], 16) / 255.0
+        g = int(hex_str[2:4], 16) / 255.0
+        b = int(hex_str[4:6], 16) / 255.0
+        return (r, g, b, alpha)
+    else:
+        # fallback: почти прозрачный чёрный
+        return (0, 0, 0, alpha)
+
 
 class ThemeManager:
     def __init__(self, themes_dir="themes"):
@@ -37,10 +49,10 @@ class ThemeManager:
         color = self.get_color(key)
         if isinstance(color, str) and color.startswith('#'):
             return hex_to_rgba(color, alpha)
-        elif isinstance(color, (list, tuple)):
+        elif isinstance(color, (list, tuple)) and len(color) == 4:
             return tuple(color)
         else:
-            return (1, 1, 1, alpha)
+            return (0, 0, 0, alpha)
 
     def get_image(self, key):
         images = self.theme_data.get("images", {})

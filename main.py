@@ -22,21 +22,34 @@ from app.theme_manager import theme_manager
 from pages.home import HomeScreen
 from widgets.top_menu import TopMenu
 from services.audio_service import audio_service
+from services.alarm_service import AlarmService
+from services.notifications_service import NotificationService
+from services.weather_service import WeatherService
+from app.logger import app_logger as logger
+logger.info("=== App Started ===")
 
+Window.fullscreen = 'auto'
+Window.borderless = True
+Window.show_cursor = True # Убрать тут курсор
 class BedrockApp(App):
     theme_manager = theme_manager
     audio_service = audio_service
 
     def build(self):
-        Window.fullscreen = 'auto'
-        Window.borderless = True
-        Window.show_cursor = True # Убрать тут курсор
 
-        localizer.load(user_config.get("language", "ru"))
+        # Локализация
+        localizer.load(user_config.get("language", "en"))
         self.localizer = localizer
         theme_manager.load_theme(user_config.get("theme"), user_config.get("variant"))
 
- 
+        # Инициализация сервисов
+        self.alarm_service = AlarmService()
+        self.notification_service = NotificationService()
+        # Координаты для погоды — лучше взять из user_config, а если нет, использовать дефолтные:
+        lat = user_config.get("lat", 55.7522)  # Москва, пример
+        lon = user_config.get("lon", 37.6156)
+        self.weather_service = WeatherService(lat, lon)
+
         Builder.load_file("widgets/root_widget.kv")
         Builder.load_file("widgets/top_menu.kv")
         Builder.load_file("pages/home.kv")
@@ -45,6 +58,7 @@ class BedrockApp(App):
         Builder.load_file("pages/weather.kv")
         Builder.load_file("pages/pigs.kv")
         Builder.load_file("pages/settings.kv")
+        Builder.load_file("widgets/overlay_card.kv")
         audio_service.play(self.theme_manager.get_sound("startup"))
         return RootWidget()
 
