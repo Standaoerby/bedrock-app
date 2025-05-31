@@ -16,16 +16,6 @@ from pages.weather import WeatherScreen
 from pages.pigs import PigsScreen
 from pages.settings import SettingsScreen
 
-Builder.load_file("root_widget.kv")
-Builder.load_file("top_menu.kv")
-Builder.load_file("pages/home.kv")
-Builder.load_file("pages/alarm.kv")
-Builder.load_file("pages/schedule.kv")
-Builder.load_file("pages/weather.kv")
-Builder.load_file("pages/pigs.kv")
-Builder.load_file("pages/settings.kv")
-
-
 from root_widget import RootWidget
 from theme_manager import theme_manager
 from pages.home import HomeScreen
@@ -37,8 +27,19 @@ class BedrockApp(App):
     def build(self):
         Window.fullscreen = 'auto'
         Window.borderless = True
-        Window.show_cursor = True  # Убрать тут курсор
+        Window.show_cursor = True # Убрать тут курсор
 
+        self.theme_manager.load_theme("minecraft", "light")
+        
+ 
+        Builder.load_file("root_widget.kv")
+        Builder.load_file("top_menu.kv")
+        Builder.load_file("pages/home.kv")
+        Builder.load_file("pages/alarm.kv")
+        Builder.load_file("pages/schedule.kv")
+        Builder.load_file("pages/weather.kv")
+        Builder.load_file("pages/pigs.kv")
+        Builder.load_file("pages/settings.kv")
         return RootWidget()
 
 if __name__ == "__main__":
