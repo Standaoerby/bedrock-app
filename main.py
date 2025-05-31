@@ -15,7 +15,8 @@ from pages.schedule import ScheduleScreen
 from pages.weather import WeatherScreen
 from pages.pigs import PigsScreen
 from pages.settings import SettingsScreen
-
+from app.user_config import user_config
+from app.localizer import localizer
 from widgets.root_widget import RootWidget
 from app.theme_manager import theme_manager
 from pages.home import HomeScreen
@@ -31,7 +32,9 @@ class BedrockApp(App):
         Window.borderless = True
         Window.show_cursor = True # Убрать тут курсор
 
-        self.theme_manager.load_theme("minecraft", "light")
+        localizer.load(user_config.get("language", "ru"))
+        self.localizer = localizer
+        theme_manager.load_theme(user_config.get("theme"), user_config.get("variant"))
 
  
         Builder.load_file("widgets/root_widget.kv")

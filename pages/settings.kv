@@ -7,6 +7,24 @@
             padding: [16, 16, 16, 16]
             spacing: 8
             size_hint: 1, 1
+        BoxLayout:
+            orientation: "horizontal"
+            spacing: dp(8)
+            size_hint_y: None
+            height: dp(40)
+
+
+
+            Label:
+                id: lang_label
+                text: app.localizer.t("settings_language")
+
+            Spinner:
+                id: lang_spinner
+                text: app.localizer.lang
+                values: ["ru", "en"]  # Список доступных языков
+                on_text: root.on_language_select(self.text)
+                size_hint_x: 0.6
 
             Label:
                 id: theme_label
@@ -24,8 +42,8 @@
                 height: 40
                 spacing: 8
                 Label:
-                    text: "Тема:"
-                    font_size: '16sp'
+                    id: theme_label
+                    text: app.localizer.t("settings_theme")
                     color: app.theme_manager.get_rgba("text")
                     font_name: app.theme_manager.get_font("main")
                     size_hint_x: 0.3

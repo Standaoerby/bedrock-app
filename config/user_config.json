@@ -1,0 +1,16 @@
+{
+  "username": "Пользователь",
+  "birthday": "",
+  "theme": "minecraft",
+  "variant": "light",
+  "alarm": {
+    "enabled": false,
+    "time": "07:00",
+    "days": []
+  },
+  "notifications": {
+    "volume": 1.0,
+    "sound": ""
+  },
+  "language": "en"
+}

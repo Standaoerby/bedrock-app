@@ -1,0 +1,15 @@
+{
+  "menu_home": "Home",
+  "menu_alarm": "Alarm",
+  "menu_schedule": "Schedule",
+  "menu_weather": "Weather",
+  "menu_pigs": "Pigs",
+  "menu_settings": "Settings",
+  "settings_theme": "Theme",
+  "settings_language": "Language",
+  "hello_user": "Hello, {username}!",
+  "alarm_time": "Alarm time",
+  "alarm_enabled": "Alarm enabled",
+  "save": "Save",
+  "cancel": "Cancel"
+}

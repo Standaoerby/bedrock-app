@@ -1,0 +1,15 @@
+{
+  "menu_home": "Главная",
+  "menu_alarm": "Будильник",
+  "menu_schedule": "Расписание",
+  "menu_weather": "Погода",
+  "menu_pigs": "Свинки",
+  "menu_settings": "Настройки",
+  "settings_theme": "Тема",
+  "settings_language": "Язык",
+  "hello_user": "Привет, {username}!",
+  "alarm_time": "Время будильника",
+  "alarm_enabled": "Будильник включён",
+  "save": "Сохранить",
+  "cancel": "Отмена"
+}

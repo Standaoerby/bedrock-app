@@ -40,7 +40,7 @@
             width: min(1024 - dp(16), Window.width - dp(16))
 
             MenuButton:
-                text: "Главная"
+                id: btn_home
                 screen_name: "home"
                 active: root.current_page == "home"
                 on_release:
@@ -48,7 +48,7 @@
                     app.audio_service.play(app.theme_manager.get_sound("click"))
 
             MenuButton:
-                text: "Будильник"
+                id: btn_alarm
                 screen_name: "alarm"
                 active: root.current_page == "alarm"
                 on_release:
@@ -56,7 +56,7 @@
                     app.audio_service.play(app.theme_manager.get_sound("click"))
 
             MenuButton:
-                text: "Расписание"
+                id: btn_schedule
                 screen_name: "schedule"
                 active: root.current_page == "schedule"
                 on_release:
@@ -64,7 +64,7 @@
                     app.audio_service.play(app.theme_manager.get_sound("click"))
 
             MenuButton:
-                text: "Погода"
+                id: btn_weather
                 screen_name: "weather"
                 active: root.current_page == "weather"
                 on_release:
@@ -72,7 +72,7 @@
                     app.audio_service.play(app.theme_manager.get_sound("click"))
 
             MenuButton:
-                text: "Свинки"
+                id: btn_pigs
                 screen_name: "pigs"
                 active: root.current_page == "pigs"
                 on_release:
@@ -80,7 +80,7 @@
                     app.audio_service.play(app.theme_manager.get_sound("click"))
 
             MenuButton:
-                text: "Настройки"
+                id: btn_settings
                 screen_name: "settings"
                 active: root.current_page == "settings"
                 on_release:

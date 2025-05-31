@@ -1,0 +1,12 @@
+{
+  "username": "Станислав",
+  "birthday": "1990-01-23",
+  "theme": "minecraft",
+  "variant": "light",
+  "alarm": {
+    "enabled": true,
+    "time": "07:45",
+    "days": ["mon", "tue", "wed", "thu", "fri"]
+  },
+  "language": "ru"
+}
