@@ -1,14 +1,14 @@
 {
   "current": {
-    "time": "2025-05-31T22:30",
-    "temperature": 18.4,
+    "time": "2025-05-31T23:00",
+    "temperature": 18.0,
     "condition": "Mostly Clear",
     "precipitation_probability": 13
   },
   "forecast_5h": {
-    "temperature": 20.2,
+    "temperature": 18.9,
     "condition": "Mostly Clear",
-    "precipitation_probability": 3
+    "precipitation_probability": 0
   },
   "weekly_forecast": [
     {
@@ -68,5 +68,5 @@
       "precipitation_probability": 45
     }
   ],
-  "updated": "2025-05-31T20:36:44.806127"
+  "updated": "2025-05-31T21:04:02.318461"
 }

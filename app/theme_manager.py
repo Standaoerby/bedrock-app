@@ -70,7 +70,7 @@ class ThemeManager:
         return path
 
     def get_param(self, key, default=None):
-        for section in ("colors", "fonts", "images", "sounds", None):
+        for section in ("colors", "fonts", "images", "sounds", "menu", None):
             if section:
                 val = self.theme_data.get(section, {}).get(key)
                 if val is not None:
@@ -82,3 +82,12 @@ class ThemeManager:
         return default
 
 theme_manager = ThemeManager()
+
+def get_rgba(key, alpha=1.0):
+    return theme_manager.get_rgba(key, alpha)
+
+def get_font(key):
+    return theme_manager.get_font(key)
+
+def get_image(key):
+    return theme_manager.get_image(key)

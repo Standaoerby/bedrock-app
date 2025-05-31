@@ -6,135 +6,184 @@
     BoxLayout:
         orientation: 'vertical'
         padding: [dp(16), dp(16), dp(16), dp(16)]
-        spacing: dp(8)
+        spacing: dp(12)
 
-        # Верхний блок: дата и будильник
+        # Верхний блок: дата слева, будильник справа (увеличенный)
         BoxLayout:
             orientation: 'horizontal'
-            spacing: dp(8)
+            spacing: dp(24)
             size_hint_y: None
-            height: dp(56)
+            height: dp(40)
             
             # Дата слева
             OverlayCard:
-                size_hint_x: 0.65
-                
-                BoxLayout:
-                    orientation: 'horizontal'
-                    padding: [dp(16), dp(8)]
-                    
-                    Label:
-                        id: date_label
-                        text: root.current_date
-                        font_size: '18sp'
-                        font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("text")
-                        halign: 'left'
-                        valign: 'middle'
-                        text_size: self.size
-
-            # Будильник справа
-            OverlayCard:
                 size_hint_x: 0.35
+                padding: [0]
+                Label:
+                    id: date_label
+                    text: root.current_date
+                    font_size: '16sp'
+                    font_name: app.theme_manager.get_font("main")
+                    padding: [dp(16), dp(0), dp(4), dp(2)]
+                    color: app.theme_manager.get_rgba("text")
+                    halign: 'left' 
+                    text_size: self.size
+            BoxLayout:
+                size_hint_x: 0.35
+                # Пустой блок для выравнивания
+                Label:
+                    text: ""
+                    size_hint: None, None
+                    size: dp(1), dp(1)  # Минимальный размер для выравнивания
+            # Будильник справа (увеличенный)
+            OverlayCard:
+                size_hint_x: 0.30
+                padding: [0]
                 
                 BoxLayout:
+                    padding: [0]
                     orientation: 'horizontal'
-                    spacing: dp(8)
-                    padding: [dp(8), dp(4)]
-
-                    Label:
-                        id: alarm_time_label
-                        text: root.current_alarm_time
-                        font_size: '16sp'
-                        font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("primary") if root.alarm_active else app.theme_manager.get_rgba("text")
-                        size_hint_x: 0.6
-                        halign: 'center'
-                        valign: 'middle'
-                        text_size: self.size
+                    BoxLayout:
+                        size_hint_x: 0.65
+                        padding: [0]
+                        
+                        Label:
+                            id: alarm_time_label
+                            text: root.current_alarm_time
+                            font_size: '24sp'
+                            font_name: app.theme_manager.get_font("main")
+                            padding: [dp(8), dp(0), dp(4), dp(8)]
+                            color: app.theme_manager.get_rgba("text_accent") if root.alarm_active else app.theme_manager.get_rgba("text_inactive")
+                            size_hint_y: 0.7
+                            halign: 'center'
+                            valign: 'middle'
+                            text_size: self.size
 
                     Button:
                         id: alarm_toggle_btn
                         text: "ON" if root.alarm_active else "OFF"
-                        font_size: '12sp'
+                        font_size: '16sp'
                         font_name: app.theme_manager.get_font("main")
+                        padding: [dp(0)]
                         background_normal: app.theme_manager.get_image("button_bg")
                         background_down: app.theme_manager.get_image("button_bg_active")
-                        color: app.theme_manager.get_rgba("text")
-                        size_hint_x: 0.4
+                        color: app.theme_manager.get_rgba("text_accent") if root.alarm_active else app.theme_manager.get_rgba("text_inactive")
+                        size_hint_x: 0.35
                         on_release: root.toggle_alarm()
 
-        # Центральный блок с большими часами
+        # Центральный блок с большими часами и тенью
         AnchorLayout:
-            anchor_x: 'center'
+            anchor_x: 'right'
             anchor_y: 'center'
-            
-            Label:
-                id: clock_label
-                text: root.clock_time
-                font_size: '120sp'
-                font_name: app.theme_manager.get_font("main")
-                color: app.theme_manager.get_rgba("primary")
-                size_hint: None, None
-                size: self.texture_size
-                halign: 'center'
-                valign: 'middle'
+            padding: [0, 0, dp(24), 0]  # Отступ 24dp от правого края
 
-        # Блок погоды
+            FloatLayout:
+                size_hint: None, None
+                size: dp(400), dp(180)
+                
+                # Тень часов (несколько слоёв для эффекта)
+                Label:
+                    id: clock_shadow3
+                    text: root.clock_time
+                    font_size: '144sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: (0, 0, 0, 0.1)
+                    size_hint: None, None
+                    size: self.texture_size
+                    pos: self.parent.center[0] - self.width/2 + dp(6), self.parent.center[1] - self.height/2 - dp(6)
+                    halign: 'center'
+                    valign: 'middle'
+                    
+                Label:
+                    id: clock_shadow2
+                    text: root.clock_time
+                    font_size: '144sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: (0, 0, 0, 0.2)
+                    size_hint: None, None
+                    size: self.texture_size
+                    pos: self.parent.center[0] - self.width/2 + dp(4), self.parent.center[1] - self.height/2 - dp(4)
+                    halign: 'center'
+                    valign: 'middle'
+                    
+                Label:
+                    id: clock_shadow1
+                    text: root.clock_time
+                    font_size: '144sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: (0, 0, 0, 0.3)
+                    size_hint: None, None
+                    size: self.texture_size
+                    pos: self.parent.center[0] - self.width/2 + dp(2), self.parent.center[1] - self.height/2 - dp(2)
+                    halign: 'center'
+                    valign: 'middle'
+
+                # Основные часы (белого цвета)
+                Label:
+                    id: clock_label
+                    text: root.clock_time
+                    font_size: '144sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: (1, 1, 1, 1)  # Белый цвет
+                    size_hint: None, None
+                    size: self.texture_size
+                    pos: self.parent.center[0] - self.width/2, self.parent.center[1] - self.height/2
+                    halign: 'center'
+                    valign: 'middle'
+
+        # Блок погоды - одной строкой по центру
         OverlayCard:
             size_hint_y: None
             height: dp(64)
             
-            BoxLayout:
-                orientation: 'horizontal'
-                spacing: dp(16)
-                padding: [dp(16), dp(8)]
-
-                # Текущая погода
+            AnchorLayout:
+                anchor_x: 'center'
+                anchor_y: 'center'
+                
                 BoxLayout:
-                    orientation: 'vertical'
-                    size_hint_x: 0.6
+                    orientation: 'horizontal'
+                    spacing: dp(24)
+                    size_hint: None, None
+                    height: dp(60)
+                    width: self.minimum_width
                     
-                    Label:
-                        text: "Сейчас"
-                        font_size: '14sp'
-                        font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("text")
-                        size_hint_y: 0.4
-                        halign: 'left'
-                        valign: 'bottom'
-                        text_size: self.size
-                    
-                    Label:
-                        id: weather_now_label
-                        text: root.weather_now_str
-                        font_size: '20sp'
-                        font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("primary")
-                        size_hint_y: 0.6
-                        halign: 'left'
-                        valign: 'top'
-                        text_size: self.size
-
-                # Прогноз через 5 часов
-                BoxLayout:
-                    orientation: 'vertical'
-                    size_hint_x: 0.4
-                    
-                    Label:
-                        text: "Через 5ч"
-                        font_size: '14sp'
-                        font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("text")
-                        size_hint_y: 0.4
-                        halign: 'right'
-                        valign: 'bottom'
-                        text_size: self.size
-                    
+                    # Сейчас
                     BoxLayout:
                         orientation: 'horizontal'
-                        size_hint_y: 0.6
-                        spacing: dp(4)
+                        spacing: dp(2)
+                        size_hint: None, None
+                        width: dp(140)
+                        height: dp(60)                      
+                        
+                        Label:
+                            id: weather_now_label
+                            text: root.weather_now_str
+                            font_size: '18sp'
+                            font_name: app.theme_manager.get_font("main")
+                            color: app.theme_manager.get_rgba("primary")
+                            halign: 'center'
+                            valign: 'middle'
+                            text_size: self.size
+
+                    # Стрелка тренда  
+                    Label:
+                        id: weather_trend_label
+                        text: root.weather_trend_arrow
+                        font_size: '24sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("primary")
+                        size_hint: None, None
+                        size: dp(40), dp(60)
+                        halign: 'center'
+                        valign: 'middle'
+
+                    # Через 5 часов
+                    BoxLayout:
+                        orientation: 'horizontal'
+                        spacing: dp(2)
+                        size_hint: None, None
+                        width: dp(140)
+                        height: dp(60)                     
                         
                         Label:
                             id: weather_5h_label
@@ -142,45 +191,35 @@
                             font_size: '18sp'
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
-                            halign: 'right'
-                            valign: 'top'
-                            text_size: self.size
-                            
-                        Label:
-                            id: weather_trend_label
-                            text: root.weather_trend_arrow
-                            font_size: '20sp'
-                            font_name: app.theme_manager.get_font("main")
-                            color: app.theme_manager.get_rgba("primary")
-                            size_hint_x: None
-                            width: dp(24)
                             halign: 'center'
-                            valign: 'top'
+                            valign: 'middle'
+                            text_size: self.size
 
-        # Нижний блок с уведомлениями
+        # Нижний блок с уведомлениями - бегущая строка
         OverlayCard:
             size_hint_y: None
             height: dp(40)
             
             BoxLayout:
                 orientation: 'horizontal'
-                padding: [dp(16), dp(8)]
+                padding: [dp(16), dp(4)]
+                spacing: dp(12)
                 
-                Label:
-                    text: "(!)"
-                    font_size: '16sp'
-                    size_hint_x: None
-                    width: dp(32)
-                    halign: 'center'
-                    valign: 'middle'
-                
-                Label:
-                    id: notification_text_label
-                    text: root.notification_text or "Нет новых уведомлений"
-                    font_size: '14sp'
-                    font_name: app.theme_manager.get_font("main")
-                    color: app.theme_manager.get_rgba("text")
-                    halign: 'left'
-                    valign: 'middle'
-                    text_size: self.size
-                    text_size: self.width, None
+                # Контейнер для бегущего текста
+                Widget:
+                    id: notification_container
+                    
+                    Label:
+                        id: notification_text_label
+                        text: root.notification_text or "No new notifications"
+                        font_size: '16sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text")
+                        size_hint: None, None
+                        size: self.texture_size
+                        # Самое важное: позиция
+                        x: self.parent.x + root.notification_scroll_x
+                        y: self.parent.center_y - self.height/2
+                        halign: 'left'
+                        valign: 'middle'
+                        clipping: True

@@ -1,17 +1,19 @@
 {
   "colors": {
     "background": "#1e1e1e",
+    "overlay_card": "#25252550",
     "primary": "#3CB371",
-    "text": "#eeeeee",
-    "menu_button_height": 40,
-    "menu_button_width": 256,
-    "menu_height": 56,
-    "menu_button_bg": "menu_btn.png",
-    "menu_button_bg_active": "menu_btn_active.png",
+    "text": "#F9F6F2",
+    "text_secondary": "#aaaaaa",
+    "clock_main": "#F9F6F2",
+    "menu_color": "#25252580"
+  },
+"menu": {
+    "menu_button_height": 48,
+    "menu_button_width": 152,
+    "menu_height": 64,
     "menu_button_text": "#eeeeee",
-    "menu_button_text_active": "#242424",
-    "menu": "#242424",
-    "menu_opacity": 0.5
+    "menu_button_text_active": "#242424"
   },
 "fonts": {
     "main": "themes/minecraft/fonts/Minecraftia-Regular.ttf",
@@ -30,6 +32,7 @@
     "button_bg_active": "btn_bg_active.png",
     "menu_button_bg": "menu_btn.png",
     "menu_button_bg_active": "menu_btn_active.png"
+
   },
 "sounds": {
   "click": "themes/minecraft/sounds/click.ogg",

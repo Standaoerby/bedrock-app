@@ -3,5 +3,10 @@
   "birthday": "2015-05-18",
   "theme": "minecraft",
   "variant": "light",
-  "language": "en"
+  "language": "en",
+  "location": {
+    "latitude": 51.5566,
+    "longitude": -0.1780
+  }
+  
 }

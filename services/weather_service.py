@@ -67,14 +67,21 @@ class WeatherService:
 
     def load(self):
         try:
-            with open(self.weather_file, "r", encoding="utf-8") as f:
+            if not os.path.exists(self.path) or os.path.getsize(self.path) == 0:
+                logger.warning("weather.json is missing or empty, creating default data")
+                self.weather = self._create_default_data()
+                self.save()
+                return
+            with open(self.path, "r", encoding="utf-8") as f:
                 data = f.read().strip()
                 if not data:
                     raise ValueError("weather.json is empty")
                 self.weather = json.loads(data)
         except Exception as e:
             logger.error(f"[Error loading weather data] {e}")
-            self.weather = {}  # чтобы не было падения дальше
+            self.weather = self._create_default_data()
+            self.save()
+
 
     
     def _create_default_data(self):
