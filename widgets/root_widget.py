@@ -1,6 +1,6 @@
 from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import StringProperty
-from event_bus import event_bus
+from app.event_bus import event_bus
 
 class RootWidget(BoxLayout):
     current_page = StringProperty("home")

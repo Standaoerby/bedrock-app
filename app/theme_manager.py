@@ -21,10 +21,9 @@ class ThemeManager:
         if variant:
             self.variant = variant
         path = os.path.join(self.themes_dir, self.current_theme, self.variant, "theme.json")
-        print("LOADING THEME FROM:", path)
         with open(path, "r") as f:
             self.theme_data = json.load(f)
-        print("theme_data images:", self.theme_data.get("images"))
+
 
 
     def get_font(self, key):

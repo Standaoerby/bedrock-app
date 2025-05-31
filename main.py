@@ -16,11 +16,11 @@ from pages.weather import WeatherScreen
 from pages.pigs import PigsScreen
 from pages.settings import SettingsScreen
 
-from root_widget import RootWidget
-from theme_manager import theme_manager
+from widgets.root_widget import RootWidget
+from app.theme_manager import theme_manager
 from pages.home import HomeScreen
-from top_menu import TopMenu
-from audio_service import audio_service
+from widgets.top_menu import TopMenu
+from services.audio_service import audio_service
 
 class BedrockApp(App):
     theme_manager = theme_manager
@@ -34,8 +34,8 @@ class BedrockApp(App):
         self.theme_manager.load_theme("minecraft", "light")
 
  
-        Builder.load_file("root_widget.kv")
-        Builder.load_file("top_menu.kv")
+        Builder.load_file("widgets/root_widget.kv")
+        Builder.load_file("widgets/top_menu.kv")
         Builder.load_file("pages/home.kv")
         Builder.load_file("pages/alarm.kv")
         Builder.load_file("pages/schedule.kv")

@@ -1,34 +1,35 @@
 <HomeScreen>:
     name: "home"
-    BoxLayout:
-        orientation: 'vertical'
-        padding: [16, 16, 16, 16]
-        spacing: 8
-        
-        Label:
-            id: title_label
-            text: "Главная страница"
-            font_size: '24sp'
-            font_name: app.theme_manager.get_font("main")
-            color: 1, 1, 1, 1
-            size_hint_y: None
-            height: 32
-            padding: [0, 8]
+    MainFrame:
         BoxLayout:
-            orientation: 'horizontal'
-            size_hint_y: None
-            height: 40
+            orientation: 'vertical'
+            padding: [16, 16, 16, 16]
             spacing: 8
+            
             Label:
-                id: form_label
-                text: "Пример формы:"
-                font_size: '16sp'
-                color: 1, 1, 1, 1
+                id: title_label
+                text: "Главная страница"
+                font_size: '24sp'
                 font_name: app.theme_manager.get_font("main")
-                size_hint_x: 0.3
-            TextInput:
-                id: input_box
-                hint_text: "Введите что-нибудь..."
-                multiline: False
-                size_hint_x: 0.7
+                color: 1, 1, 1, 1
+                size_hint_y: None
                 height: 32
+                padding: [0, 8]
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: 40
+                spacing: 8
+                Label:
+                    id: form_label
+                    text: "Пример формы:"
+                    font_size: '16sp'
+                    color: 1, 1, 1, 1
+                    font_name: app.theme_manager.get_font("main")
+                    size_hint_x: 0.3
+                TextInput:
+                    id: input_box
+                    hint_text: "Введите что-нибудь..."
+                    multiline: False
+                    size_hint_x: 0.7
+                    height: 32
