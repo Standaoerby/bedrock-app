@@ -1,0 +1,16 @@
+{
+  "colors": {
+    "background": "#1e1e1e",
+    "menu": "#242424",
+    "primary": "#3CB371",
+    "text": "#eeeeee"
+  },
+  "fonts": {
+    "main": "Roboto",
+    "title": "Minecraftia"
+  },
+  "images": {
+    "background": "background.png",
+    "overlay_home": "overlay_home.png"
+  }
+}

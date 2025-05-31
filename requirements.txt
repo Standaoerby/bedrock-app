@@ -1,0 +1,10 @@
+kivy
+kivymd
+requests
+aiohttp
+python-dotenv
+Pillow
+smbus2
+RPi.GPIO
+pyalsaaudio
+python-mpd2

@@ -1,0 +1,16 @@
+<HomeScreen>:
+    name: "home"
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 1
+        Rectangle:
+            source: app.theme_manager.get_image("background")
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: 1, 1, 1, 0.4
+        Rectangle:
+            source: app.theme_manager.get_image("overlay_home")
+            pos: self.pos
+            size: self.size
+    # Далее идёт твоя верстка по сетке 8px, без Image c ids!
