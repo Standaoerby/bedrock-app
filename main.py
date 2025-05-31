@@ -27,7 +27,7 @@ from services.weather_service import WeatherService
 from app.logger import app_logger as logger
 logger.info("=== App Started ===")
 
-# Window.fullscreen = 'auto'
+# Window.fullscreen = 'auto' Это отключил на винде, может пригодиться на Пи
 # Window.borderless = True
 # Window.show_cursor = True # Убрать тут курсор
 class BedrockApp(App):
