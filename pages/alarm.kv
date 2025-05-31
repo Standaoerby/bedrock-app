@@ -1,12 +1,202 @@
 <AlarmScreen>:
     name: "alarm"
+    canvas.before:
+        Color:
+            rgba: app.theme_manager.get_rgba("overlay_card")
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    # Полоска заголовка
+    BoxLayout:
+        size_hint_y: None
+        height: dp(60)
+        padding: dp(16), 0
+        Label:
+            text: "Alarm"
+            font_size: "28sp"
+            font_name: app.theme_manager.get_font("title")
+            color: app.theme_manager.get_rgba("primary")
+
+    # Основная карточка будильника
     BoxLayout:
         orientation: "vertical"
-        padding: [16, 16, 16, 16]
-        spacing: 8
-        Label:
-            text: "Будильник"
-            font_size: '24sp'
+        size_hint: 0.8, 0.85
+        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+        spacing: dp(16)
+        padding: dp(24)
+
+        # Время и активность
+        BoxLayout:
+            size_hint_y: None
+            height: dp(96)
+            spacing: dp(24)
+
+            # Крутилки часов
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.6
+                spacing: dp(4)
+                Label:
+                    id: hour_label
+                    text: root.alarm_time.split(":")[0]
+                    font_size: "56sp"
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("primary")
+                    halign: "center"
+                    valign: "middle"
+                Label:
+                    text: ":"
+                    font_size: "56sp"
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("primary")
+                    halign: "center"
+                    valign: "middle"
+                Label:
+                    id: minute_label
+                    text: root.alarm_time.split(":")[1]
+                    font_size: "56sp"
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("primary")
+                    halign: "center"
+                    valign: "middle"
+
+            # Включение/выключение
+            ToggleButton:
+                id: active_button
+                text: "ON" if root.alarm_active else "OFF"
+                font_size: "18sp"
+                font_name: app.theme_manager.get_font("main")
+                color: app.theme_manager.get_rgba("primary") if root.alarm_active else app.theme_manager.get_rgba("text_secondary")
+                background_normal: app.theme_manager.get_image("button_bg")
+                background_down: app.theme_manager.get_image("button_bg_active")
+                on_state: root.on_active_toggled(self.state == "down")
+
+        # Дни недели
+        GridLayout:
+            cols: 7
+            size_hint_y: None
+            height: dp(48)
+            spacing: dp(6)
+            padding: dp(4), 0
+            # Кнопки для каждого дня
+            ToggleButton:
+                id: repeat_mon
+                text: "Mon"
+                state: "down" if "Mon" in root.alarm_repeat else "normal"
+                font_size: "16sp"
+                font_name: app.theme_manager.get_font("main")
+                color: app.theme_manager.get_rgba("primary") if "Mon" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
+                background_normal: app.theme_manager.get_image("button_bg")
+                background_down: app.theme_manager.get_image("button_bg_active")
+                on_state: root.toggle_repeat("Mon", self.state)
+            ToggleButton:
+                id: repeat_tue
+                text: "Tue"
+                state: "down" if "Tue" in root.alarm_repeat else "normal"
+                font_size: "16sp"
+                font_name: app.theme_manager.get_font("main")
+                color: app.theme_manager.get_rgba("primary") if "Tue" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
+                background_normal: app.theme_manager.get_image("button_bg")
+                background_down: app.theme_manager.get_image("button_bg_active")
+                on_state: root.toggle_repeat("Tue", self.state)
+            ToggleButton:
+                id: repeat_wed
+                text: "Wed"
+                state: "down" if "Wed" in root.alarm_repeat else "normal"
+                font_size: "16sp"
+                font_name: app.theme_manager.get_font("main")
+                color: app.theme_manager.get_rgba("primary") if "Wed" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
+                background_normal: app.theme_manager.get_image("button_bg")
+                background_down: app.theme_manager.get_image("button_bg_active")
+                on_state: root.toggle_repeat("Wed", self.state)
+            ToggleButton:
+                id: repeat_thu
+                text: "Thu"
+                state: "down" if "Thu" in root.alarm_repeat else "normal"
+                font_size: "16sp"
+                font_name: app.theme_manager.get_font("main")
+                color: app.theme_manager.get_rgba("primary") if "Thu" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
+                background_normal: app.theme_manager.get_image("button_bg")
+                background_down: app.theme_manager.get_image("button_bg_active")
+                on_state: root.toggle_repeat("Thu", self.state)
+            ToggleButton:
+                id: repeat_fri
+                text: "Fri"
+                state: "down" if "Fri" in root.alarm_repeat else "normal"
+                font_size: "16sp"
+                font_name: app.theme_manager.get_font("main")
+                color: app.theme_manager.get_rgba("primary") if "Fri" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
+                background_normal: app.theme_manager.get_image("button_bg")
+                background_down: app.theme_manager.get_image("button_bg_active")
+                on_state: root.toggle_repeat("Fri", self.state)
+            ToggleButton:
+                id: repeat_sat
+                text: "Sat"
+                state: "down" if "Sat" in root.alarm_repeat else "normal"
+                font_size: "16sp"
+                font_name: app.theme_manager.get_font("main")
+                color: app.theme_manager.get_rgba("primary") if "Sat" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
+                background_normal: app.theme_manager.get_image("button_bg")
+                background_down: app.theme_manager.get_image("button_bg_active")
+                on_state: root.toggle_repeat("Sat", self.state)
+            ToggleButton:
+                id: repeat_sun
+                text: "Sun"
+                state: "down" if "Sun" in root.alarm_repeat else "normal"
+                font_size: "16sp"
+                font_name: app.theme_manager.get_font("main")
+                color: app.theme_manager.get_rgba("primary") if "Sun" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
+                background_normal: app.theme_manager.get_image("button_bg")
+                background_down: app.theme_manager.get_image("button_bg_active")
+                on_state: root.toggle_repeat("Sun", self.state)
+
+        # Блок выбора мелодии и fade-in
+        BoxLayout:
+            orientation: "horizontal"
+            spacing: dp(16)
+            size_hint_y: None
+            height: dp(48)
+
+            Spinner:
+                id: ringtone_spinner
+                text: root.selected_ringtone
+                values: root.ringtone_list
+                font_size: "16sp"
+                font_name: app.theme_manager.get_font("main")
+                color: app.theme_manager.get_rgba("primary")
+                background_normal: app.theme_manager.get_image("button_bg")
+                background_down: app.theme_manager.get_image("button_bg_active")
+                on_text: root.select_ringtone(self.text)
+
+            ToggleButton:
+                id: fadein_button
+                text: "ON" if root.alarm_fadein else "OFF"
+                font_size: "16sp"
+                font_name: app.theme_manager.get_font("main")
+                color: app.theme_manager.get_rgba("primary") if root.alarm_fadein else app.theme_manager.get_rgba("text_secondary")
+                background_normal: app.theme_manager.get_image("button_bg")
+                background_down: app.theme_manager.get_image("button_bg_active")
+                on_state: root.on_fadein_toggled(self.state == "down")
+
+            ToggleButton:
+                id: play_button
+                text: "Play"
+                font_size: "16sp"
+                font_name: app.theme_manager.get_font("main")
+                color: app.theme_manager.get_rgba("primary")
+                background_normal: app.theme_manager.get_image("button_bg")
+                background_down: app.theme_manager.get_image("button_bg_active")
+                on_state: root.toggle_play_ringtone(self.state)
+
+        # Кнопка сохранения
+        Button:
+            text: "Save"
+            font_size: "18sp"
             font_name: app.theme_manager.get_font("main")
-            color: 1, 1, 1, 1
-        # Добавь свою форму/логику по мере миграции
+            color: app.theme_manager.get_rgba("text")
+            background_normal: app.theme_manager.get_image("button_bg")
+            background_down: app.theme_manager.get_image("button_bg_active")
+            size_hint_y: None
+            height: dp(48)
+            on_release: root.save_alarm()
