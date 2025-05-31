@@ -1,7 +1,7 @@
 {
   "current": {
-    "time": "2025-05-31T22:00",
-    "temperature": 19.0,
+    "time": "2025-05-31T22:30",
+    "temperature": 18.4,
     "condition": "Mostly Clear",
     "precipitation_probability": 13
   },
@@ -68,5 +68,5 @@
       "precipitation_probability": 45
     }
   ],
-  "updated": "2025-05-31T20:04:59.933789"
+  "updated": "2025-05-31T20:36:44.806127"
 }

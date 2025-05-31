@@ -1,14 +1,14 @@
 #:import dp kivy.metrics.dp
 
 <OverlayCard@BoxLayout>:
-    bg_color: app.theme_manager.get_rgba("overlay_card") if app.theme_manager.get_rgba("overlay_card") else (0, 0, 0, 0.25)
-    radius: dp(8)
-    padding: [dp(16), dp(16), dp(16), dp(8)]
+    bg_color: app.theme_manager.get_rgba("overlay_card") if app.theme_manager.get_rgba("overlay_card") else (0.1, 0.1, 0.1, 0.8)
+    padding: [dp(16), dp(12), dp(16), dp(12)]
+    spacing: dp(8)
+    
     canvas.before:
         Color:
-            rgba: self.bg_color if self.bg_color else (0,0,0,0.25)
+            rgba: self.bg_color if self.bg_color else (0.1, 0.1, 0.1, 0.8)
         RoundedRectangle:
             pos: self.pos
             size: self.size
-            radius: [(self.radius, self.radius, self.radius, self.radius)]
-
+            radius: [dp(8)]
