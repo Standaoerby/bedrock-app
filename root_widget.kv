@@ -1,0 +1,37 @@
+<RootWidget>:
+    orientation: "vertical"
+
+    canvas.before:
+        Color:
+            rgba: app.theme_manager.get_rgba("background")
+        Rectangle:
+            source: app.theme_manager.get_image("background")
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: 1, 1, 1, 0.25
+        Rectangle:
+            source: app.theme_manager.get_image("overlay_" + root.current_page)
+            pos: self.pos
+            size: self.size
+
+    TopMenu:
+        id: topmenu
+        current_page: root.current_page
+        size_hint_y: None
+        height: 48
+
+    ScreenManager:
+        id: sm
+        HomeScreen:
+            name: "home"
+        AlarmScreen:
+            name: "alarm"
+        ScheduleScreen:
+            name: "schedule"
+        WeatherScreen:
+            name: "weather"
+        PigsScreen:
+            name: "pigs"
+        SettingsScreen:
+            name: "settings"

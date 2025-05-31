@@ -1,6 +1,12 @@
 import json
 import os
 
+def hex_to_rgba(hex_str, alpha=1.0):
+    hex_str = hex_str.lstrip('#')
+    lv = len(hex_str)
+    rgb = tuple(int(hex_str[i:i + lv // 3], 16) / 255 for i in range(0, lv, lv // 3))
+    return (*rgb, alpha)
+
 class ThemeManager:
     def __init__(self, themes_dir="themes"):
         self.themes_dir = themes_dir
@@ -17,8 +23,20 @@ class ThemeManager:
         with open(path, "r") as f:
             self.theme_data = json.load(f)
 
+    def get_font(self, key):
+        return self.theme_data.get("fonts", {}).get(key, "Roboto")
+
     def get_color(self, key):
         return self.theme_data.get("colors", {}).get(key, "#FFFFFF")
+
+    def get_rgba(self, key, alpha=1.0):
+        color = self.get_color(key)
+        if isinstance(color, str) and color.startswith('#'):
+            return hex_to_rgba(color, alpha)
+        elif isinstance(color, (list, tuple)):
+            return tuple(color)
+        else:
+            return (1, 1, 1, alpha)
 
     def get_image(self, key):
         return self.theme_data.get("images", {}).get(key, "")

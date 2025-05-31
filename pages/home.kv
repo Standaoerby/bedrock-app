@@ -1,16 +1,33 @@
 <HomeScreen>:
     name: "home"
-    canvas.before:
-        Color:
-            rgba: 1, 1, 1, 1
-        Rectangle:
-            source: app.theme_manager.get_image("background")
-            pos: self.pos
-            size: self.size
-        Color:
-            rgba: 1, 1, 1, 0.4
-        Rectangle:
-            source: app.theme_manager.get_image("overlay_home")
-            pos: self.pos
-            size: self.size
-    # Далее идёт твоя верстка по сетке 8px, без Image c ids!
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [16, 16, 16, 16]
+        spacing: 8
+        Label:
+            id: title_label
+            text: "Главная страница"
+            font_size: '24sp'
+            font_name: app.theme_manager.get_font("main")
+            color: 1, 1, 1, 1
+            size_hint_y: None
+            height: 32
+            padding: [0, 8]
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: 40
+            spacing: 8
+            Label:
+                id: form_label
+                text: "Пример формы:"
+                font_size: '16sp'
+                color: 1, 1, 1, 1
+                font_name: app.theme_manager.get_font("main")
+                size_hint_x: 0.3
+            TextInput:
+                id: input_box
+                hint_text: "Введите что-нибудь..."
+                multiline: False
+                size_hint_x: 0.7
+                height: 32

@@ -1,0 +1,43 @@
+<TopMenu>:
+    orientation: "horizontal"
+    size_hint_y: None
+    height: 48
+    spacing: 8
+    padding: [8, 8, 8, 8]
+    canvas.before:
+        Color:
+            rgba: app.theme_manager.get_rgba("menu")
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    Button:
+        text: "Главная"
+        background_color: app.theme_manager.get_rgba("primary") if root.current_page == "home" else app.theme_manager.get_rgba("menu")
+        font_name: app.theme_manager.get_font("main")
+        on_release: root.select("home")
+    Button:
+        text: "Будильник"
+        background_color: app.theme_manager.get_rgba("primary") if root.current_page == "alarm" else app.theme_manager.get_rgba("menu")
+        font_name: app.theme_manager.get_font("main")
+        on_release: root.select("alarm")
+    Button:
+        text: "Расписание"
+        background_color: app.theme_manager.get_rgba("primary") if root.current_page == "schedule" else app.theme_manager.get_rgba("menu")
+        font_name: app.theme_manager.get_font("main")
+        on_release: root.select("schedule")
+    Button:
+        text: "Погода"
+        background_color: app.theme_manager.get_rgba("primary") if root.current_page == "weather" else app.theme_manager.get_rgba("menu")
+        font_name: app.theme_manager.get_font("main")
+        on_release: root.select("weather")
+    Button:
+        text: "Свинки"
+        background_color: app.theme_manager.get_rgba("primary") if root.current_page == "pigs" else app.theme_manager.get_rgba("menu")
+        font_name: app.theme_manager.get_font("main")
+        on_release: root.select("pigs")
+    Button:
+        text: "Настройки"
+        background_color: app.theme_manager.get_rgba("primary") if root.current_page == "settings" else app.theme_manager.get_rgba("menu")
+        font_name: app.theme_manager.get_font("main")
+        on_release: root.select("settings")
