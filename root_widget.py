@@ -16,3 +16,5 @@ class RootWidget(BoxLayout):
 
     def on_screen_changed(self, page, **kwargs):
         self.current_page = page
+        print("current_page:", self.current_page)
+

@@ -5,12 +5,28 @@
     "primary": "#3CB371",
     "text": "#eeeeee"
   },
-  "fonts": {
+"fonts": {
     "main": "Roboto",
-    "title": "Minecraftia"
+    "title": "themes/minecraft/fonts/Minecraftia-Regular.ttf"
   },
-  "images": {
+"images": {
     "background": "background.png",
-    "overlay_home": "overlay_home.png"
-  }
+    "overlay_home": "overlay_home.png",
+    "overlay_alarm": "overlay_alarm.png",
+    "overlay_schedule": "overlay_schedule.png",
+    "overlay_weather": "overlay_weather.png",
+    "overlay_pigs": "overlay_pigs.png",
+    "overlay_settings": "overlay_settings.png",
+    "overlay_default": "overlay_default.png",
+    "button_bg": "btn_bg.png",
+    "button_bg_active": "btn_bg_active.png"
+  },
+"sounds": {
+  "click": "themes/minecraft/sounds/click.ogg",
+  "notify": "themes/minecraft/sounds/notify.ogg",
+  "error": "themes/minecraft/sounds/error.ogg",
+  "confirm": "themes/minecraft/sounds/confirm.ogg",
+  "startup": "themes/minecraft/sounds/startup.ogg"
+}
+
 }

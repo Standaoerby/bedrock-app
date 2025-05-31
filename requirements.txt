@@ -8,3 +8,4 @@ smbus2
 RPi.GPIO
 pyalsaaudio
 python-mpd2
+pygame

@@ -1,16 +1,36 @@
-import subprocess
+import os
+from pygame import mixer
 
 class AudioService:
-    def __init__(self, device="default"):
-        self.device = device
+    def __init__(self):
+        self.is_playing = False
+        self.current_file = None
+        mixer.init()
 
-    def play(self, filepath):
-        subprocess.Popen(["aplay", "-D", f"plughw:{self.device}", filepath])
+    def play(self, filepath, fadein=0):
+        if not os.path.isfile(filepath):
+            print("AudioService: файл не найден:", filepath)
+            return
+        self.stop()
+        self.is_playing = True
+        self.current_file = filepath
+        mixer.music.load(filepath)
+        if fadein > 0:
+            mixer.music.play(loops=0, fade_ms=int(fadein * 1000))
+        else:
+            mixer.music.play()
+        mixer.music.set_volume(1.0)
 
     def stop(self):
-        subprocess.call(["pkill", "aplay"])
+        mixer.music.stop()
+        self.is_playing = False
+        self.current_file = None
 
-    def set_volume(self, percent):
-        subprocess.call(["amixer", "-c", self.device, "sset", "Speaker", f"{percent}%"])
+    def set_volume(self, value):
+        """value: 0.0 .. 1.0"""
+        mixer.music.set_volume(value)
 
-audio_service = AudioService(device="1,0")
+    def is_busy(self):
+        return mixer.music.get_busy()
+
+audio_service = AudioService()

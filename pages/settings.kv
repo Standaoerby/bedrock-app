@@ -9,3 +9,68 @@
             font_size: '24sp'
             font_name: app.theme_manager.get_font("main")
             color: 1, 1, 1, 1
+<SettingsScreen>:
+    name: "settings"
+    BoxLayout:
+        orientation: "vertical"
+        padding: [16, 16, 16, 16]
+        spacing: 8
+        size_hint: 1, 1
+
+        Label:
+            id: theme_label
+            text: "Тема оформления"
+            font_size: '24sp'
+            font_name: app.theme_manager.get_font("title")
+            color: app.theme_manager.get_rgba("primary")
+            size_hint_y: None
+            height: 32
+            padding: [0, 8]
+
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: None
+            height: 40
+            spacing: 8
+            Label:
+                text: "Тема:"
+                font_size: '16sp'
+                color: app.theme_manager.get_rgba("text")
+                font_name: app.theme_manager.get_font("main")
+                size_hint_x: 0.3
+
+            Spinner:
+                id: theme_spinner
+                text: app.theme_manager.current_theme
+                values: ["minecraft"]  # Список тем (пока одна, потом расширишь)
+                font_size: '16sp'
+                font_name: app.theme_manager.get_font("main")
+                background_normal: app.theme_manager.get_image("button_bg")
+                background_down: app.theme_manager.get_image("button_bg_active")
+                color: app.theme_manager.get_rgba("text")
+                size_hint_x: 0.7
+                on_text: root.on_theme_select(self.text)
+
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: None
+            height: 40
+            spacing: 8
+            Label:
+                text: "Вариант:"
+                font_size: '16sp'
+                color: app.theme_manager.get_rgba("text")
+                font_name: app.theme_manager.get_font("main")
+                size_hint_x: 0.3
+
+            Spinner:
+                id: variant_spinner
+                text: app.theme_manager.variant
+                values: ["light", "dark"]
+                font_size: '16sp'
+                font_name: app.theme_manager.get_font("main")
+                background_normal: app.theme_manager.get_image("button_bg")
+                background_down: app.theme_manager.get_image("button_bg_active")
+                color: app.theme_manager.get_rgba("text")
+                size_hint_x: 0.7
+                on_text: root.on_variant_select(self.text)

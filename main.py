@@ -20,9 +20,11 @@ from root_widget import RootWidget
 from theme_manager import theme_manager
 from pages.home import HomeScreen
 from top_menu import TopMenu
+from audio_service import audio_service
 
 class BedrockApp(App):
     theme_manager = theme_manager
+    audio_service = audio_service
 
     def build(self):
         Window.fullscreen = 'auto'
@@ -30,7 +32,7 @@ class BedrockApp(App):
         Window.show_cursor = True # Убрать тут курсор
 
         self.theme_manager.load_theme("minecraft", "light")
-        
+
  
         Builder.load_file("root_widget.kv")
         Builder.load_file("top_menu.kv")
@@ -40,6 +42,7 @@ class BedrockApp(App):
         Builder.load_file("pages/weather.kv")
         Builder.load_file("pages/pigs.kv")
         Builder.load_file("pages/settings.kv")
+        audio_service.play(self.theme_manager.get_sound("startup"))
         return RootWidget()
 
 if __name__ == "__main__":

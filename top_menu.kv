@@ -15,29 +15,46 @@
         text: "Главная"
         background_color: app.theme_manager.get_rgba("primary") if root.current_page == "home" else app.theme_manager.get_rgba("menu")
         font_name: app.theme_manager.get_font("main")
-        on_release: root.select("home")
+        on_release: 
+            root.select("home")
+            app.audio_service.play(app.theme_manager.get_sound("click"))
+
     Button:
         text: "Будильник"
         background_color: app.theme_manager.get_rgba("primary") if root.current_page == "alarm" else app.theme_manager.get_rgba("menu")
         font_name: app.theme_manager.get_font("main")
-        on_release: root.select("alarm")
+        on_release: 
+            root.select("alarm")
+            app.audio_service.play(app.theme_manager.get_sound("click"))
+
     Button:
         text: "Расписание"
         background_color: app.theme_manager.get_rgba("primary") if root.current_page == "schedule" else app.theme_manager.get_rgba("menu")
         font_name: app.theme_manager.get_font("main")
-        on_release: root.select("schedule")
+        on_release: 
+            root.select("schedule")
+            app.audio_service.play(app.theme_manager.get_sound("click"))
+
     Button:
         text: "Погода"
         background_color: app.theme_manager.get_rgba("primary") if root.current_page == "weather" else app.theme_manager.get_rgba("menu")
         font_name: app.theme_manager.get_font("main")
-        on_release: root.select("weather")
+        on_release: 
+            root.select("weather")
+            app.audio_service.play(app.theme_manager.get_sound("click"))
+
     Button:
         text: "Свинки"
         background_color: app.theme_manager.get_rgba("primary") if root.current_page == "pigs" else app.theme_manager.get_rgba("menu")
         font_name: app.theme_manager.get_font("main")
-        on_release: root.select("pigs")
+        on_release: 
+            root.select("pigs")
+            app.audio_service.play(app.theme_manager.get_sound("click"))
+
     Button:
         text: "Настройки"
         background_color: app.theme_manager.get_rgba("primary") if root.current_page == "settings" else app.theme_manager.get_rgba("menu")
         font_name: app.theme_manager.get_font("main")
-        on_release: root.select("settings")
+        on_release: 
+            root.select("settings")
+            app.audio_service.play(app.theme_manager.get_sound("click"))
