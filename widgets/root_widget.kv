@@ -1,42 +1,52 @@
+#:import dp kivy.metrics.dp
+#:import Window kivy.core.window.Window
 <MainFrame@BoxLayout>:
     orientation: 'vertical'
-    padding: [16, 16, 16, 16]  # left, top, right, bottom
-    spacing: 8
+    padding: [dp(16), dp(16), dp(16), dp(16)]
+    spacing: dp(8)
 
 <RootWidget>:
-    orientation: "vertical"
-
-    canvas.before:
-        Color:
-            rgba: app.theme_manager.get_rgba("background")
-        Rectangle:
+    # Класс-контейнер, если используешь его как корневой
+    FloatLayout:
+        Image:
+            id: background_image
             source: app.theme_manager.get_image("background")
-            pos: self.pos
-            size: self.size
-        Color:
-            rgba: 1, 1, 1, 1
-        Rectangle:
+            allow_stretch: True
+            keep_ratio: False
+            size: self.parent.size
+            pos: self.parent.pos
+
+        Image:
+            id: overlay_image
             source: app.theme_manager.get_image("overlay_" + root.current_page)
-            pos: self.pos
-            size: self.size
+            allow_stretch: True
+            keep_ratio: False
+            size: self.parent.size
+            pos: self.parent.pos
 
-    TopMenu:
-        id: topmenu
-        current_page: root.current_page
-        size_hint_y: None
-        height: 48
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint: 1, 1
+            pos_hint: {'x': 0, 'y': 0}
 
-    ScreenManager:
-        id: sm
-        HomeScreen:
-            name: "home"
-        AlarmScreen:
-            name: "alarm"
-        ScheduleScreen:
-            name: "schedule"
-        WeatherScreen:
-            name: "weather"
-        PigsScreen:
-            name: "pigs"
-        SettingsScreen:
-            name: "settings"
+            TopMenu:
+                id: topmenu
+                current_page: root.current_page
+                size_hint_y: None
+                height: app.theme_manager.get_param("menu_height") or dp(56)
+                current_page: root.current_page
+
+            ScreenManager:
+                id: sm
+                HomeScreen:
+                    name: "home"
+                AlarmScreen:
+                    name: "alarm"
+                ScheduleScreen:
+                    name: "schedule"
+                WeatherScreen:
+                    name: "weather"
+                PigsScreen:
+                    name: "pigs"
+                SettingsScreen:
+                    name: "settings"
