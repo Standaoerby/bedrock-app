@@ -15,6 +15,14 @@ class TopMenu(BoxLayout):
 
     def select(self, page_name):
         app = App.get_running_app()
+        
+        # Воспроизводим звук ДО смены экрана
+        if hasattr(app, 'audio_service'):
+            sound_file = app.theme_manager.get_sound("click")
+            if sound_file:
+                app.audio_service.play(sound_file)
+        
+        # Меняем экран
         if hasattr(app.root, "switch_screen"):
             app.root.switch_screen(page_name)
 
