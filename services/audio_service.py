@@ -11,6 +11,9 @@ class AudioService:
         self.is_long_audio = False  # Флаг для длинных аудио (рингтоны)
         self.last_play_time = 0
         
+        # ДОБАВЛЕНО: флаг для предотвращения повторной остановки
+        self._is_stopped = False
+        
         # Инициализируем mixer сразу с конкретными параметрами
         try:
             mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=1024)

@@ -22,7 +22,13 @@ from app.theme_manager import theme_manager
 from widgets.top_menu import TopMenu
 from services.audio_service import audio_service
 from services.alarm_service import AlarmService
-from services.alarm_clock import AlarmClock
+try:
+    from services.alarm_clock import AlarmClock
+    ALARM_CLOCK_AVAILABLE = True
+except ImportError as e:
+    logger.error(f"Failed to import AlarmClock: {e}")
+    AlarmClock = None
+    ALARM_CLOCK_AVAILABLE = False
 from services.notifications_service import NotificationService
 from services.weather_service import WeatherService
 from services.sensor_service import SensorService
@@ -53,13 +59,19 @@ class BedrockApp(App):
 
         # Инициализация сервисов
         self.alarm_service = AlarmService()
-        self.alarm_clock = AlarmClock()
-        try:
-            self.alarm_clock.start()
-            logger.info("AlarmClock started successfully")
-        except Exception as e:
-            logger.error(f"Failed to start AlarmClock: {e}")
-            # AlarmClock не критичен, продолжаем работу
+        
+        # Инициализация AlarmClock с проверкой доступности
+        if ALARM_CLOCK_AVAILABLE:
+            self.alarm_clock = AlarmClock()
+            try:
+                self.alarm_clock.start()
+                logger.info("AlarmClock started successfully")
+            except Exception as e:
+                logger.error(f"Failed to start AlarmClock: {e}")
+                # AlarmClock не критичен, продолжаем работу
+                self.alarm_clock = None
+        else:
+            logger.warning("AlarmClock not available - alarm functionality disabled")
             self.alarm_clock = None
         self.notification_service = NotificationService()
         
@@ -109,19 +121,24 @@ class BedrockApp(App):
         # Список сервисов для остановки в правильном порядке
         services_to_stop = [
             ('alarm_clock', 'AlarmClock'),
-            ('sensor_service', 'SensorService'),
+            ('sensor_service', 'SensorService'), 
             ('alarm_service', 'AlarmService'),
-            ('audio_service', 'AudioService'),
-            ('weather_service', 'WeatherService'),
-            ('pigs_service', 'PigsService'),
-            ('notification_service', 'NotificationService')
+            ('audio_service', 'AudioService')
         ]
         
         for service_attr, service_name in services_to_stop:
             try:
                 if hasattr(self, service_attr):
                     service = getattr(self, service_attr)
-                    if service and hasattr(service, 'stop'):
+                    if service and hasattr(service, 'stop') and callable(getattr(service, 'stop')):
+                        # Проверяем что сервис ещё не остановлен
+                        if hasattr(service, 'running') and not service.running:
+                            logger.debug(f"{service_name} already stopped, skipping")
+                            continue
+                        elif hasattr(service, '_is_stopped') and service._is_stopped:
+                            logger.debug(f"{service_name} already stopped, skipping")
+                            continue
+                        
                         logger.info(f"Stopping {service_name}...")
                         service.stop()
                         logger.info(f"{service_name} stopped successfully")
@@ -129,6 +146,26 @@ class BedrockApp(App):
                         logger.debug(f"{service_name} has no stop method or is None")
                 else:
                     logger.debug(f"{service_name} attribute not found")
+            except Exception as e:
+                logger.error(f"Error stopping {service_name}: {e}")
+        
+        # Отдельно обрабатываем сервисы без метода stop()
+        other_services = [
+            ('weather_service', 'WeatherService'),
+            ('pigs_service', 'PigsService'),
+            ('notification_service', 'NotificationService')
+        ]
+        
+        for service_attr, service_name in other_services:
+            try:
+                if hasattr(self, service_attr):
+                    service = getattr(self, service_attr)
+                    if service and hasattr(service, 'stop') and callable(getattr(service, 'stop')):
+                        logger.info(f"Stopping {service_name}...")
+                        service.stop()
+                        logger.info(f"{service_name} stopped successfully")
+                    else:
+                        logger.debug(f"{service_name} has no stop method or is None")
             except Exception as e:
                 logger.error(f"Error stopping {service_name}: {e}")
         
