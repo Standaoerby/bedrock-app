@@ -83,6 +83,14 @@ class PigsScreen(Screen):
         """Вызывается при выходе с экрана"""
         self.stop_updates()
 
+    def get_theme_manager(self):
+        """Безопасное получение theme_manager"""
+        app = App.get_running_app()
+        if hasattr(app, 'theme_manager') and app.theme_manager:
+            return app.theme_manager
+        logger.warning("ThemeManager not available in PigsScreen")
+        return None
+
     def start_updates(self):
         """Запуск периодических обновлений"""
         self._update_events = [
@@ -214,8 +222,9 @@ class PigsScreen(Screen):
             app = App.get_running_app()
             
             # Воспроизводим звук подтверждения
-            if hasattr(app, 'audio_service') and hasattr(app, 'theme_manager'):
-                sound_file = app.theme_manager.get_sound("confirm")
+            tm = self.get_theme_manager()
+            if hasattr(app, 'audio_service') and app.audio_service and tm:
+                sound_file = tm.get_sound("confirm")
                 if sound_file:
                     app.audio_service.play(sound_file)
             
@@ -250,18 +259,17 @@ class PigsScreen(Screen):
             logger.error(f"Error resetting {bar_type} bar: {e}")
             # Воспроизводим звук ошибки
             app = App.get_running_app()
-            if hasattr(app, 'audio_service') and hasattr(app, 'theme_manager'):
-                sound_file = app.theme_manager.get_sound("error")
+            tm = self.get_theme_manager()
+            if hasattr(app, 'audio_service') and app.audio_service and tm:
+                sound_file = tm.get_sound("error")
                 if sound_file:
                     app.audio_service.play(sound_file)
 
     def refresh_theme(self, *args):
         """Обновление темы для всех элементов"""
-        app = App.get_running_app()
-        if not hasattr(app, 'theme_manager'):
+        tm = self.get_theme_manager()
+        if not tm or not tm.is_loaded():
             return
-            
-        tm = app.theme_manager
 
         # Список виджетов для обновления темы
         widgets_to_update = [

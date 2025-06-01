@@ -55,6 +55,14 @@ class AlarmScreen(Screen):
             self._sound_check_event.cancel()
             self._sound_check_event = None
 
+    def get_theme_manager(self):
+        """Безопасное получение theme_manager"""
+        app = App.get_running_app()
+        if hasattr(app, 'theme_manager') and app.theme_manager:
+            return app.theme_manager
+        logger.warning("ThemeManager not available in AlarmScreen")
+        return None
+
     def _play_sound(self, sound_name):
         """Воспроизведение звука темы"""
         try:
@@ -386,11 +394,11 @@ class AlarmScreen(Screen):
             self._sound_playing = False
 
     def refresh_theme(self, *args):
+        """Обновление темы для всех элементов"""
         tm = self.get_theme_manager()
         if not tm or not tm.is_loaded():
             return
             
-        tm = app.theme_manager
         widgets = [
             "hour_label", "minute_label", "active_button", "fadein_button", 
             "play_button", "ringtone_spinner"

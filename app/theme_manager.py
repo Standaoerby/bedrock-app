@@ -112,6 +112,7 @@ class ThemeManager:
     def get_font(self, name):
         """Вернуть путь к шрифту по имени."""
         try:
+            # Получаем имя файла шрифта из конфигурации темы
             font_file = self.theme_data.get("fonts", {}).get(name)
             if not font_file:
                 # Фолбэк на дефолт
@@ -120,14 +121,31 @@ class ThemeManager:
             if not self.theme_name:
                 logger.warning("Theme not loaded, using default font")
                 return ""
-                
-            path = os.path.join(
-                self.themes_dir, self.theme_name, "fonts", font_file
-            )
+            
+            # ИСПРАВЛЕНИЕ: Проверяем, не является ли font_file уже полным путем
+            if os.path.sep in font_file or '/' in font_file:
+                # Если в font_file уже есть путь, используем его как есть
+                path = font_file
+            else:
+                # Если это просто имя файла, формируем полный путь
+                path = os.path.join(
+                    self.themes_dir, self.theme_name, "fonts", font_file
+                )
+            
+            # Нормализуем путь для корректного отображения
+            path = os.path.normpath(path)
+            
             if not os.path.isfile(path):
-                logger.warning(f"Font not found: {path}, using fallback")
+                logger.warning(f"Font not found: {path}, trying fallback")
+                # Пробуем fallback путь
                 fallback_path = os.path.join(self.themes_dir, self.theme_name, "fonts", "Minecraftia-Regular.ttf")
-                return fallback_path if os.path.isfile(fallback_path) else ""
+                fallback_path = os.path.normpath(fallback_path)
+                if os.path.isfile(fallback_path):
+                    return fallback_path
+                else:
+                    logger.warning(f"Fallback font also not found: {fallback_path}")
+                    return ""
+            
             return path
         except Exception as e:
             logger.error(f"Error getting font {name}: {e}")
@@ -144,17 +162,32 @@ class ThemeManager:
             if not self.theme_name or not self.variant:
                 logger.warning("Theme not loaded, using fallback")
                 return ""
+            
+            # ИСПРАВЛЕНИЕ: Проверяем, не является ли img_file уже полным путем
+            if os.path.sep in img_file or '/' in img_file:
+                # Если в img_file уже есть путь, используем его как есть
+                path = img_file
+            else:
+                # Если это просто имя файла, формируем полный путь
+                path = os.path.join(
+                    self.themes_dir, self.theme_name, self.variant, img_file
+                )
+            
+            # Нормализуем путь
+            path = os.path.normpath(path)
                 
-            path = os.path.join(
-                self.themes_dir, self.theme_name, self.variant, img_file
-            )
             if not os.path.isfile(path):
-                logger.warning(f"Image not found: {path}, using fallback")
-                # Можно фолбэк на дефолтный фон или прозрачку
+                logger.warning(f"Image not found: {path}, trying fallback")
+                # Фолбэк на дефолтный фон
                 fallback_path = os.path.join(
                     self.themes_dir, self.theme_name, self.variant, "background.png"
                 )
-                return fallback_path if os.path.isfile(fallback_path) else ""
+                fallback_path = os.path.normpath(fallback_path)
+                if os.path.isfile(fallback_path):
+                    return fallback_path
+                else:
+                    logger.warning(f"Fallback image also not found: {fallback_path}")
+                    return ""
             return path
         except Exception as e:
             logger.error(f"Error getting image {name}: {e}")
@@ -170,12 +203,15 @@ class ThemeManager:
             path = os.path.join(
                 self.themes_dir, self.theme_name, self.variant, overlay_name
             )
+            path = os.path.normpath(path)
+            
             if os.path.isfile(path):
                 return path
             # fallback: overlay_default.png
             fallback = os.path.join(
                 self.themes_dir, self.theme_name, self.variant, "overlay_default.png"
             )
+            fallback = os.path.normpath(fallback)
             if os.path.isfile(fallback):
                 return fallback
             return ""
@@ -192,10 +228,20 @@ class ThemeManager:
             
             if not self.theme_name:
                 return ""
+            
+            # ИСПРАВЛЕНИЕ: Проверяем, не является ли sound_file уже полным путем
+            if os.path.sep in sound_file or '/' in sound_file:
+                # Если в sound_file уже есть путь, используем его как есть
+                path = sound_file
+            else:
+                # Если это просто имя файла, формируем полный путь
+                path = os.path.join(
+                    self.themes_dir, self.theme_name, "sounds", sound_file
+                )
+            
+            # Нормализуем путь
+            path = os.path.normpath(path)
                 
-            path = os.path.join(
-                self.themes_dir, self.theme_name, "sounds", sound_file
-            )
             if not os.path.isfile(path):
                 logger.warning(f"Sound not found: {path}")
                 return ""

@@ -49,6 +49,14 @@ class SettingsScreen(Screen):
         """Вызывается при выходе с экрана"""
         self.stop_updates()
 
+    def get_theme_manager(self):
+        """Безопасное получение theme_manager"""
+        app = App.get_running_app()
+        if hasattr(app, 'theme_manager') and app.theme_manager:
+            return app.theme_manager
+        logger.warning("ThemeManager not available in SettingsScreen")
+        return None
+
     def start_updates(self):
         """Запуск периодических обновлений"""
         self._update_events = [
@@ -66,8 +74,9 @@ class SettingsScreen(Screen):
         """Воспроизведение звука темы"""
         try:
             app = App.get_running_app()
-            if hasattr(app, "theme_manager") and hasattr(app, "audio_service"):
-                path = app.theme_manager.get_sound(sound_name)
+            tm = self.get_theme_manager()
+            if hasattr(app, "audio_service") and app.audio_service and tm:
+                path = tm.get_sound(sound_name)
                 if path:
                     app.audio_service.play(path)
         except Exception as e:
@@ -324,11 +333,9 @@ class SettingsScreen(Screen):
 
     def refresh_theme(self, *args):
         """Обновление темы для всех элементов"""
-        app = App.get_running_app()
-        if not hasattr(app, 'theme_manager'):
+        tm = self.get_theme_manager()
+        if not tm or not tm.is_loaded():
             return
-            
-        tm = app.theme_manager
 
         # Список виджетов для обновления темы
         widgets_to_update = [

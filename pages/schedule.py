@@ -42,6 +42,14 @@ class ScheduleScreen(Screen):
         """Вызывается при выходе с экрана"""
         self.stop_updates()
 
+    def get_theme_manager(self):
+        """Безопасное получение theme_manager"""
+        app = App.get_running_app()
+        if hasattr(app, 'theme_manager') and app.theme_manager:
+            return app.theme_manager
+        logger.warning("ThemeManager not available in ScheduleScreen")
+        return None
+
     def start_updates(self):
         """Запуск периодических обновлений"""
         # Обновляем текущий день раз в час
@@ -142,8 +150,7 @@ class ScheduleScreen(Screen):
         container = self.ids.schedule_container
         container.clear_widgets()
         
-        app = App.get_running_app()
-        tm = app.theme_manager if hasattr(app, 'theme_manager') else None
+        tm = self.get_theme_manager()
         
         # Создаем колонки для каждого дня
         for day_data in self.schedule_data:
@@ -275,11 +282,9 @@ class ScheduleScreen(Screen):
 
     def refresh_theme(self, *args):
         """Обновление темы"""
-        app = App.get_running_app()
-        if not hasattr(app, 'theme_manager'):
+        tm = self.get_theme_manager()
+        if not tm or not tm.is_loaded():
             return
-            
-        tm = app.theme_manager
 
         # Обновляем заголовки
         if hasattr(self, 'ids'):

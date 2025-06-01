@@ -12,16 +12,16 @@
     "menu_button_text": "#F9F6F2",
     "menu_button_text_active": "#FFD700"
   },
-"menu": {
+  "menu": {
     "menu_button_height": 48,
     "menu_button_width": 152,
     "menu_height": 64  
   },
-"fonts": {
-    "main": "themes/minecraft/fonts/Minecraftia-Regular.ttf",
-    "title": "themes/minecraft/fonts/Minecraftia-Regular.ttf"
+  "fonts": {
+    "main": "Minecraftia-Regular.ttf",
+    "title": "Minecraftia-Regular.ttf"
   },
-"images": {
+  "images": {
     "background": "background.png",
     "overlay_home": "overlay_home.png",
     "overlay_alarm": "overlay_alarm.png",
@@ -34,14 +34,12 @@
     "button_bg_active": "btn_bg_active.png",
     "menu_button_bg": "menu_btn.png",
     "menu_button_bg_active": "menu_btn_active.png"
-
   },
-"sounds": {
-  "click": "themes/minecraft/sounds/click.ogg",
-  "notify": "themes/minecraft/sounds/notify.ogg",
-  "error": "themes/minecraft/sounds/error.ogg",
-  "confirm": "themes/minecraft/sounds/confirm.ogg",
-  "startup": "themes/minecraft/sounds/startup.ogg"
-}
-
+  "sounds": {
+    "click": "click.ogg",
+    "notify": "notify.ogg",
+    "error": "error.ogg",
+    "confirm": "confirm.ogg",
+    "startup": "startup.ogg"
+  }
 }

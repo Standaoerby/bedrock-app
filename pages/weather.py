@@ -133,6 +133,14 @@ class WeatherScreen(Screen):
         """Вызывается при выходе с экрана"""
         self.stop_updates()
 
+    def get_theme_manager(self):
+        """Безопасное получение theme_manager"""
+        app = App.get_running_app()
+        if hasattr(app, 'theme_manager') and app.theme_manager:
+            return app.theme_manager
+        logger.warning("ThemeManager not available in WeatherScreen")
+        return None
+
     def start_updates(self):
         """Запуск периодических обновлений"""
         self._update_events = [
@@ -262,8 +270,7 @@ class WeatherScreen(Screen):
                     container.add_widget(padding)
             else:
                 # Нет данных прогноза
-                app = App.get_running_app()
-                tm = app.theme_manager if hasattr(app, 'theme_manager') else None
+                tm = self.get_theme_manager()
                 
                 no_data_label = Label(
                     text="No weekly forecast available",
@@ -286,14 +293,14 @@ class WeatherScreen(Screen):
 
     def get_temperature_color(self, temp_value):
         """Получить цвет для температуры в зависимости от значения"""
-        app = App.get_running_app()
+        tm = self.get_theme_manager()
         
         if temp_value > 23:
             return [1, 0.6, 0, 1]  # Оранжевый для жаркой погоды
         elif temp_value < 18:
             return [0.2, 0.6, 1, 1]  # Синий для холодной погоды
         else:
-            return app.theme_manager.get_rgba("primary") if hasattr(app, 'theme_manager') else [1, 1, 1, 1]
+            return tm.get_rgba("primary") if tm else [1, 1, 1, 1]
 
     def set_temp_color(self, widget, temp_str):
         """Установка цвета температуры в зависимости от значения"""
@@ -303,16 +310,14 @@ class WeatherScreen(Screen):
             widget.color = self.get_temperature_color(temp_value)
         except (ValueError, IndexError):
             # Если не удается распарсить температуру, используем стандартный цвет
-            app = App.get_running_app()
-            widget.color = app.theme_manager.get_rgba("text") if hasattr(app, 'theme_manager') else [1, 1, 1, 1]
+            tm = self.get_theme_manager()
+            widget.color = tm.get_rgba("text") if tm else [1, 1, 1, 1]
 
     def refresh_theme(self, *args):
         """Обновление темы для всех элементов"""
-        app = App.get_running_app()
-        if not hasattr(app, 'theme_manager'):
+        tm = self.get_theme_manager()
+        if not tm or not tm.is_loaded():
             return
-            
-        tm = app.theme_manager
 
         # Список виджетов для обновления темы
         widgets_to_update = [
@@ -358,10 +363,6 @@ class WeatherScreen(Screen):
 
     def refresh_text(self, *args):
         """Обновление локализованного текста"""
-        app = App.get_running_app()
-        if not hasattr(app, 'localizer'):
-            return
-            
         # Можно добавить локализацию заголовков
         pass
 
