@@ -1,4 +1,4 @@
-# main.py — оптимизированная версия с исправленными импортами
+# main.py — исправленная версия с правильной архитектурой
 
 from kivy.config import Config
 import sys
@@ -28,7 +28,6 @@ from pages.pigs import PigsScreen
 from pages.settings import SettingsScreen
 
 # Импорты архитектуры приложения
-from app.theme_manager import theme_manager
 from app.localizer import localizer
 from app.user_config import user_config
 from app.logger import app_logger as logger
@@ -55,6 +54,9 @@ except ImportError as e:
     AlarmClock = None
     ALARM_CLOCK_AVAILABLE = False
 
+# Импортируем theme_manager отдельно ПОСЛЕ настройки Kivy
+from app.theme_manager import ThemeManager
+
 # Загружаем KV файлы
 Builder.load_file('widgets/root_widget.kv')
 Builder.load_file('widgets/top_menu.kv')
@@ -72,7 +74,11 @@ logger.info("=== Bedrock 2.0 Started ===")
 class BedrockApp(App):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.theme_manager = theme_manager
+        
+        # Инициализируем theme_manager как экземпляр класса
+        self.theme_manager = ThemeManager()
+        
+        # Остальные менеджеры
         self.localizer = localizer
         self.user_config = user_config
         self.audio_service = audio_service
@@ -115,8 +121,13 @@ class BedrockApp(App):
             # Загружаем тему
             theme_name = self.user_config.get("theme", "minecraft")
             theme_variant = self.user_config.get("variant", "light")
-            self.theme_manager.load(theme_name, theme_variant)
-            logger.info(f"Theme loaded: {theme_name}/{theme_variant}")
+            
+            # Проверяем что theme_manager инициализирован
+            if hasattr(self, 'theme_manager') and self.theme_manager:
+                self.theme_manager.load(theme_name, theme_variant)
+                logger.info(f"Theme loaded: {theme_name}/{theme_variant}")
+            else:
+                logger.error("ThemeManager not initialized!")
             
         except Exception as e:
             logger.error(f"Error loading user settings: {e}")
@@ -202,20 +213,35 @@ class BedrockApp(App):
     def switch_theme(self, theme, variant):
         """Глобальная смена темы"""
         try:
-            self.theme_manager.load(theme, variant)
-            # Событие будет автоматически отправлено через event_bus
-            logger.info(f"Theme switched to {theme}/{variant}")
+            if hasattr(self, 'theme_manager') and self.theme_manager:
+                self.theme_manager.load(theme, variant)
+                logger.info(f"Theme switched to {theme}/{variant}")
+            else:
+                logger.error("ThemeManager not available for theme switch")
         except Exception as e:
             logger.error(f"Error switching theme: {e}")
 
     def switch_language(self, lang):
         """Глобальная смена языка"""
         try:
-            self.localizer.load(lang)
-            # Событие будет автоматически отправлено через event_bus  
-            logger.info(f"Language switched to {lang}")
+            if hasattr(self, 'localizer') and self.localizer:
+                self.localizer.load(lang)
+                logger.info(f"Language switched to {lang}")
+            else:
+                logger.error("Localizer not available for language switch")
         except Exception as e:
             logger.error(f"Error switching language: {e}")
+
+    def get_theme_manager(self):
+        """Безопасное получение theme_manager"""
+        if hasattr(self, 'theme_manager') and self.theme_manager:
+            return self.theme_manager
+        else:
+            logger.warning("ThemeManager not available, creating fallback")
+            # Создаем fallback theme_manager
+            fallback_tm = ThemeManager()
+            fallback_tm.load("minecraft", "light")
+            return fallback_tm
 
 
 if __name__ == '__main__':

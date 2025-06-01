@@ -47,6 +47,14 @@ class HomeScreen(Screen):
         """Вызывается при выходе с экрана"""
         self.stop_updates()
 
+    def get_theme_manager(self):
+        """Безопасное получение theme_manager"""
+        app = App.get_running_app()
+        if hasattr(app, 'theme_manager') and app.theme_manager:
+            return app.theme_manager
+        logger.warning("ThemeManager not available in HomeScreen")
+        return None
+
     def start_updates(self):
         """Запуск периодических обновлений"""
         self._update_events = [
@@ -60,7 +68,8 @@ class HomeScreen(Screen):
     def stop_updates(self):
         """Остановка периодических обновлений"""
         for event in self._update_events:
-            event.cancel()
+            if event:
+                event.cancel()
         self._update_events = []
 
     def update_all_data(self):
@@ -78,7 +87,7 @@ class HomeScreen(Screen):
             
             # Локализованная дата
             app = App.get_running_app()
-            if hasattr(app, 'localizer'):
+            if hasattr(app, 'localizer') and app.localizer:
                 day_names = {
                     0: "day_monday", 1: "day_tuesday", 2: "day_wednesday", 
                     3: "day_thursday", 4: "day_friday", 5: "day_saturday", 6: "day_sunday"
@@ -123,8 +132,7 @@ class HomeScreen(Screen):
                 if forecast_5h and forecast_5h.get('temperature') is not None:
                     temp_5h = forecast_5h.get('temperature', 0)
                     
-                    app = App.get_running_app()
-                    if hasattr(app, 'localizer'):
+                    if hasattr(app, 'localizer') and app.localizer:
                         in_5h_text = app.localizer.tr("in_5h", "in 5h")
                     else:
                         in_5h_text = "in 5h"
@@ -162,13 +170,13 @@ class HomeScreen(Screen):
                 alarm = app.alarm_service.get_alarm()
                 if alarm and alarm.get("enabled", False):
                     self.current_alarm_time = alarm.get("time", "--:--")
-                    if hasattr(app, 'localizer'):
+                    if hasattr(app, 'localizer') and app.localizer:
                         self.alarm_status_text = app.localizer.tr("alarm_on", "ON")
                     else:
                         self.alarm_status_text = "ON"
                 else:
                     self.current_alarm_time = "--:--"
-                    if hasattr(app, 'localizer'):
+                    if hasattr(app, 'localizer') and app.localizer:
                         self.alarm_status_text = app.localizer.tr("alarm_off", "OFF")
                     else:
                         self.alarm_status_text = "OFF"
@@ -196,11 +204,13 @@ class HomeScreen(Screen):
                     else:
                         self.notification_text = "No new notifications"
                 else:
-                    app = App.get_running_app()
-                    if hasattr(app, 'localizer'):
+                    if hasattr(app, 'user_config') and app.user_config:
                         username = app.user_config.get("username", "User")
-                        welcome_text = app.localizer.tr("hello_user", "Hello, {username}!").format(username=username)
-                        self.notification_text = welcome_text
+                        if hasattr(app, 'localizer') and app.localizer:
+                            welcome_text = app.localizer.tr("hello_user", "Hello, {username}!").format(username=username)
+                            self.notification_text = welcome_text
+                        else:
+                            self.notification_text = f"Hello, {username}!"
                     else:
                         self.notification_text = "Welcome to Bedrock 2.0!"
             else:
@@ -244,8 +254,9 @@ class HomeScreen(Screen):
             app = App.get_running_app()
             
             # Воспроизводим звук
-            if hasattr(app, 'audio_service') and hasattr(app, 'theme_manager'):
-                sound_file = app.theme_manager.get_sound("click")
+            tm = self.get_theme_manager()
+            if hasattr(app, 'audio_service') and app.audio_service and tm:
+                sound_file = tm.get_sound("click")
                 if sound_file:
                     app.audio_service.play(sound_file)
             
@@ -271,11 +282,10 @@ class HomeScreen(Screen):
 
     def refresh_theme(self, *args):
         """Обновление темы для всех элементов"""
-        app = App.get_running_app()
-        if not hasattr(app, 'theme_manager'):
+        tm = self.get_theme_manager()
+        if not tm or not tm.is_loaded():
+            logger.warning("ThemeManager not loaded in HomeScreen.refresh_theme")
             return
-            
-        tm = app.theme_manager
 
         # Список виджетов для обновления темы
         widgets_to_update = [
@@ -291,7 +301,9 @@ class HomeScreen(Screen):
                 
                 # Обновляем шрифт
                 if hasattr(widget, 'font_name'):
-                    widget.font_name = tm.get_font("main")
+                    font_path = tm.get_font("main")
+                    if font_path:
+                        widget.font_name = font_path
                     
                 # Обновляем цвет текста
                 if hasattr(widget, 'color'):
@@ -308,8 +320,14 @@ class HomeScreen(Screen):
                 
                 # Обновляем фон кнопок
                 if hasattr(widget, 'background_normal'):
-                    widget.background_normal = tm.get_image("button_bg")
-                    widget.background_down = tm.get_image("button_bg_active")
+                    bg_normal = tm.get_image("button_bg")
+                    bg_active = tm.get_image("button_bg_active")
+                    if bg_normal:
+                        widget.background_normal = bg_normal
+                    if bg_active:
+                        widget.background_down = bg_active
+
+        logger.debug("HomeScreen theme refreshed")
 
     def refresh_text(self, *args):
         """Обновление локализованного текста"""

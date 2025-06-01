@@ -386,9 +386,8 @@ class AlarmScreen(Screen):
             self._sound_playing = False
 
     def refresh_theme(self, *args):
-        """Обновление темы для всех элементов"""
-        app = App.get_running_app()
-        if not hasattr(app, 'theme_manager'):
+        tm = self.get_theme_manager()
+        if not tm or not tm.is_loaded():
             return
             
         tm = app.theme_manager

@@ -15,6 +15,14 @@ class TopMenu(BoxLayout):
         # Подписка на события
         event_bus.subscribe("language_changed", self.refresh_text)
 
+    def get_theme_manager(self):
+        """Безопасное получение theme_manager"""
+        app = App.get_running_app()
+        if hasattr(app, 'theme_manager') and app.theme_manager:
+            return app.theme_manager
+        logger.warning("ThemeManager not available in TopMenu")
+        return None
+
     def on_kv_post(self, base_widget):
         """Вызывается после загрузки KV"""
         try:
@@ -28,8 +36,9 @@ class TopMenu(BoxLayout):
             app = App.get_running_app()
             
             # Воспроизводим звук ДО смены экрана
-            if hasattr(app, 'audio_service') and hasattr(app, 'theme_manager'):
-                sound_file = app.theme_manager.get_sound("click")
+            tm = self.get_theme_manager()
+            if hasattr(app, 'audio_service') and app.audio_service and tm:
+                sound_file = tm.get_sound("click")
                 if sound_file:
                     app.audio_service.play(sound_file)
             
@@ -46,11 +55,10 @@ class TopMenu(BoxLayout):
     def refresh_theme(self):
         """Обновление темы меню"""
         try:
-            app = App.get_running_app()
-            if not hasattr(app, 'theme_manager'):
+            tm = self.get_theme_manager()
+            if not tm or not tm.is_loaded():
+                logger.warning("ThemeManager not loaded in TopMenu.refresh_theme")
                 return
-                
-            tm = app.theme_manager
             
             # Обновляем все кнопки меню
             menu_buttons = ["btn_home", "btn_alarm", "btn_schedule", "btn_weather", "btn_pigs", "btn_settings"]
@@ -61,8 +69,12 @@ class TopMenu(BoxLayout):
                     
                     # Обновляем фон кнопки
                     if hasattr(btn, 'background_normal'):
-                        btn.background_normal = tm.get_image("menu_button_bg")
-                        btn.background_down = tm.get_image("menu_button_bg_active")
+                        bg_normal = tm.get_image("menu_button_bg")
+                        bg_active = tm.get_image("menu_button_bg_active")
+                        if bg_normal:
+                            btn.background_normal = bg_normal
+                        if bg_active:
+                            btn.background_down = bg_active
                     
                     # Обновляем цвет текста кнопки
                     if hasattr(btn, 'color'):
@@ -77,7 +89,9 @@ class TopMenu(BoxLayout):
                     
                     # Обновляем шрифт
                     if hasattr(btn, 'font_name'):
-                        btn.font_name = tm.get_font("main")
+                        font_path = tm.get_font("main")
+                        if font_path:
+                            btn.font_name = font_path
             
             logger.debug("Menu theme refreshed")
                         
@@ -88,7 +102,7 @@ class TopMenu(BoxLayout):
         """Обновление локализованного текста"""
         try:
             app = App.get_running_app()
-            if not hasattr(app, 'localizer'):
+            if not hasattr(app, 'localizer') or not app.localizer:
                 return
             
             # Маппинг кнопок к ключам локализации
@@ -109,3 +123,11 @@ class TopMenu(BoxLayout):
             
         except Exception as e:
             logger.error(f"Error refreshing menu text: {e}")
+
+    def on_current_page(self, instance, value):
+        """Вызывается при изменении current_page"""
+        try:
+            # Обновляем темы кнопок при смене страницы
+            self.refresh_theme()
+        except Exception as e:
+            logger.error(f"Error in TopMenu.on_current_page: {e}")

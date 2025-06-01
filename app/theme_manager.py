@@ -16,13 +16,33 @@ class ThemeManager:
             "colors": {
                 "primary": "#40916c",
                 "background": "#f0efeb",
-                "accent": "#277da1"
+                "accent": "#277da1",
+                "text": "#ffffff",
+                "text_secondary": "#aaaaaa",
+                "menu_color": "#25252580"
             },
             "fonts": {
-                "main": "Minecraftia-Regular.ttf"
+                "main": "Minecraftia-Regular.ttf",
+                "title": "Minecraftia-Regular.ttf"
             },
             "images": {
-                "background": "background.png"
+                "background": "background.png",
+                "button_bg": "btn_bg.png",
+                "button_bg_active": "btn_bg_active.png",
+                "menu_button_bg": "menu_btn.png",
+                "menu_button_bg_active": "menu_btn_active.png"
+            },
+            "menu": {
+                "menu_height": 64,
+                "menu_button_height": 48,
+                "menu_button_width": 152
+            },
+            "sounds": {
+                "click": "click.ogg",
+                "confirm": "confirm.ogg",
+                "error": "error.ogg",
+                "notify": "notify.ogg",
+                "startup": "startup.ogg"
             }
         }
 
@@ -50,68 +70,143 @@ class ThemeManager:
 
     def get_rgba(self, name, fallback="#ffffff"):
         """Вернуть цвет в формате RGBA для Kivy (tuple 0..1)."""
-        from kivy.utils import get_color_from_hex
-        hex_color = self.get_color(name, fallback)
-        return get_color_from_hex(hex_color)
+        try:
+            from kivy.utils import get_color_from_hex
+            hex_color = self.get_color(name, fallback)
+            return get_color_from_hex(hex_color)
+        except Exception as e:
+            logger.error(f"Error getting RGBA color {name}: {e}")
+            return [1, 1, 1, 1]
+
+    def get_param(self, name, fallback=None):
+        """Получить параметр темы (например, menu_height, button_width)."""
+        try:
+            # Сначала ищем в menu секции
+            menu_params = self.theme_data.get("menu", {})
+            if name in menu_params:
+                return menu_params[name]
+            
+            # Потом в colors секции
+            colors = self.theme_data.get("colors", {})
+            if name in colors:
+                return colors[name]
+            
+            # Потом в корне theme_data
+            if name in self.theme_data:
+                return self.theme_data[name]
+            
+            # Fallback к default_theme
+            default_menu = self.default_theme.get("menu", {})
+            if name in default_menu:
+                return default_menu[name]
+            
+            default_colors = self.default_theme.get("colors", {})
+            if name in default_colors:
+                return default_colors[name]
+            
+            return fallback
+        except Exception as e:
+            logger.error(f"Error getting param {name}: {e}")
+            return fallback
 
     def get_font(self, name):
         """Вернуть путь к шрифту по имени."""
-        font_file = self.theme_data.get("fonts", {}).get(name)
-        if not font_file:
-            # Фолбэк на дефолт
-            font_file = self.default_theme["fonts"].get(name, "Minecraftia-Regular.ttf")
-        path = os.path.join(
-            self.themes_dir, self.theme_name, "fonts", font_file
-        )
-        if not os.path.isfile(path):
-            logger.warning(f"Font not found: {path}, using default")
-            return os.path.join(self.themes_dir, self.theme_name, "fonts", "Minecraftia-Regular.ttf")
-        return path
+        try:
+            font_file = self.theme_data.get("fonts", {}).get(name)
+            if not font_file:
+                # Фолбэк на дефолт
+                font_file = self.default_theme["fonts"].get(name, "Minecraftia-Regular.ttf")
+            
+            if not self.theme_name:
+                logger.warning("Theme not loaded, using default font")
+                return ""
+                
+            path = os.path.join(
+                self.themes_dir, self.theme_name, "fonts", font_file
+            )
+            if not os.path.isfile(path):
+                logger.warning(f"Font not found: {path}, using fallback")
+                fallback_path = os.path.join(self.themes_dir, self.theme_name, "fonts", "Minecraftia-Regular.ttf")
+                return fallback_path if os.path.isfile(fallback_path) else ""
+            return path
+        except Exception as e:
+            logger.error(f"Error getting font {name}: {e}")
+            return ""
 
     def get_image(self, name):
         """Вернуть путь к изображению по имени (например, 'background' или 'btn_bg')."""
-        img_file = self.theme_data.get("images", {}).get(name)
-        if not img_file:
-            # Фолбэк: совпадает с именем файла
-            img_file = f"{name}.png"
-        path = os.path.join(
-            self.themes_dir, self.theme_name, self.variant, img_file
-        )
-        if not os.path.isfile(path):
-            logger.warning(f"Image not found: {path}, using fallback")
-            # Можно фолбэк на дефолтный фон или прозрачку
-            fallback_path = os.path.join(
-                self.themes_dir, self.theme_name, self.variant, "background.png"
+        try:
+            img_file = self.theme_data.get("images", {}).get(name)
+            if not img_file:
+                # Фолбэк: совпадает с именем файла
+                img_file = f"{name}.png"
+            
+            if not self.theme_name or not self.variant:
+                logger.warning("Theme not loaded, using fallback")
+                return ""
+                
+            path = os.path.join(
+                self.themes_dir, self.theme_name, self.variant, img_file
             )
-            return fallback_path if os.path.isfile(fallback_path) else ""
-        return path
+            if not os.path.isfile(path):
+                logger.warning(f"Image not found: {path}, using fallback")
+                # Можно фолбэк на дефолтный фон или прозрачку
+                fallback_path = os.path.join(
+                    self.themes_dir, self.theme_name, self.variant, "background.png"
+                )
+                return fallback_path if os.path.isfile(fallback_path) else ""
+            return path
+        except Exception as e:
+            logger.error(f"Error getting image {name}: {e}")
+            return ""
 
     def get_overlay(self, page_name):
         """Вернуть путь к overlay-файлу для страницы."""
-        overlay_name = f"overlay_{page_name}.png"
-        path = os.path.join(
-            self.themes_dir, self.theme_name, self.variant, overlay_name
-        )
-        if os.path.isfile(path):
-            return path
-        # fallback: overlay_default.png
-        fallback = os.path.join(
-            self.themes_dir, self.theme_name, self.variant, "overlay_default.png"
-        )
-        if os.path.isfile(fallback):
-            return fallback
-        return ""
+        try:
+            overlay_name = f"overlay_{page_name}.png"
+            if not self.theme_name or not self.variant:
+                return ""
+                
+            path = os.path.join(
+                self.themes_dir, self.theme_name, self.variant, overlay_name
+            )
+            if os.path.isfile(path):
+                return path
+            # fallback: overlay_default.png
+            fallback = os.path.join(
+                self.themes_dir, self.theme_name, self.variant, "overlay_default.png"
+            )
+            if os.path.isfile(fallback):
+                return fallback
+            return ""
+        except Exception as e:
+            logger.error(f"Error getting overlay {page_name}: {e}")
+            return ""
 
     def get_sound(self, name):
         """Вернуть путь к звуковому файлу по имени (например, 'click')."""
-        sound_file = f"{name}.ogg"
-        path = os.path.join(
-            self.themes_dir, self.theme_name, "sounds", sound_file
-        )
-        if not os.path.isfile(path):
-            logger.warning(f"Sound not found: {path}")
+        try:
+            sound_file = self.theme_data.get("sounds", {}).get(name)
+            if not sound_file:
+                sound_file = f"{name}.ogg"
+            
+            if not self.theme_name:
+                return ""
+                
+            path = os.path.join(
+                self.themes_dir, self.theme_name, "sounds", sound_file
+            )
+            if not os.path.isfile(path):
+                logger.warning(f"Sound not found: {path}")
+                return ""
+            return path
+        except Exception as e:
+            logger.error(f"Error getting sound {name}: {e}")
             return ""
-        return path
+
+    def is_loaded(self):
+        """Проверить, загружена ли тема."""
+        return self.theme_name is not None and self.variant is not None
 
 # Глобальный singleton
 theme_manager = ThemeManager()
