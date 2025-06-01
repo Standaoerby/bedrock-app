@@ -1,0 +1,47 @@
+{
+  "schedule": {
+    "Mon": [
+      {"time": "09:00", "subject": "Mathematics", "room": "101", "teacher": "Smith"},
+      {"time": "10:00", "subject": "English", "room": "102", "teacher": "Johnson"},
+      {"time": "11:00", "subject": "Science", "room": "103", "teacher": "Brown"},
+      {"time": "12:00", "subject": "History", "room": "104", "teacher": "Davis"},
+      {"time": "13:00", "subject": "Lunch Break", "room": "", "teacher": ""},
+      {"time": "14:00", "subject": "Art", "room": "107", "teacher": "Wilson"}
+    ],
+    "Tue": [
+      {"time": "09:00", "subject": "Physics", "room": "105", "teacher": "Taylor"},
+      {"time": "10:00", "subject": "Chemistry", "room": "106", "teacher": "Miller"},
+      {"time": "11:00", "subject": "Mathematics", "room": "101", "teacher": "Smith"},
+      {"time": "12:00", "subject": "PE", "room": "Gym", "teacher": "Anderson"},
+      {"time": "13:00", "subject": "Lunch Break", "room": "", "teacher": ""},
+      {"time": "14:00", "subject": "Music", "room": "109", "teacher": "Garcia"}
+    ],
+    "Wed": [
+      {"time": "09:00", "subject": "English", "room": "102", "teacher": "Johnson"},
+      {"time": "10:00", "subject": "Geography", "room": "108", "teacher": "Martinez"},
+      {"time": "11:00", "subject": "Computer Science", "room": "Lab", "teacher": "Lee"},
+      {"time": "12:00", "subject": "Mathematics", "room": "101", "teacher": "Smith"},
+      {"time": "13:00", "subject": "Lunch Break", "room": "", "teacher": ""},
+      {"time": "14:00", "subject": "Library Time", "room": "Library", "teacher": ""}
+    ],
+    "Thu": [
+      {"time": "09:00", "subject": "Science", "room": "103", "teacher": "Brown"},
+      {"time": "10:00", "subject": "History", "room": "104", "teacher": "Davis"},
+      {"time": "11:00", "subject": "English", "room": "102", "teacher": "Johnson"},
+      {"time": "12:00", "subject": "Art", "room": "107", "teacher": "Wilson"},
+      {"time": "13:00", "subject": "Lunch Break", "room": "", "teacher": ""},
+      {"time": "14:00", "subject": "Mathematics", "room": "101", "teacher": "Smith"}
+    ],
+    "Fri": [
+      {"time": "09:00", "subject": "Chemistry", "room": "106", "teacher": "Miller"},
+      {"time": "10:00", "subject": "Physics", "room": "105", "teacher": "Taylor"},
+      {"time": "11:00", "subject": "PE", "room": "Gym", "teacher": "Anderson"},
+      {"time": "12:00", "subject": "Music", "room": "109", "teacher": "Garcia"},
+      {"time": "13:00", "subject": "Lunch Break", "room": "", "teacher": ""},
+      {"time": "14:00", "subject": "Free Period", "room": "", "teacher": ""}
+    ],
+    "Sat": [],
+    "Sun": []
+  },
+  "last_updated": "2025-06-01T12:00:00"
+}

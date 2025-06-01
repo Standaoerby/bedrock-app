@@ -1,12 +1,214 @@
+#:import dp kivy.metrics.dp
+
 <WeatherScreen>:
     name: "weather"
-    MainFrame:
+    
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [dp(16), dp(16), dp(16), dp(16)]
+        spacing: dp(12)
+        
+        # Верхний блок: внешняя погода и датчики комнаты
         BoxLayout:
-            orientation: "vertical"
-            padding: [16, 16, 16, 16]
-            spacing: 8
-            Label:
-                text: "Погода"
-                font_size: '24sp'
-                font_name: app.theme_manager.get_font("main")
-                color: 1, 1, 1, 1
+            orientation: 'horizontal'
+            spacing: dp(16)
+            size_hint_y: 0.4
+            
+            # Левая часть: внешняя погода
+            OverlayCard:
+                size_hint_x: 0.4
+                padding: [dp(16), dp(8)]
+                
+                BoxLayout:
+                    orientation: 'vertical'
+                    spacing: dp(8)
+                    
+                    # Температура (большая)
+                    Label:
+                        id: current_temp_label
+                        text: root.current_temp
+                        font_size: '28sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("primary")
+                        size_hint_y: None
+                        height: dp(40)
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+                    
+                    # Условие погоды
+                    Label:
+                        id: current_condition_label
+                        text: root.current_condition
+                        font_size: '14sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text")
+                        size_hint_y: None
+                        height: dp(24)
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+                    
+                    # Вероятность дождя
+                    Label:
+                        id: current_precipitation_label
+                        text: root.current_precipitation
+                        font_size: '12sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text_secondary")
+                        size_hint_y: None
+                        height: dp(20)
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+            
+            # Правая часть: датчики комнаты
+            OverlayCard:
+                size_hint_x: 0.6
+                padding: [dp(16), dp(8)]
+                
+                BoxLayout:
+                    orientation: 'vertical'
+                    spacing: dp(8)
+                    
+                    # Индикатор статуса датчиков
+                    # AnchorLayout:
+                    #     anchor_x: 'right'
+                    #     anchor_y: 'top'
+                    #     size_hint_y: None
+                    #     height: dp(16)
+                        
+                    #     Label:
+                    #         id: sensor_status_label
+                    #         text: root.sensor_status
+                    #         font_size: '10sp'
+                    #         font_name: app.theme_manager.get_font("main")
+                    #         color: app.theme_manager.get_rgba("text_accent") if not root.using_mock_sensors else app.theme_manager.get_rgba("text_secondary")
+                    #         size_hint: None, None
+                    #         size: self.texture_size
+                    #         halign: 'right'
+                    #         valign: 'top'
+                    
+                    # Температура и влажность в одной строке
+                    Label:
+                        id: sensor_temp_humidity_label
+                        text: root.sensor_temp_humidity
+                        font_size: '16sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text")
+                        size_hint_y: None
+                        height: dp(32)
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+                    
+                    # CO2 и TVOC в одной строке
+                    Label:
+                        id: sensor_co2_tvoc_label
+                        text: root.sensor_co2_tvoc
+                        font_size: '14sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text_secondary")
+                        size_hint_y: None
+                        height: dp(24)
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+                    
+                    # Качество воздуха
+                    Label:
+                        id: sensor_air_quality_label
+                        text: root.sensor_air_quality
+                        font_size: '14sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("primary")
+                        size_hint_y: None
+                        height: dp(24)
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+        
+        # Нижний блок: недельный прогноз
+        OverlayCard:
+            size_hint_y: 0.6
+            padding: [dp(16), dp(16)]
+            
+            BoxLayout:
+                orientation: 'vertical'
+                spacing: dp(8)
+                
+                # Заголовки колонок
+                BoxLayout:
+                    orientation: 'horizontal'
+                    size_hint_y: None
+                    height: dp(24)
+                    spacing: dp(8)
+                    padding: [dp(8), 0]
+                    
+                    Label:
+                        text: "Day"
+                        font_size: '14sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text_secondary")
+                        size_hint_x: 0.15
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+                    
+                    Label:
+                        text: "Temp"
+                        font_size: '14sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text_secondary")
+                        size_hint_x: 0.2
+                        halign: 'center'
+                        valign: 'middle'
+                        text_size: self.size
+                    
+                    Label:
+                        text: "Condition"
+                        font_size: '14sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text_secondary")
+                        size_hint_x: 0.45
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+                    
+                    Label:
+                        text: "Rain"
+                        font_size: '14sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text_secondary")
+                        size_hint_x: 0.2
+                        halign: 'right'
+                        valign: 'middle'
+                        text_size: self.size
+                
+                # Контейнер для прокрутки прогноза
+                BoxLayout:
+                    canvas.before:
+                        Color:
+                            rgba: app.theme_manager.get_rgba("overlay_card", 0.3)
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(4)]
+                    
+                    ScrollView:
+                        id: weekly_scroll
+                        do_scroll_x: False
+                        do_scroll_y: True
+                        scroll_type: ['content', 'bars']
+                        bar_width: dp(8)
+                        bar_color: app.theme_manager.get_rgba("text_secondary", 0.7)
+                        bar_inactive_color: app.theme_manager.get_rgba("text_secondary", 0.3)
+                        effect_cls: "DampedScrollEffect"
+                        
+                        BoxLayout:
+                            id: weekly_forecast_container
+                            orientation: "vertical"
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: dp(2)
+                            padding: [dp(4), dp(4)]

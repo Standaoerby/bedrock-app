@@ -1,12 +1,170 @@
+#:import dp kivy.metrics.dp
+
 <ScheduleScreen>:
     name: "schedule"
-    MainFrame:
-        BoxLayout:
-            orientation: "vertical"
-            padding: [16, 16, 16, 16]
-            spacing: 8
-            Label:
-                text: "Расписание"
-                font_size: '24sp'
-                font_name: app.theme_manager.get_font("main")
-                color: 1, 1, 1, 1
+    
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [dp(16), dp(16), dp(16), dp(16)]
+        spacing: dp(8)
+
+        # Заголовок с информацией о неделе
+        OverlayCard:
+            size_hint_y: None
+            height: dp(56)
+            padding: [dp(16), dp(8)]
+            
+            BoxLayout:
+                orientation: 'horizontal'
+                spacing: dp(16)
+                
+                Label:
+                    id: title_label
+                    text: "School Schedule"
+                    font_size: '20sp'
+                    font_name: app.theme_manager.get_font("title")
+                    color: app.theme_manager.get_rgba("primary")
+                    size_hint_x: 0.6
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                
+                Label:
+                    id: week_label
+                    text: root.current_week_str
+                    font_size: '16sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("text")
+                    size_hint_x: 0.4
+                    halign: 'right'
+                    valign: 'middle'
+                    text_size: self.size
+
+        # Основное расписание
+        OverlayCard:
+            padding: [dp(16), dp(16)]
+            
+            BoxLayout:
+                orientation: 'vertical'
+                spacing: dp(8)
+                
+                # Заголовки дней недели
+                BoxLayout:
+                    orientation: 'horizontal'
+                    spacing: dp(8)
+                    size_hint_y: None
+                    height: dp(40)
+                    
+                    Label:
+                        text: "Monday"
+                        font_size: '16sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("primary") if root.today_day == "Mon" else app.theme_manager.get_rgba("text")
+                        halign: 'center'
+                        valign: 'middle'
+                        bold: root.today_day == "Mon"
+                        
+                    Label:
+                        text: "Tuesday"
+                        font_size: '16sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("primary") if root.today_day == "Tue" else app.theme_manager.get_rgba("text")
+                        halign: 'center'
+                        valign: 'middle'
+                        bold: root.today_day == "Tue"
+                        
+                    Label:
+                        text: "Wednesday"
+                        font_size: '16sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("primary") if root.today_day == "Wed" else app.theme_manager.get_rgba("text")
+                        halign: 'center'
+                        valign: 'middle'
+                        bold: root.today_day == "Wed"
+                        
+                    Label:
+                        text: "Thursday"
+                        font_size: '16sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("primary") if root.today_day == "Thu" else app.theme_manager.get_rgba("text")
+                        halign: 'center'
+                        valign: 'middle'
+                        bold: root.today_day == "Thu"
+                        
+                    Label:
+                        text: "Friday"
+                        font_size: '16sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("primary") if root.today_day == "Fri" else app.theme_manager.get_rgba("text")
+                        halign: 'center'
+                        valign: 'middle'
+                        bold: root.today_day == "Fri"
+
+                # Разделитель
+                Widget:
+                    size_hint_y: None
+                    height: dp(1)
+                    canvas.before:
+                        Color:
+                            rgba: app.theme_manager.get_rgba("text_secondary")
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+
+                # Контейнер для расписания
+                ScrollView:
+                    do_scroll_x: False
+                    do_scroll_y: True
+                    bar_width: dp(8)
+                    bar_color: app.theme_manager.get_rgba("primary")
+                    bar_inactive_color: app.theme_manager.get_rgba("text_secondary")
+                    
+                    BoxLayout:
+                        id: schedule_container
+                        orientation: 'horizontal'
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height
+                        padding: [0, dp(8), 0, dp(8)]
+
+        # Нижняя панель с дополнительной информацией
+        OverlayCard:
+            size_hint_y: None
+            height: dp(48)
+            padding: [dp(16), dp(8)]
+            
+            BoxLayout:
+                orientation: 'horizontal'
+                spacing: dp(16)
+                
+                Label:
+                    text: "Today:"
+                    font_size: '14sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("text")
+                    size_hint_x: None
+                    width: dp(48)
+                    halign: 'left'
+                    valign: 'middle'
+                
+                Label:
+                    id: today_highlight_label
+                    text: root.today_day if root.today_day else "Weekend"
+                    font_size: '16sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("primary")
+                    halign: 'left'
+                    valign: 'middle'
+                    bold: True
+                    
+                Widget:
+                    # Spacer
+                    
+                Label:
+                    text: "Next: Math at 09:00"
+                    font_size: '14sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("text_secondary")
+                    halign: 'right'
+                    valign: 'middle'
+                    text_size: self.size

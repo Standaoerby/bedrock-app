@@ -4,8 +4,24 @@ requests
 aiohttp
 python-dotenv
 Pillow
-smbus2
+pygame
+
+# Raspberry Pi GPIO libraries
+rpi-lgpio
 RPi.GPIO
+
+# Audio support
 pyalsaaudio
 python-mpd2
-pygame
+
+# I2C and sensor libraries for Raspberry Pi
+smbus2
+adafruit-circuitpython-busdevice
+adafruit-circuitpython-ens160
+adafruit-circuitpython-ahtx0
+adafruit-blinka
+board
+busio
+
+# System monitoring
+psutil

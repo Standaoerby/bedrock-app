@@ -24,6 +24,7 @@ from services.audio_service import audio_service
 from services.alarm_service import AlarmService
 from services.notifications_service import NotificationService
 from services.weather_service import WeatherService
+from services.sensor_service import SensorService
 from app.logger import app_logger as logger
 logger.info("=== App Started ===")
 
@@ -44,10 +45,22 @@ class BedrockApp(App):
         # Инициализация сервисов
         self.alarm_service = AlarmService()
         self.notification_service = NotificationService()
+        
         # Координаты для погоды — лучше взять из user_config, а если нет, использовать дефолтные:
-        lat = user_config.get("lat", 55.7522)  # Москва, пример
-        lon = user_config.get("lon", 37.6156)
+        location = user_config.get("location", {})
+        lat = location.get("latitude", 55.7522)  # Москва, пример
+        lon = location.get("longitude", 37.6156)
         self.weather_service = WeatherService(lat, lon)
+        
+        # Инициализация сервиса датчиков
+        self.sensor_service = SensorService()
+        try:
+            self.sensor_service.start()
+            logger.info("SensorService started successfully")
+        except Exception as e:
+            logger.error(f"Failed to start SensorService: {e}")
+            # Сервис датчиков не критичен, продолжаем работу
+            self.sensor_service = None
 
         Builder.load_file("widgets/root_widget.kv")
         Builder.load_file("widgets/top_menu.kv")
@@ -58,8 +71,41 @@ class BedrockApp(App):
         Builder.load_file("pages/pigs.kv")
         Builder.load_file("pages/settings.kv")
         Builder.load_file("widgets/overlay_card.kv")
-        audio_service.play(self.theme_manager.get_sound("startup"))
+        
+        # Воспроизведение звука запуска
+        startup_sound = self.theme_manager.get_sound("startup")
+        if startup_sound:
+            audio_service.play(startup_sound)
+        
         return RootWidget()
+    
+    def on_stop(self):
+        """Закрытие приложения - остановка сервисов"""
+        logger.info("=== App Stopping ===")
+        
+        # Останавливаем все сервисы
+        try:
+            if hasattr(self, 'sensor_service') and self.sensor_service:
+                self.sensor_service.stop()
+                logger.info("SensorService stopped")
+        except Exception as e:
+            logger.error(f"Error stopping SensorService: {e}")
+            
+        try:
+            if hasattr(self, 'alarm_service') and self.alarm_service:
+                self.alarm_service.stop()
+                logger.info("AlarmService stopped")
+        except Exception as e:
+            logger.error(f"Error stopping AlarmService: {e}")
+            
+        try:
+            if hasattr(self, 'audio_service') and self.audio_service:
+                self.audio_service.stop()
+                logger.info("AudioService stopped")
+        except Exception as e:
+            logger.error(f"Error stopping AudioService: {e}")
+        
+        logger.info("=== App Stopped ===")
 
 if __name__ == "__main__":
     BedrockApp().run()
