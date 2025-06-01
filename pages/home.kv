@@ -2,7 +2,7 @@
 
 <HomeScreen>:
     name: "home"
-    
+
     BoxLayout:
         orientation: 'vertical'
         padding: [dp(16), dp(16), dp(16), dp(16)]
@@ -14,7 +14,7 @@
             spacing: dp(24)
             size_hint_y: None
             height: dp(40)
-            
+
             # Дата слева
             OverlayCard:
                 size_hint_x: 0.35
@@ -26,27 +26,28 @@
                     font_name: app.theme_manager.get_font("main")
                     padding: [dp(16), dp(0), dp(4), dp(2)]
                     color: app.theme_manager.get_rgba("text")
-                    halign: 'left' 
+                    halign: 'left'
                     text_size: self.size
+
             BoxLayout:
                 size_hint_x: 0.35
-                # Пустой блок для выравнивания
                 Label:
                     text: ""
                     size_hint: None, None
-                    size: dp(1), dp(1)  # Минимальный размер для выравнивания
+                    size: dp(1), dp(1)
+
             # Будильник справа (увеличенный)
             OverlayCard:
                 size_hint_x: 0.30
                 padding: [0]
-                
+
                 BoxLayout:
                     padding: [0]
                     orientation: 'horizontal'
                     BoxLayout:
                         size_hint_x: 0.65
                         padding: [0]
-                        
+
                         Label:
                             id: alarm_time_label
                             text: root.current_alarm_time
@@ -60,7 +61,7 @@
 
                     Button:
                         id: alarm_toggle_btn
-                        text: "ON" if root.alarm_active else "OFF"
+                        text: root.alarm_status_text   # Локализуем в Python!
                         font_size: '16sp'
                         font_name: app.theme_manager.get_font("main")
                         padding: [dp(0)]
@@ -73,13 +74,13 @@
         AnchorLayout:
             anchor_x: 'right'
             anchor_y: 'center'
-            padding: [0, 0, dp(24), 0]  # Отступ 24dp от правого края
+            padding: [0, 0, dp(24), 0]
 
             FloatLayout:
                 size_hint: None, None
                 size: dp(400), dp(180)
-                
-                # Тень часов (несколько слоёв для эффекта)
+
+                # Тени часов
                 Label:
                     id: clock_shadow3
                     text: root.clock_time
@@ -91,7 +92,7 @@
                     pos: self.parent.center[0] - self.width/2 + dp(6), self.parent.center[1] - self.height/2 - dp(6)
                     halign: 'center'
                     valign: 'middle'
-                    
+
                 Label:
                     id: clock_shadow2
                     text: root.clock_time
@@ -103,7 +104,7 @@
                     pos: self.parent.center[0] - self.width/2 + dp(4), self.parent.center[1] - self.height/2 - dp(4)
                     halign: 'center'
                     valign: 'middle'
-                    
+
                 Label:
                     id: clock_shadow1
                     text: root.clock_time
@@ -122,45 +123,42 @@
                     text: root.clock_time
                     font_size: '144sp'
                     font_name: app.theme_manager.get_font("main")
-                    color: (1, 1, 1, 1)  # Белый цвет
+                    color: (1, 1, 1, 1)
                     size_hint: None, None
                     size: self.texture_size
                     pos: self.parent.center[0] - self.width/2, self.parent.center[1] - self.height/2
                     halign: 'center'
                     valign: 'middle'
 
-        # Блок погоды - одной строкой по центру
+        # Блок погоды
         OverlayCard:
             size_hint_y: None
-            height: dp(48)  # Уменьшено с dp(64)
-            
+            height: dp(48)
             BoxLayout:
                 orientation: 'horizontal'
                 spacing: dp(16)
                 padding: [0]
 
-                
                 # Сейчас
                 Label:
                     id: weather_now_label
                     text: root.weather_now_str
-                    font_size: '16sp'  # Уменьшено с 18sp
+                    font_size: '16sp'
                     font_name: app.theme_manager.get_font("main")
                     color: app.theme_manager.get_rgba("primary")
-                    size_hint_x: 0.455  # Фиксированная ширина
+                    size_hint_x: 0.455
                     halign: 'center'
                     valign: 'middle'
                     text_size: self.size
-                    
 
-                # Стрелка тренда  
+                # Стрелка тренда
                 Label:
                     id: weather_trend_label
                     text: root.weather_trend_arrow
-                    font_size: '20sp'  # Уменьшено с 24sp
+                    font_size: '20sp'
                     font_name: app.theme_manager.get_font("main")
                     color: app.theme_manager.get_rgba("primary")
-                    size_hint_x: 0.1  # Фиксированная ширина
+                    size_hint_x: 0.1
                     halign: 'center'
                     valign: 'middle'
                     text_size: self.size
@@ -169,10 +167,10 @@
                 Label:
                     id: weather_5h_label
                     text: root.weather_5h_str
-                    font_size: '16sp'  # Уменьшено с 18sp
+                    font_size: '16sp'
                     font_name: app.theme_manager.get_font("main")
                     color: app.theme_manager.get_rgba("text")
-                    size_hint_x: 0.45  # Фиксированная ширина
+                    size_hint_x: 0.45
                     halign: 'center'
                     valign: 'middle'
                     text_size: self.size
@@ -181,24 +179,20 @@
         OverlayCard:
             size_hint_y: None
             height: dp(40)
-            
             BoxLayout:
                 orientation: 'horizontal'
                 padding: [dp(16), dp(4)]
                 spacing: dp(12)
-                
-                # Контейнер для бегущего текста
                 Widget:
                     id: notification_container
-                    
+
                     Label:
                         id: notification_text_label
-                        text: root.notification_text or "No new notifications"
+                        text: root.notification_text  # Тоже через python, не прямо текстом!
                         font_size: '16sp'
                         font_name: app.theme_manager.get_font("main")
                         size_hint: None, None
                         size: self.texture_size
-                        # Самое важное: позиция
                         x: self.parent.x + root.notification_scroll_x
                         y: self.parent.center_y - self.height/2
                         halign: 'left'

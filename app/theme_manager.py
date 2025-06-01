@@ -1,93 +1,117 @@
-import json
 import os
-from kivy.app import App
-from app.event_bus import event_bus
-
-def hex_to_rgba(hex_str, alpha=1.0):
-    hex_str = hex_str.lstrip('#')
-    if len(hex_str) == 8:  # #RRGGBBAA
-        r = int(hex_str[0:2], 16) / 255.0
-        g = int(hex_str[2:4], 16) / 255.0
-        b = int(hex_str[4:6], 16) / 255.0
-        a = int(hex_str[6:8], 16) / 255.0
-        return (r, g, b, a)
-    elif len(hex_str) == 6:  # #RRGGBB
-        r = int(hex_str[0:2], 16) / 255.0
-        g = int(hex_str[2:4], 16) / 255.0
-        b = int(hex_str[4:6], 16) / 255.0
-        return (r, g, b, alpha)
-    else:
-        # fallback: почти прозрачный чёрный
-        return (0, 0, 0, alpha)
-
+import json
+from app.logger import app_logger as logger
 
 class ThemeManager:
+    """
+    Менеджер тем. Отвечает за загрузку, хранение и отдачу ресурсов темы:
+    цвета, изображения, шрифты, иконки, оверлеи, звуки и т.д.
+    """
     def __init__(self, themes_dir="themes"):
         self.themes_dir = themes_dir
-        self.current_theme = "minecraft"
-        self.variant = "light"
+        self.theme_name = None
+        self.variant = None
         self.theme_data = {}
+        self.default_theme = {
+            "colors": {
+                "primary": "#40916c",
+                "background": "#f0efeb",
+                "accent": "#277da1"
+            },
+            "fonts": {
+                "main": "Minecraftia-Regular.ttf"
+            },
+            "images": {
+                "background": "background.png"
+            }
+        }
 
-    def load_theme(self, name=None, variant=None):
-        if name:
-            self.current_theme = name
-        if variant:
-            self.variant = variant
-        path = os.path.join(self.themes_dir, self.current_theme, self.variant, "theme.json")
-        with open(path, "r") as f:
-            self.theme_data = json.load(f)
-        # Оповещаем всех об изменении темы!
-        event_bus.emit("theme_changed")
+    def load(self, theme_name, variant="light"):
+        """Загрузка новой темы и варианта (light/dark)."""
+        self.theme_name = theme_name
+        self.variant = variant
+        theme_path = os.path.join(
+            self.themes_dir, theme_name, variant, "theme.json"
+        )
+        try:
+            with open(theme_path, encoding="utf-8") as f:
+                self.theme_data = json.load(f)
+            logger.info(f"Theme loaded: {theme_name}/{variant}")
+        except Exception as ex:
+            logger.warning(f"Failed to load theme {theme_name}/{variant}: {ex}")
+            self.theme_data = self.default_theme.copy()
 
-    def get_font(self, key):
-        return self.theme_data.get("fonts", {}).get(key, "Roboto")
+    def get_color(self, name, fallback="#ffffff"):
+        """Вернуть hex-цвет по имени (например, 'primary')."""
+        try:
+            return self.theme_data.get("colors", {}).get(name) or fallback
+        except Exception:
+            return fallback
 
-    def get_color(self, key):
-        return self.theme_data.get("colors", {}).get(key, "#FFFFFF")
+    def get_rgba(self, name, fallback="#ffffff"):
+        """Вернуть цвет в формате RGBA для Kivy (tuple 0..1)."""
+        from kivy.utils import get_color_from_hex
+        hex_color = self.get_color(name, fallback)
+        return get_color_from_hex(hex_color)
 
-    def get_rgba(self, key, alpha=1.0):
-        color = self.get_color(key)
-        if isinstance(color, str) and color.startswith('#'):
-            return hex_to_rgba(color, alpha)
-        elif isinstance(color, (list, tuple)) and len(color) == 4:
-            return tuple(color)
-        else:
-            return (0, 0, 0, alpha)
-
-    def get_image(self, key):
-        images = self.theme_data.get("images", {})
-        rel_path = images.get(key) or images.get("overlay_default") or ""
-        if rel_path and not os.path.isabs(rel_path):
-            base_dir = os.path.join(self.themes_dir, self.current_theme, self.variant)
-            return os.path.join(base_dir, rel_path)
-        return rel_path
-
-    def get_sound(self, key):
-        sfx = self.theme_data.get("sounds", {})
-        path = sfx.get(key, "")
-        if path and not os.path.isabs(path):
-            return os.path.join(os.getcwd(), path)
+    def get_font(self, name):
+        """Вернуть путь к шрифту по имени."""
+        font_file = self.theme_data.get("fonts", {}).get(name)
+        if not font_file:
+            # Фолбэк на дефолт
+            font_file = self.default_theme["fonts"].get(name, "Minecraftia-Regular.ttf")
+        path = os.path.join(
+            self.themes_dir, self.theme_name, "fonts", font_file
+        )
+        if not os.path.isfile(path):
+            logger.warning(f"Font not found: {path}, using default")
+            return os.path.join(self.themes_dir, self.theme_name, "fonts", "Minecraftia-Regular.ttf")
         return path
 
-    def get_param(self, key, default=None):
-        for section in ("colors", "fonts", "images", "sounds", "menu", None):
-            if section:
-                val = self.theme_data.get(section, {}).get(key)
-                if val is not None:
-                    return val
-            else:
-                val = self.theme_data.get(key)
-                if val is not None:
-                    return val
-        return default
+    def get_image(self, name):
+        """Вернуть путь к изображению по имени (например, 'background' или 'btn_bg')."""
+        img_file = self.theme_data.get("images", {}).get(name)
+        if not img_file:
+            # Фолбэк: совпадает с именем файла
+            img_file = f"{name}.png"
+        path = os.path.join(
+            self.themes_dir, self.theme_name, self.variant, img_file
+        )
+        if not os.path.isfile(path):
+            logger.warning(f"Image not found: {path}, using fallback")
+            # Можно фолбэк на дефолтный фон или прозрачку
+            fallback_path = os.path.join(
+                self.themes_dir, self.theme_name, self.variant, "background.png"
+            )
+            return fallback_path if os.path.isfile(fallback_path) else ""
+        return path
 
+    def get_overlay(self, page_name):
+        """Вернуть путь к overlay-файлу для страницы."""
+        overlay_name = f"overlay_{page_name}.png"
+        path = os.path.join(
+            self.themes_dir, self.theme_name, self.variant, overlay_name
+        )
+        if os.path.isfile(path):
+            return path
+        # fallback: overlay_default.png
+        fallback = os.path.join(
+            self.themes_dir, self.theme_name, self.variant, "overlay_default.png"
+        )
+        if os.path.isfile(fallback):
+            return fallback
+        return ""
+
+    def get_sound(self, name):
+        """Вернуть путь к звуковому файлу по имени (например, 'click')."""
+        sound_file = f"{name}.ogg"
+        path = os.path.join(
+            self.themes_dir, self.theme_name, "sounds", sound_file
+        )
+        if not os.path.isfile(path):
+            logger.warning(f"Sound not found: {path}")
+            return ""
+        return path
+
+# Глобальный singleton
 theme_manager = ThemeManager()
-
-def get_rgba(key, alpha=1.0):
-    return theme_manager.get_rgba(key, alpha)
-
-def get_font(key):
-    return theme_manager.get_font(key)
-
-def get_image(key):
-    return theme_manager.get_image(key)

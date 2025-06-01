@@ -1,13 +1,24 @@
+# main.py — оптимизированная версия
+
 from kivy.config import Config
-Config.set('graphics', 'fullscreen', '0')
-Config.set('graphics', 'borderless', '0')
-Config.set('graphics', 'show_cursor', '1') # Убрать тут курсор
+import sys
+import platform
+
+# Настройки Kivy для разных платформ
 Config.set('graphics', 'width', '1024')
 Config.set('graphics', 'height', '600')
+if platform.system() == "Linux":
+    Config.set('graphics', 'fullscreen', 'auto')
+    Config.set('graphics', 'borderless', '1')
+    Config.set('graphics', 'show_cursor', '0')
+else:
+    Config.set('graphics', 'fullscreen', '0')
+    Config.set('graphics', 'borderless', '0')
+    Config.set('graphics', 'show_cursor', '1')
 
 from kivy.app import App
-from kivy.core.window import Window
 from kivy.lang import Builder
+from kivy.core.window import Window
 
 from pages.home import HomeScreen
 from pages.alarm import AlarmScreen
@@ -15,172 +26,116 @@ from pages.schedule import ScheduleScreen
 from pages.weather import WeatherScreen
 from pages.pigs import PigsScreen
 from pages.settings import SettingsScreen
-from app.user_config import user_config
-from app.localizer import localizer
-from widgets.root_widget import RootWidget
+
 from app.theme_manager import theme_manager
+from app.localizer import localizer
+from app.user_config import user_config
+from app.logger import app_logger as logger
+
+from widgets.root_widget import RootWidget
 from widgets.top_menu import TopMenu
+
 from services.audio_service import audio_service
 from services.alarm_service import AlarmService
-try:
-    from services.alarm_clock import AlarmClock
-    ALARM_CLOCK_AVAILABLE = True
-except ImportError as e:
-    logger.error(f"Failed to import AlarmClock: {e}")
-    AlarmClock = None
-    ALARM_CLOCK_AVAILABLE = False
 from services.notifications_service import NotificationService
 from services.weather_service import WeatherService
 from services.sensor_service import SensorService
 from services.pigs_service import PigsService
-from app.logger import app_logger as logger
+
+# AlarmClock может отсутствовать — защищаем импорт
+try:
+    from services.alarm_clock import AlarmClock
+    ALARM_CLOCK_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"AlarmClock unavailable: {e}")
+    AlarmClock = None
+    ALARM_CLOCK_AVAILABLE = False
+
 logger.info("=== App Started ===")
 
-# Window.fullscreen = 'auto' Это отключил на винде, может пригодиться на Пи
-# Window.borderless = True
-# Window.show_cursor = True # Убрать тут курсор
 class BedrockApp(App):
-    theme_manager = theme_manager
-    audio_service = audio_service
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Флаги для предотвращения двойной остановки сервисов
+        self.theme_manager = theme_manager
+        self.localizer = localizer
+        self.user_config = user_config
+        self.audio_service = audio_service
+        self.services = []
         self._services_stopped = False
-        self._stopping_in_progress = False
 
     def build(self):
+        # Загружаем язык
+        lang = self.user_config.get("language", "en")
+        self.localizer.load(lang)
 
-        # Локализация
-        localizer.load(user_config.get("language", "en"))
-        self.localizer = localizer
-        self.pigs_service = PigsService()
-        theme_manager.load_theme(user_config.get("theme"), user_config.get("variant"))
+        # Загружаем тему
+        theme_name = self.user_config.get("theme", "minecraft")
+        theme_variant = self.user_config.get("variant", "light")
+        self.theme_manager.load(theme_name, theme_variant)
 
-        # Инициализация сервисов
-        self.alarm_service = AlarmService()
-        
-        # Инициализация AlarmClock с проверкой доступности
-        if ALARM_CLOCK_AVAILABLE:
-            self.alarm_clock = AlarmClock()
+        # Инициализация сервисов (могут быть синглтоны, но список для единого контроля)
+        self.services = [
+            AlarmService(),
+            NotificationService(),
+            WeatherService(),
+            SensorService(),
+            PigsService(),
+            # Можно добавить еще сервисы по необходимости
+        ]
+        for service in self.services:
+            try:
+                service.start()
+                logger.info(f"Started service: {service.__class__.__name__}")
+            except Exception as ex:
+                logger.error(f"Service start failed: {service.__class__.__name__}: {ex}")
+
+        # Встроить alarm_clock если доступен
+        self.alarm_clock = AlarmClock() if ALARM_CLOCK_AVAILABLE else None
+        if self.alarm_clock:
             try:
                 self.alarm_clock.start()
-                logger.info("AlarmClock started successfully")
-            except Exception as e:
-                logger.error(f"Failed to start AlarmClock: {e}")
-                # AlarmClock не критичен, продолжаем работу
-                self.alarm_clock = None
-        else:
-            logger.warning("AlarmClock not available - alarm functionality disabled")
-            self.alarm_clock = None
-        self.notification_service = NotificationService()
-        
-        # Координаты для погоды — лучше взять из user_config, а если нет, использовать дефолтные:
-        location = user_config.get("location", {})
-        lat = location.get("latitude", 55.7522)  # Москва, пример
-        lon = location.get("longitude", 37.6156)
-        self.weather_service = WeatherService(lat, lon)
-        
-        # Инициализация сервиса датчиков
-        self.sensor_service = SensorService()
-        try:
-            self.sensor_service.start()
-            logger.info("SensorService started successfully")
-        except Exception as e:
-            logger.error(f"Failed to start SensorService: {e}")
-            # Сервис датчиков не критичен, продолжаем работу
-            self.sensor_service = None
+                logger.info("AlarmClock started")
+            except Exception as ex:
+                logger.error(f"AlarmClock start failed: {ex}")
 
-        Builder.load_file("widgets/root_widget.kv")
-        Builder.load_file("widgets/top_menu.kv")
-        Builder.load_file("pages/home.kv")
-        Builder.load_file("pages/alarm.kv")
-        Builder.load_file("pages/schedule.kv")
-        Builder.load_file("pages/weather.kv")
-        Builder.load_file("pages/pigs.kv")
-        Builder.load_file("pages/settings.kv")
-        Builder.load_file("widgets/overlay_card.kv")
-        Builder.load_file("pages/pigs.kv")
-        
-        # Воспроизведение звука запуска
-        startup_sound = self.theme_manager.get_sound("startup")
-        if startup_sound:
-            audio_service.play(startup_sound)
-        
+        # Root layout: menu + экран
         return RootWidget()
-    
-    def stop_services_safely(self):
-        """Безопасная остановка всех сервисов с защитой от повторного вызова"""
-        if self._services_stopped or self._stopping_in_progress:
-            logger.debug("Services already stopped or stopping in progress, skipping")
-            return
-        
-        self._stopping_in_progress = True
-        logger.info("=== Starting Services Shutdown ===")
-        
-        # Список сервисов для остановки в правильном порядке
-        services_to_stop = [
-            ('alarm_clock', 'AlarmClock'),
-            ('sensor_service', 'SensorService'), 
-            ('alarm_service', 'AlarmService'),
-            ('audio_service', 'AudioService')
-        ]
-        
-        for service_attr, service_name in services_to_stop:
-            try:
-                if hasattr(self, service_attr):
-                    service = getattr(self, service_attr)
-                    if service and hasattr(service, 'stop') and callable(getattr(service, 'stop')):
-                        # Проверяем что сервис ещё не остановлен
-                        if hasattr(service, 'running') and not service.running:
-                            logger.debug(f"{service_name} already stopped, skipping")
-                            continue
-                        elif hasattr(service, '_is_stopped') and service._is_stopped:
-                            logger.debug(f"{service_name} already stopped, skipping")
-                            continue
-                        
-                        logger.info(f"Stopping {service_name}...")
-                        service.stop()
-                        logger.info(f"{service_name} stopped successfully")
-                    else:
-                        logger.debug(f"{service_name} has no stop method or is None")
-                else:
-                    logger.debug(f"{service_name} attribute not found")
-            except Exception as e:
-                logger.error(f"Error stopping {service_name}: {e}")
-        
-        # Отдельно обрабатываем сервисы без метода stop()
-        other_services = [
-            ('weather_service', 'WeatherService'),
-            ('pigs_service', 'PigsService'),
-            ('notification_service', 'NotificationService')
-        ]
-        
-        for service_attr, service_name in other_services:
-            try:
-                if hasattr(self, service_attr):
-                    service = getattr(self, service_attr)
-                    if service and hasattr(service, 'stop') and callable(getattr(service, 'stop')):
-                        logger.info(f"Stopping {service_name}...")
-                        service.stop()
-                        logger.info(f"{service_name} stopped successfully")
-                    else:
-                        logger.debug(f"{service_name} has no stop method or is None")
-            except Exception as e:
-                logger.error(f"Error stopping {service_name}: {e}")
-        
-        self._services_stopped = True
-        self._stopping_in_progress = False
-        logger.info("=== Services Shutdown Complete ===")
-    
+
     def on_stop(self):
-        """Закрытие приложения - остановка сервисов"""
-        logger.info("=== App Stopping ===")
-        
-        # Безопасная остановка всех сервисов
-        self.stop_services_safely()
-        
+        if self._services_stopped:
+            return
+        self._services_stopped = True
+
+        # Остановка сервисов
+        for service in self.services:
+            try:
+                service.stop()
+                logger.info(f"Stopped service: {service.__class__.__name__}")
+            except Exception as ex:
+                logger.warning(f"Failed to stop service: {service.__class__.__name__}: {ex}")
+        if self.alarm_clock:
+            try:
+                self.alarm_clock.stop()
+            except Exception as ex:
+                logger.warning(f"Failed to stop AlarmClock: {ex}")
+
         logger.info("=== App Stopped ===")
 
-if __name__ == "__main__":
-    BedrockApp().run()
+    # Глобальная смена темы (для всех экранов)
+    def switch_theme(self, theme, variant):
+        self.theme_manager.load(theme, variant)
+        # Инвалидировать все экраны
+        if self.root:
+            self.root.invalidate_theme()
+
+    # Глобальная смена языка
+    def switch_language(self, lang):
+        self.localizer.load(lang)
+        if self.root:
+            self.root.invalidate_language()
+
+if __name__ == '__main__':
+    try:
+        BedrockApp().run()
+    except Exception as e:
+        logger.exception(f"Critical error: {e}")

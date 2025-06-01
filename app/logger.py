@@ -1,36 +1,40 @@
 import logging
 import os
 
-LOG_DIR = "logs"
-LOG_FILE = os.path.join(LOG_DIR, "app.log")
+def get_log_path():
+    # Сохраняем логи в папке logs, если возможно
+    log_dir = os.path.join(os.path.dirname(__file__), '..', 'logs')
+    os.makedirs(log_dir, exist_ok=True)
+    return os.path.join(log_dir, 'app.log')
 
-def setup_logger(name, level=logging.INFO):
-    # Создать директорию для логов, если нет
-    os.makedirs(LOG_DIR, exist_ok=True)
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
+def create_logger():
+    logger = logging.getLogger("bedrock")
+    logger.setLevel(logging.INFO)
 
-    # Формат для вывода
-    formatter = logging.Formatter(
-        "%(asctime)s [%(levelname)s] [%(name)s]: %(message)s", "%Y-%m-%d %H:%M:%S"
-    )
+    # Проверяем, нет ли уже хендлеров (чтобы не дублировалось при повторном импорте)
+    if logger.hasHandlers():
+        return logger
 
-    # Handler для консоли
-    ch = logging.StreamHandler()
-    ch.setLevel(level)
-    ch.setFormatter(formatter)
+    # Формат сообщений
+    formatter = logging.Formatter("[%(asctime)s] %(levelname)s | %(name)s | %(message)s",
+                                  datefmt="%Y-%m-%d %H:%M:%S")
 
-    # Handler для файла
-    fh = logging.FileHandler(LOG_FILE, encoding="utf-8")
-    fh.setLevel(level)
-    fh.setFormatter(formatter)
+    # Хендлер для консоли
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
-    # Не дублировать хендлеры
-    if not logger.hasHandlers():
-        logger.addHandler(ch)
-        logger.addHandler(fh)
+    # Хендлер для файла (если доступен)
+    try:
+        file_handler = logging.FileHandler(get_log_path(), encoding="utf-8")
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    except Exception as ex:
+        logger.warning(f"Failed to set file log handler: {ex}")
 
     return logger
 
-# Глобальный logger для всего приложения
-app_logger = setup_logger("BedrockApp")
+# Единый логгер на всё приложение
+app_logger = create_logger()

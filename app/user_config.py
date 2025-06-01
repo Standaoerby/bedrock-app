@@ -1,56 +1,78 @@
-import json
 import os
+import json
+import threading
+from app.logger import app_logger as logger
 
 class UserConfig:
+    """
+    Управляет загрузкой и сохранением пользовательских настроек из config/user_config.json.
+    Поддерживает дефолты, безопасную запись, автоматическое создание файла при необходимости.
+    """
+    DEFAULTS = {
+        "username": "User",
+        "birthday": None,
+        "theme": "minecraft",
+        "variant": "light",
+        "language": "en",
+        "location": {"latitude": None, "longitude": None},
+        "auto_theme_enabled": False,
+        "light_sensor_threshold": 3
+    }
+
     def __init__(self, config_path="config/user_config.json"):
         self.config_path = config_path
-        self.data = {
-            "username": "Пользователь",
-            "birthday": "",
-            "theme": "minecraft",
-            "variant": "light",
-            "alarm": {
-                "enabled": False,
-                "time": "07:00",
-                "days": []
-            },
-            "notifications": {
-                "volume": 1.0,
-                "sound": ""
-            },
-            "language": "ru"
-        }
+        self._lock = threading.RLock()
+        self._data = {}
         self.load()
 
     def load(self):
-        if os.path.exists(self.config_path):
+        """Загрузить конфиг. Если нет — создать с дефолтами."""
+        with self._lock:
             try:
-                with open(self.config_path, "r", encoding="utf-8") as f:
-                    self.data.update(json.load(f))
-            except Exception as e:
-                print(f"[UserConfig] Ошибка чтения {self.config_path}: {e}")
+                if not os.path.isfile(self.config_path):
+                    logger.warning(f"User config not found, creating default: {self.config_path}")
+                    self._data = self.DEFAULTS.copy()
+                    self.save()
+                else:
+                    with open(self.config_path, encoding="utf-8") as f:
+                        self._data = json.load(f)
+                # Гарантируем наличие всех дефолтных ключей
+                for k, v in self.DEFAULTS.items():
+                    self._data.setdefault(k, v)
+            except Exception as ex:
+                logger.error(f"Failed to load user config: {ex}")
+                self._data = self.DEFAULTS.copy()
 
     def save(self):
-        os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
-        try:
-            with open(self.config_path, "w", encoding="utf-8") as f:
-                json.dump(self.data, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            print(f"[UserConfig] Ошибка сохранения {self.config_path}: {e}")
+        """Сохранить конфиг (атомарно)."""
+        with self._lock:
+            try:
+                # Пишем через временный файл для надёжности
+                tmp_path = self.config_path + ".tmp"
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(self._data, f, ensure_ascii=False, indent=2)
+                os.replace(tmp_path, self.config_path)
+                logger.info("User config saved.")
+            except Exception as ex:
+                logger.error(f"Failed to save user config: {ex}")
 
     def get(self, key, default=None):
-        return self.data.get(key, default)
+        with self._lock:
+            return self._data.get(key, self.DEFAULTS.get(key, default))
 
     def set(self, key, value):
-        self.data[key] = value
-        self.save()
+        with self._lock:
+            self._data[key] = value
+            self.save()
 
-    def get_alarm(self):
-        return self.data.get("alarm", {})
+    def update(self, new_data):
+        with self._lock:
+            self._data.update(new_data)
+            self.save()
 
-    def set_alarm(self, alarm_data):
-        self.data["alarm"] = alarm_data
-        self.save()
+    def all(self):
+        with self._lock:
+            return self._data.copy()
 
-# Экземпляр на всё приложение
+# Глобальный singleton
 user_config = UserConfig()

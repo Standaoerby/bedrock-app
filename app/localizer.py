@@ -1,31 +1,57 @@
-import json
 import os
+import json
+from app.logger import app_logger as logger
 
 class Localizer:
-    def __init__(self, lang="ru", locales_dir="locale"):
-        self.lang = lang
-        self.locales_dir = locales_dir
-        self.strings = {}
-        self.load(lang)
+    """
+    Менеджер локализации приложения.
+    Хранит переводы для всех поддерживаемых языков и возвращает строки по ключу.
+    Позволяет динамически переключать язык.
+    """
+    def __init__(self, locale_dir="locale"):
+        self.locale_dir = locale_dir
+        self.translations = {}
+        self.language = "en"
 
-    def load(self, lang):
-        self.lang = lang
-        path = os.path.join(self.locales_dir, f"{lang}.json")
+    def load(self, language):
+        """Загрузить переводы для нового языка, fallback — английский."""
+        self.language = language
+        # Загружаем основной язык
+        lang_path = os.path.join(self.locale_dir, f"{language}.json")
+        self.translations = self._load_json(lang_path)
+        # Загружаем fallback (en) если язык не английский
+        if language != "en":
+            en_path = os.path.join(self.locale_dir, "en.json")
+            self.translations_fallback = self._load_json(en_path)
+        else:
+            self.translations_fallback = {}
+
+        logger.info(f"Localization loaded: {language}")
+
+    def _load_json(self, path):
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                self.strings = json.load(f)
-        except Exception as e:
-            print(f"[Localizer] Ошибка загрузки перевода {lang}: {e}")
-            self.strings = {}
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as ex:
+            logger.warning(f"Failed to load locale: {path} — {ex}")
+            return {}
 
-    def t(self, key, **kwargs):
-        text = self.strings.get(key, key)
-        if kwargs:
-            try:
-                text = text.format(**kwargs)
-            except Exception:
-                pass
-        return text
+    def tr(self, key, default=""):
+        """Получить перевод по ключу. Fallback — английский, потом default."""
+        # Первый уровень — выбранный язык
+        value = self.translations.get(key)
+        if value:
+            return value
+        # Второй уровень — fallback (en)
+        if self.translations_fallback:
+            value = self.translations_fallback.get(key)
+            if value:
+                return value
+        # Третий уровень — дефолт
+        if default:
+            return default
+        # Для dev-режима можно возвращать ключ как есть
+        return f"[{key}]"
 
-# Глобальный экземпляр
+# Глобальный singleton для использования во всём проекте
 localizer = Localizer()
