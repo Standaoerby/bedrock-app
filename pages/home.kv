@@ -134,66 +134,50 @@
         # Блок погоды - одной строкой по центру
         OverlayCard:
             size_hint_y: None
-            height: dp(64)
+            height: dp(48)  # Уменьшено с dp(64)
             
-            AnchorLayout:
-                anchor_x: 'center'
-                anchor_y: 'center'
+            BoxLayout:
+                orientation: 'horizontal'
+                spacing: dp(16)
+                padding: [0]
+
                 
-                BoxLayout:
-                    orientation: 'horizontal'
-                    spacing: dp(24)
-                    size_hint: None, None
-                    height: dp(60)
-                    width: self.minimum_width
+                # Сейчас
+                Label:
+                    id: weather_now_label
+                    text: root.weather_now_str
+                    font_size: '16sp'  # Уменьшено с 18sp
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("primary")
+                    size_hint_x: 0.455  # Фиксированная ширина
+                    halign: 'center'
+                    valign: 'middle'
+                    text_size: self.size
                     
-                    # Сейчас
-                    BoxLayout:
-                        orientation: 'horizontal'
-                        spacing: dp(2)
-                        size_hint: None, None
-                        width: dp(140)
-                        height: dp(60)                      
-                        
-                        Label:
-                            id: weather_now_label
-                            text: root.weather_now_str
-                            font_size: '18sp'
-                            font_name: app.theme_manager.get_font("main")
-                            color: app.theme_manager.get_rgba("primary")
-                            halign: 'center'
-                            valign: 'middle'
-                            text_size: self.size
 
-                    # Стрелка тренда  
-                    Label:
-                        id: weather_trend_label
-                        text: root.weather_trend_arrow
-                        font_size: '24sp'
-                        font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("primary")
-                        size_hint: None, None
-                        size: dp(40), dp(60)
-                        halign: 'center'
-                        valign: 'middle'
+                # Стрелка тренда  
+                Label:
+                    id: weather_trend_label
+                    text: root.weather_trend_arrow
+                    font_size: '20sp'  # Уменьшено с 24sp
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("primary")
+                    size_hint_x: 0.1  # Фиксированная ширина
+                    halign: 'center'
+                    valign: 'middle'
+                    text_size: self.size
 
-                    # Через 5 часов
-                    BoxLayout:
-                        orientation: 'horizontal'
-                        spacing: dp(2)
-                        size_hint: None, None
-                        width: dp(140)
-                        height: dp(60)                     
-                        
-                        Label:
-                            id: weather_5h_label
-                            text: root.weather_5h_str
-                            font_size: '18sp'
-                            font_name: app.theme_manager.get_font("main")
-                            color: app.theme_manager.get_rgba("text")
-                            halign: 'center'
-                            valign: 'middle'
-                            text_size: self.size
+                # Через 5 часов
+                Label:
+                    id: weather_5h_label
+                    text: root.weather_5h_str
+                    font_size: '16sp'  # Уменьшено с 18sp
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("text")
+                    size_hint_x: 0.45  # Фиксированная ширина
+                    halign: 'center'
+                    valign: 'middle'
+                    text_size: self.size
 
         # Нижний блок с уведомлениями - бегущая строка
         OverlayCard:

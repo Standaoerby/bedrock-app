@@ -167,9 +167,10 @@ class HomeScreen(Screen):
                     temp = current.get("temperature", "--")
                     condition = current.get("condition", "")
                     # Сокращаем длинные названия условий для компактности
-                    if len(condition) > 12:
+                    if len(condition) > 30:
                         condition = condition[:9] + "..."
-                    self.weather_now_str = f"{temp}°C\n{condition}"
+                    # ИЗМЕНЕНО: используем запятую вместо переноса строки
+                    self.weather_now_str = f"{temp}°C & {condition}"
                 else:
                     self.weather_now_str = "--°C"
                 
@@ -178,9 +179,10 @@ class HomeScreen(Screen):
                 if forecast_5h and forecast_5h.get("temperature") is not None:
                     temp_5h = forecast_5h.get("temperature", "--")
                     condition_5h = forecast_5h.get("condition", "")
-                    if len(condition_5h) > 12:
+                    if len(condition_5h) > 30:
                         condition_5h = condition_5h[:9] + "..."
-                    self.weather_5h_str = f"{temp_5h}°C\n{condition_5h}"
+                    # ИЗМЕНЕНО: используем запятую вместо переноса строки
+                    self.weather_5h_str = f"{temp_5h}°C & {condition_5h}"
                     
                     # Стрелка тренда температуры
                     try:
@@ -205,11 +207,11 @@ class HomeScreen(Screen):
                     
             except Exception as e:
                 print(f"[HomeScreen] Ошибка обновления погоды: {e}")
-                self.weather_now_str = "Ошибка\nпогоды"
+                self.weather_now_str = "Ошибка погоды"
                 self.weather_5h_str = "--°C"
                 self.weather_trend_arrow = ""
         else:
-            self.weather_now_str = "Нет сервиса\nпогоды"
+            self.weather_now_str = "Нет сервиса погоды"
             self.weather_5h_str = "--°C"
             self.weather_trend_arrow = ""
 
