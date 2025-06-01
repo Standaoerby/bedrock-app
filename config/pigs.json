@@ -1,0 +1,66 @@
+{
+  "pigs": [
+    {
+      "name": "Korovka",
+      "breed": "Guinea Pig",
+      "color": "Brown and White",
+      "age_months": 18,
+      "favorite_food": "Carrots"
+    },
+    {
+      "name": "Karamelka",
+      "breed": "Guinea Pig",
+      "color": "Caramel and White",
+      "age_months": 16,
+      "favorite_food": "Bell Peppers"
+    }
+  ],
+  "care_items": {
+    "water": {
+      "label": "Water",
+      "max_hours": 8,
+      "last_reset": "2025-06-01T02:50:03.355892",
+      "description": "Fresh water for drinking",
+      "icon": "💧",
+      "color": [
+        0.2,
+        0.6,
+        1,
+        0.8
+      ]
+    },
+    "food": {
+      "label": "Food",
+      "max_hours": 6,
+      "last_reset": "2025-06-01T02:50:04.142788",
+      "description": "Hay, pellets, and vegetables",
+      "icon": "🥕",
+      "color": [
+        1,
+        0.6,
+        0.2,
+        0.8
+      ]
+    },
+    "clean": {
+      "label": "Cleaning",
+      "max_hours": 12,
+      "last_reset": "2025-06-01T02:50:05.008104",
+      "description": "Cage cleaning and maintenance",
+      "icon": "🧽",
+      "color": [
+        0.2,
+        0.8,
+        0.2,
+        0.8
+      ]
+    }
+  },
+  "settings": {
+    "reminder_threshold": 25,
+    "critical_threshold": 10,
+    "notification_enabled": true,
+    "sound_alerts": true,
+    "auto_save": true
+  }
+}

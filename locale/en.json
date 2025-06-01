@@ -38,5 +38,19 @@
   "pigs_clean": "Clean up after pigs",
   "settings_save_success": "Settings saved successfully!",
   "settings_save_error": "Error saving settings.",
-  "language_changed": "Language changed to {language}."
+  "language_changed": "Language changed to {language}.", 
+  "water": "Water",
+  "food": "Food", 
+  "cleaning": "Cleaning",
+  "done": "Done",
+  "overall_status": "Overall Status",
+  "pig_names": "Names",
+  "pigs_status_perfect": "Perfect! 🐷✨",
+  "pigs_status_happy": "Happy 🐷😊",
+  "pigs_status_ok": "OK 🐷😐",
+  "pigs_status_needs_care": "Needs care 🐷😟",
+  "pigs_status_critical": "Critical! 🐷😰",
+  "care_water_desc": "Fresh water for drinking",
+  "care_food_desc": "Hay, pellets, and vegetables", 
+  "care_cleaning_desc": "Cage cleaning and maintenance"
 }

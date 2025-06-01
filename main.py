@@ -25,6 +25,7 @@ from services.alarm_service import AlarmService
 from services.notifications_service import NotificationService
 from services.weather_service import WeatherService
 from services.sensor_service import SensorService
+from services.pigs_service import PigsService
 from app.logger import app_logger as logger
 logger.info("=== App Started ===")
 
@@ -40,6 +41,7 @@ class BedrockApp(App):
         # Локализация
         localizer.load(user_config.get("language", "en"))
         self.localizer = localizer
+        self.pigs_service = PigsService()
         theme_manager.load_theme(user_config.get("theme"), user_config.get("variant"))
 
         # Инициализация сервисов
@@ -71,6 +73,7 @@ class BedrockApp(App):
         Builder.load_file("pages/pigs.kv")
         Builder.load_file("pages/settings.kv")
         Builder.load_file("widgets/overlay_card.kv")
+        Builder.load_file("pages/pigs.kv")
         
         # Воспроизведение звука запуска
         startup_sound = self.theme_manager.get_sound("startup")
