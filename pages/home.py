@@ -17,6 +17,10 @@ class HomeScreen(Screen):
     current_date = StringProperty("")
     clock_time = StringProperty("--:--")
     
+    # Новые свойства для snooze статуса
+    alarm_snooze_active = BooleanProperty(False)
+    alarm_snooze_time = StringProperty("")
+    
     # Для бегущей строки
     notification_scroll_x = NumericProperty(0)
 
@@ -25,6 +29,10 @@ class HomeScreen(Screen):
         # Подписка на события
         event_bus.subscribe("language_changed", self.refresh_text)
         event_bus.subscribe("theme_changed", self.refresh_theme)
+        event_bus.subscribe("alarm_snoozed", self.on_alarm_snoozed)
+        event_bus.subscribe("alarm_dismissed", self.on_alarm_dismissed)
+        event_bus.subscribe("alarm_triggered", self.on_alarm_triggered)
+        
         self._clock_event = None
         self._update_events = []
         self._scroll_animation = None
@@ -122,6 +130,8 @@ class HomeScreen(Screen):
     def update_alarm(self, *args):
         """Обновление информации о будильнике"""
         app = App.get_running_app()
+        
+        # Обновляем основные настройки будильника
         if hasattr(app, "alarm_service"):
             alarm = app.alarm_service.get_alarm()
             if alarm:
@@ -133,6 +143,27 @@ class HomeScreen(Screen):
         else:
             self.current_alarm_time = "--:--"
             self.alarm_active = False
+        
+        # Обновляем статус snooze
+        if hasattr(app, "alarm_clock") and app.alarm_clock:
+            try:
+                status = app.alarm_clock.get_status()
+                self.alarm_snooze_active = status.get("is_snoozed", False)
+                if self.alarm_snooze_active:
+                    snooze_time = status.get("snooze_time", "")
+                    self.alarm_snooze_time = f"Snooze: {snooze_time}"
+                else:
+                    self.alarm_snooze_time = ""
+            except Exception as e:
+                print(f"[HomeScreen] Error getting alarm clock status: {e}")
+                self.alarm_snooze_active = False
+                self.alarm_snooze_time = ""
+        else:
+            self.alarm_snooze_active = False
+            self.alarm_snooze_time = ""
+        
+        # Обновляем цвета после изменения данных
+        self.refresh_theme()
 
     def toggle_alarm(self):
         """Переключение состояния будильника"""
@@ -218,6 +249,13 @@ class HomeScreen(Screen):
     def update_notification(self, *args):
         """Обновление уведомлений"""
         app = App.get_running_app()
+        
+        # Приоритет для snooze сообщения
+        if self.alarm_snooze_active and self.alarm_snooze_time:
+            self.notification_text = self.alarm_snooze_time
+            self.start_text_scroll(self.notification_text)
+            return
+        
         if hasattr(app, "notification_service"):
             try:
                 # Получаем последнее непрочитанное уведомление
@@ -276,8 +314,25 @@ class HomeScreen(Screen):
         from kivy.clock import Clock
         Clock.schedule_once(_launch, 0.05)
 
+    def on_alarm_snoozed(self, snooze_time=None, **kwargs):
+        """Обработка события snooze будильника"""
+        if snooze_time:
+            self.alarm_snooze_active = True
+            self.alarm_snooze_time = f"Snooze: {snooze_time.strftime('%H:%M')}"
+            # Немедленно обновляем уведомления чтобы показать snooze
+            self.update_notification()
 
+    def on_alarm_dismissed(self, **kwargs):
+        """Обработка события отмены будильника"""
+        self.alarm_snooze_active = False
+        self.alarm_snooze_time = ""
+        # Обновляем уведомления
+        self.update_notification()
 
+    def on_alarm_triggered(self, **kwargs):
+        """Обработка события срабатывания будильника"""
+        # Можно добавить визуальную индикацию на домашнем экране
+        pass
 
     def refresh_theme(self, *args):
         """Обновление темы для всех элементов"""
@@ -287,7 +342,7 @@ class HomeScreen(Screen):
             
         tm = app.theme_manager
 
-        # Обновляем цвета и шрифты для всех элементов
+        # Все виджеты для обновления темы
         widgets_to_update = [
             "date_label", "alarm_time_label", "alarm_toggle_btn",
             "clock_label", "clock_shadow1", "clock_shadow2", "clock_shadow3",
@@ -308,12 +363,27 @@ class HomeScreen(Screen):
                     if "clock" in widget_id and "shadow" not in widget_id:
                         widget.color = tm.get_rgba("clock_main")
                     elif "shadow" in widget_id:
-                        # Тени остаются чёрными с разной прозрачностью
+                        # Тени остаются чёрными
                         pass
                     elif widget_id == "alarm_time_label":
-                        widget.color = tm.get_rgba("primary") if self.alarm_active else tm.get_rgba("text")
+                        # Цвет времени будильника
+                        if self.alarm_snooze_active or self.alarm_active:
+                            widget.color = tm.get_rgba("text_accent")
+                        else:
+                            widget.color = tm.get_rgba("text_inactive")
+                    elif widget_id == "alarm_toggle_btn":
+                        # Цвет кнопки будильника
+                        if self.alarm_snooze_active or self.alarm_active:
+                            widget.color = tm.get_rgba("text_accent")
+                        else:
+                            widget.color = tm.get_rgba("text_inactive")
                     elif widget_id in ["weather_now_label", "weather_trend_label"]:
                         widget.color = tm.get_rgba("primary")
+                    elif widget_id == "notification_text_label":
+                        if self.alarm_snooze_active:
+                            widget.color = tm.get_rgba("text_accent")
+                        else:
+                            widget.color = tm.get_rgba("text")
                     else:
                         widget.color = tm.get_rgba("text")
                 

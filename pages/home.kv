@@ -53,7 +53,6 @@
                             font_size: '24sp'
                             font_name: app.theme_manager.get_font("main")
                             padding: [dp(8), dp(0), dp(4), dp(8)]
-                            color: app.theme_manager.get_rgba("text_accent") if root.alarm_active else app.theme_manager.get_rgba("text_inactive")
                             size_hint_y: 0.7
                             halign: 'center'
                             valign: 'middle'
@@ -67,7 +66,6 @@
                         padding: [dp(0)]
                         background_normal: app.theme_manager.get_image("button_bg")
                         background_down: app.theme_manager.get_image("button_bg_active")
-                        color: app.theme_manager.get_rgba("text_accent") if root.alarm_active else app.theme_manager.get_rgba("text_inactive")
                         size_hint_x: 0.35
                         on_release: root.toggle_alarm()
 
@@ -198,7 +196,6 @@
                         text: root.notification_text or "No new notifications"
                         font_size: '16sp'
                         font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("text")
                         size_hint: None, None
                         size: self.texture_size
                         # Самое важное: позиция

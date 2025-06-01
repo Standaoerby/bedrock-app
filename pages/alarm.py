@@ -490,6 +490,35 @@ class AlarmScreen(Screen):
             self.update_ui()
             self._schedule_auto_save()
 
+    def test_alarm_sound(self):
+        """Тестирование срабатывания будильника"""
+        if not self._can_perform_action():
+            return
+            
+        self._mark_action_performed()
+        
+        try:
+            app = App.get_running_app()
+            
+            # Воспроизводим звук подтверждения
+            play_theme_sound("confirm")
+            
+            # Тестируем срабатывание будильника через AlarmClock
+            if hasattr(app, 'alarm_clock') and app.alarm_clock:
+                # Используем текущие настройки для теста
+                ringtone = self.selected_ringtone
+                fadein = self.alarm_fadein
+                
+                app.alarm_clock.trigger_alarm(ringtone=ringtone, fadein=fadein)
+                logger.info(f"Test alarm triggered with {ringtone}, fadein: {fadein}")
+            else:
+                logger.error("AlarmClock not available for testing")
+                play_theme_sound("error")
+                
+        except Exception as e:
+            logger.error(f"Error testing alarm: {e}")
+            play_theme_sound("error")
+
     def on_leave(self, *args):
         """Обработка выхода с экрана"""
         logger.info("Alarm screen cleanup completed")

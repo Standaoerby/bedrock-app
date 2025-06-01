@@ -37,6 +37,12 @@ class BedrockApp(App):
     theme_manager = theme_manager
     audio_service = audio_service
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Флаги для предотвращения двойной остановки сервисов
+        self._services_stopped = False
+        self._stopping_in_progress = False
+
     def build(self):
 
         # Локализация
@@ -91,36 +97,51 @@ class BedrockApp(App):
         
         return RootWidget()
     
+    def stop_services_safely(self):
+        """Безопасная остановка всех сервисов с защитой от повторного вызова"""
+        if self._services_stopped or self._stopping_in_progress:
+            logger.debug("Services already stopped or stopping in progress, skipping")
+            return
+        
+        self._stopping_in_progress = True
+        logger.info("=== Starting Services Shutdown ===")
+        
+        # Список сервисов для остановки в правильном порядке
+        services_to_stop = [
+            ('alarm_clock', 'AlarmClock'),
+            ('sensor_service', 'SensorService'),
+            ('alarm_service', 'AlarmService'),
+            ('audio_service', 'AudioService'),
+            ('weather_service', 'WeatherService'),
+            ('pigs_service', 'PigsService'),
+            ('notification_service', 'NotificationService')
+        ]
+        
+        for service_attr, service_name in services_to_stop:
+            try:
+                if hasattr(self, service_attr):
+                    service = getattr(self, service_attr)
+                    if service and hasattr(service, 'stop'):
+                        logger.info(f"Stopping {service_name}...")
+                        service.stop()
+                        logger.info(f"{service_name} stopped successfully")
+                    else:
+                        logger.debug(f"{service_name} has no stop method or is None")
+                else:
+                    logger.debug(f"{service_name} attribute not found")
+            except Exception as e:
+                logger.error(f"Error stopping {service_name}: {e}")
+        
+        self._services_stopped = True
+        self._stopping_in_progress = False
+        logger.info("=== Services Shutdown Complete ===")
+    
     def on_stop(self):
         """Закрытие приложения - остановка сервисов"""
         logger.info("=== App Stopping ===")
         
-        try:
-            if hasattr(self, 'alarm_clock') and self.alarm_clock:
-                self.alarm_clock.stop()
-                logger.info("AlarmClock stopped")
-        except Exception as e:
-            logger.error(f"Error stopping AlarmClock: {e}")
-        try:
-            if hasattr(self, 'sensor_service') and self.sensor_service:
-                self.sensor_service.stop()
-                logger.info("SensorService stopped")
-        except Exception as e:
-            logger.error(f"Error stopping SensorService: {e}")
-            
-        try:
-            if hasattr(self, 'alarm_service') and self.alarm_service:
-                self.alarm_service.stop()
-                logger.info("AlarmService stopped")
-        except Exception as e:
-            logger.error(f"Error stopping AlarmService: {e}")
-            
-        try:
-            if hasattr(self, 'audio_service') and self.audio_service:
-                self.audio_service.stop()
-                logger.info("AudioService stopped")
-        except Exception as e:
-            logger.error(f"Error stopping AudioService: {e}")
+        # Безопасная остановка всех сервисов
+        self.stop_services_safely()
         
         logger.info("=== App Stopped ===")
 
