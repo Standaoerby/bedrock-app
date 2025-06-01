@@ -22,6 +22,7 @@ from app.theme_manager import theme_manager
 from widgets.top_menu import TopMenu
 from services.audio_service import audio_service
 from services.alarm_service import AlarmService
+from services.alarm_clock import AlarmClock
 from services.notifications_service import NotificationService
 from services.weather_service import WeatherService
 from services.sensor_service import SensorService
@@ -46,6 +47,14 @@ class BedrockApp(App):
 
         # Инициализация сервисов
         self.alarm_service = AlarmService()
+        self.alarm_clock = AlarmClock()
+        try:
+            self.alarm_clock.start()
+            logger.info("AlarmClock started successfully")
+        except Exception as e:
+            logger.error(f"Failed to start AlarmClock: {e}")
+            # AlarmClock не критичен, продолжаем работу
+            self.alarm_clock = None
         self.notification_service = NotificationService()
         
         # Координаты для погоды — лучше взять из user_config, а если нет, использовать дефолтные:
@@ -86,7 +95,12 @@ class BedrockApp(App):
         """Закрытие приложения - остановка сервисов"""
         logger.info("=== App Stopping ===")
         
-        # Останавливаем все сервисы
+        try:
+            if hasattr(self, 'alarm_clock') and self.alarm_clock:
+                self.alarm_clock.stop()
+                logger.info("AlarmClock stopped")
+        except Exception as e:
+            logger.error(f"Error stopping AlarmClock: {e}")
         try:
             if hasattr(self, 'sensor_service') and self.sensor_service:
                 self.sensor_service.stop()
