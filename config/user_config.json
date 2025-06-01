@@ -3,10 +3,20 @@
   "birthday": "2015-05-18",
   "theme": "minecraft",
   "variant": "light",
+  "alarm": {
+    "enabled": false,
+    "time": "07:00",
+    "days": []
+  },
+  "notifications": {
+    "volume": 1.0,
+    "sound": ""
+  },
   "language": "en",
   "location": {
     "latitude": 51.5566,
-    "longitude": -0.1780
-  }
-  
+    "longitude": -0.178
+  },
+  "auto_theme_enabled": false,
+  "light_sensor_threshold": 3
 }
