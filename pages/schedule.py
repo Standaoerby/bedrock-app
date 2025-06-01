@@ -12,43 +12,6 @@ from app.logger import app_logger as logger
 
 # Дни недели на английском (сокращенно)
 DAYS_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-DAYS_RU = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-
-# Примерное расписание по умолчанию (можно будет расширить)
-DEFAULT_SCHEDULE = {
-    "Mon": [
-        {"time": "09:00", "subject": "Math", "room": "101"},
-        {"time": "10:00", "subject": "English", "room": "102"},
-        {"time": "11:00", "subject": "Science", "room": "103"},
-        {"time": "12:00", "subject": "History", "room": "104"},
-    ],
-    "Tue": [
-        {"time": "09:00", "subject": "Physics", "room": "105"},
-        {"time": "10:00", "subject": "Chemistry", "room": "106"},
-        {"time": "11:00", "subject": "Math", "room": "101"},
-        {"time": "12:00", "subject": "Art", "room": "107"},
-    ],
-    "Wed": [
-        {"time": "09:00", "subject": "English", "room": "102"},
-        {"time": "10:00", "subject": "Geography", "room": "108"},
-        {"time": "11:00", "subject": "PE", "room": "Gym"},
-        {"time": "12:00", "subject": "Music", "room": "109"},
-    ],
-    "Thu": [
-        {"time": "09:00", "subject": "Math", "room": "101"},
-        {"time": "10:00", "subject": "Science", "room": "103"},
-        {"time": "11:00", "subject": "History", "room": "104"},
-        {"time": "12:00", "subject": "English", "room": "102"},
-    ],
-    "Fri": [
-        {"time": "09:00", "subject": "Chemistry", "room": "106"},
-        {"time": "10:00", "subject": "Physics", "room": "105"},
-        {"time": "11:00", "subject": "Art", "room": "107"},
-        {"time": "12:00", "subject": "Free Period", "room": ""},
-    ],
-    "Sat": [],
-    "Sun": []
-}
 
 
 class ScheduleScreen(Screen):
@@ -94,12 +57,7 @@ class ScheduleScreen(Screen):
 
     def update_schedule_data(self):
         """Обновление данных расписания"""
-        # Получаем расписание (в будущем можно загружать из файла/API)
         app = App.get_running_app()
-        
-        # Пока используем дефолтное расписание
-        # В будущем можно добавить ScheduleService
-        schedule = DEFAULT_SCHEDULE
         
         # Определяем текущий день недели
         today = datetime.now()
@@ -111,6 +69,19 @@ class ScheduleScreen(Screen):
         week_end = week_start + timedelta(days=6)
         self.current_week_str = f"{week_start.strftime('%d %b')} - {week_end.strftime('%d %b')}"
         
+        # Получаем расписание от сервиса
+        schedule = {}
+        if hasattr(app, 'schedule_service') and app.schedule_service:
+            try:
+                schedule = app.schedule_service.get_schedule()
+                logger.debug("Schedule loaded from service")
+            except Exception as e:
+                logger.error(f"Error loading schedule: {e}")
+                schedule = self._get_default_schedule()
+        else:
+            logger.warning("ScheduleService not available, using default schedule")
+            schedule = self._get_default_schedule()
+        
         # Подготавливаем данные для отображения
         self.schedule_data = []
         for day in DAYS_EN[:5]:  # Только рабочие дни
@@ -120,6 +91,43 @@ class ScheduleScreen(Screen):
                 "is_today": day == current_day,
                 "lessons": day_schedule
             })
+
+    def _get_default_schedule(self):
+        """Получение расписания по умолчанию"""
+        return {
+            "Mon": [
+                {"time": "09:00", "subject": "Math", "room": "101"},
+                {"time": "10:00", "subject": "English", "room": "102"},
+                {"time": "11:00", "subject": "Science", "room": "103"},
+                {"time": "12:00", "subject": "History", "room": "104"},
+            ],
+            "Tue": [
+                {"time": "09:00", "subject": "Physics", "room": "105"},
+                {"time": "10:00", "subject": "Chemistry", "room": "106"},
+                {"time": "11:00", "subject": "Math", "room": "101"},
+                {"time": "12:00", "subject": "Art", "room": "107"},
+            ],
+            "Wed": [
+                {"time": "09:00", "subject": "English", "room": "102"},
+                {"time": "10:00", "subject": "Geography", "room": "108"},
+                {"time": "11:00", "subject": "PE", "room": "Gym"},
+                {"time": "12:00", "subject": "Music", "room": "109"},
+            ],
+            "Thu": [
+                {"time": "09:00", "subject": "Math", "room": "101"},
+                {"time": "10:00", "subject": "Science", "room": "103"},
+                {"time": "11:00", "subject": "History", "room": "104"},
+                {"time": "12:00", "subject": "English", "room": "102"},
+            ],
+            "Fri": [
+                {"time": "09:00", "subject": "Chemistry", "room": "106"},
+                {"time": "10:00", "subject": "Physics", "room": "105"},
+                {"time": "11:00", "subject": "Art", "room": "107"},
+                {"time": "12:00", "subject": "Free Period", "room": ""},
+            ],
+            "Sat": [],
+            "Sun": []
+        }
 
     def update_current_day(self):
         """Обновление текущего дня"""
@@ -135,7 +143,7 @@ class ScheduleScreen(Screen):
         container.clear_widgets()
         
         app = App.get_running_app()
-        tm = app.theme_manager
+        tm = app.theme_manager if hasattr(app, 'theme_manager') else None
         
         # Создаем колонки для каждого дня
         for day_data in self.schedule_data:
@@ -160,11 +168,11 @@ class ScheduleScreen(Screen):
         if hasattr(app, 'localizer'):
             # Получаем локализованное название дня
             day_names = {
-                "Mon": app.localizer.t("day_monday"),
-                "Tue": app.localizer.t("day_tuesday"),
-                "Wed": app.localizer.t("day_wednesday"),
-                "Thu": app.localizer.t("day_thursday"),
-                "Fri": app.localizer.t("day_friday"),
+                "Mon": app.localizer.tr("day_monday", "Mon"),
+                "Tue": app.localizer.tr("day_tuesday", "Tue"),
+                "Wed": app.localizer.tr("day_wednesday", "Wed"),
+                "Thu": app.localizer.tr("day_thursday", "Thu"),
+                "Fri": app.localizer.tr("day_friday", "Fri"),
             }
             day_text = day_names.get(day, day)
         else:
@@ -173,8 +181,8 @@ class ScheduleScreen(Screen):
         header = Label(
             text=day_text,
             font_size='18sp',
-            font_name=theme_manager.get_font("main"),
-            color=theme_manager.get_rgba("primary") if is_today else theme_manager.get_rgba("text"),
+            font_name=theme_manager.get_font("main") if theme_manager else "",
+            color=theme_manager.get_rgba("primary") if (theme_manager and is_today) else (theme_manager.get_rgba("text") if theme_manager else [1, 1, 1, 1]),
             size_hint_y=None,
             height=dp(32),
             halign='center',
@@ -191,11 +199,12 @@ class ScheduleScreen(Screen):
         
         if not lessons:
             # Свободный день
+            free_text = app.localizer.tr("free_day", "Free Day") if hasattr(app, 'localizer') else "Free Day"
             free_label = Label(
-                text=app.localizer.t("free_day") if hasattr(app, 'localizer') else "Free Day",
+                text=free_text,
                 font_size='14sp',
-                font_name=theme_manager.get_font("main"),
-                color=theme_manager.get_rgba("text_secondary"),
+                font_name=theme_manager.get_font("main") if theme_manager else "",
+                color=theme_manager.get_rgba("text_secondary") if theme_manager else [0.7, 0.7, 0.7, 1],
                 size_hint_y=None,
                 height=dp(32),
                 halign='center',
@@ -225,8 +234,8 @@ class ScheduleScreen(Screen):
         time_label = Label(
             text=lesson.get("time", ""),
             font_size='12sp',
-            font_name=theme_manager.get_font("main"),
-            color=theme_manager.get_rgba("primary") if is_today else theme_manager.get_rgba("text_secondary"),
+            font_name=theme_manager.get_font("main") if theme_manager else "",
+            color=theme_manager.get_rgba("primary") if (theme_manager and is_today) else (theme_manager.get_rgba("text_secondary") if theme_manager else [0.7, 0.7, 0.7, 1]),
             size_hint_y=None,
             height=dp(16),
             halign='center'
@@ -237,8 +246,8 @@ class ScheduleScreen(Screen):
         subject_label = Label(
             text=lesson.get("subject", ""),
             font_size='14sp',
-            font_name=theme_manager.get_font("main"),
-            color=theme_manager.get_rgba("text"),
+            font_name=theme_manager.get_font("main") if theme_manager else "",
+            color=theme_manager.get_rgba("text") if theme_manager else [1, 1, 1, 1],
             size_hint_y=None,
             height=dp(24),
             halign='center',
@@ -254,8 +263,8 @@ class ScheduleScreen(Screen):
             room_label = Label(
                 text=room,
                 font_size='10sp',
-                font_name=theme_manager.get_font("main"),
-                color=theme_manager.get_rgba("text_secondary"),
+                font_name=theme_manager.get_font("main") if theme_manager else "",
+                color=theme_manager.get_rgba("text_secondary") if theme_manager else [0.7, 0.7, 0.7, 1],
                 size_hint_y=None,
                 height=dp(16),
                 halign='center'
@@ -266,6 +275,25 @@ class ScheduleScreen(Screen):
 
     def refresh_theme(self, *args):
         """Обновление темы"""
+        app = App.get_running_app()
+        if not hasattr(app, 'theme_manager'):
+            return
+            
+        tm = app.theme_manager
+
+        # Обновляем заголовки
+        if hasattr(self, 'ids'):
+            if 'title_label' in self.ids:
+                self.ids.title_label.font_name = tm.get_font("title")
+                self.ids.title_label.color = tm.get_rgba("primary")
+            if 'week_label' in self.ids:
+                self.ids.week_label.font_name = tm.get_font("main")
+                self.ids.week_label.color = tm.get_rgba("text")
+            if 'today_highlight_label' in self.ids:
+                self.ids.today_highlight_label.font_name = tm.get_font("main")
+                self.ids.today_highlight_label.color = tm.get_rgba("primary")
+        
+        # Пересоздаем виджеты с новой темой
         if hasattr(self, 'ids'):
             self.create_schedule_widgets()
 
@@ -277,7 +305,7 @@ class ScheduleScreen(Screen):
             
         # Обновляем заголовок
         if hasattr(self, 'ids') and 'title_label' in self.ids:
-            self.ids.title_label.text = app.localizer.t("schedule_title")
+            self.ids.title_label.text = app.localizer.tr("schedule_title", "School Schedule")
             
         # Пересоздаем виджеты с новой локализацией
         self.create_schedule_widgets()

@@ -3,8 +3,6 @@ from kivy.app import App
 from kivy.properties import StringProperty, BooleanProperty, NumericProperty
 from kivy.clock import Clock
 from app.event_bus import event_bus
-from app.user_config import user_config
-from app.localizer import localizer
 from app.logger import app_logger as logger
 from datetime import datetime
 
@@ -64,9 +62,27 @@ class SettingsScreen(Screen):
             event.cancel()
         self._update_events = []
 
+    def _play_sound(self, sound_name):
+        """Воспроизведение звука темы"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, "theme_manager") and hasattr(app, "audio_service"):
+                path = app.theme_manager.get_sound(sound_name)
+                if path:
+                    app.audio_service.play(path)
+        except Exception as e:
+            logger.error(f"Error playing sound {sound_name}: {e}")
+
     def load_all_settings(self):
         """Загрузка всех настроек"""
         try:
+            app = App.get_running_app()
+            if not hasattr(app, 'user_config'):
+                logger.error("UserConfig not available")
+                return
+                
+            user_config = app.user_config
+            
             # Загружаем основные настройки
             self.current_theme = user_config.get("theme", "minecraft")
             self.current_variant = user_config.get("variant", "light")
@@ -120,11 +136,7 @@ class SettingsScreen(Screen):
                 light_level = readings.get('light_level', True)
                 using_mock = getattr(app.sensor_service, 'using_mock_sensors', True)
                 
-                if using_mock:
-                    status = "Mock" 
-                else:
-                    status = "Real"
-                
+                status = "Mock" if using_mock else "Real"
                 light_text = "Light" if light_level else "Dark"
                 self.current_light_status = f"{light_text} ({status})"
                 
@@ -141,15 +153,14 @@ class SettingsScreen(Screen):
             app = App.get_running_app()
             
             # Воспроизводим звук
-            if hasattr(app, 'audio_service'):
-                sound_file = app.theme_manager.get_sound("click")
-                if sound_file:
-                    app.audio_service.play(sound_file)
+            self._play_sound("click")
             
             self.current_theme = theme_name
             
             # Применяем тему
-            app.theme_manager.load_theme(theme_name, self.current_variant)
+            if hasattr(app, 'theme_manager'):
+                app.theme_manager.load(theme_name, self.current_variant)
+                event_bus.publish("theme_changed", {"theme": theme_name, "variant": self.current_variant})
             
             logger.info(f"Theme changed to: {theme_name}")
 
@@ -159,15 +170,14 @@ class SettingsScreen(Screen):
             app = App.get_running_app()
             
             # Воспроизводим звук
-            if hasattr(app, 'audio_service'):
-                sound_file = app.theme_manager.get_sound("click")
-                if sound_file:
-                    app.audio_service.play(sound_file)
+            self._play_sound("click")
             
             self.current_variant = variant
             
             # Применяем вариант темы
-            app.theme_manager.load_theme(self.current_theme, variant)
+            if hasattr(app, 'theme_manager'):
+                app.theme_manager.load(self.current_theme, variant)
+                event_bus.publish("theme_changed", {"theme": self.current_theme, "variant": variant})
             
             logger.info(f"Theme variant changed to: {variant}")
 
@@ -177,16 +187,14 @@ class SettingsScreen(Screen):
             app = App.get_running_app()
             
             # Воспроизводим звук
-            if hasattr(app, 'audio_service'):
-                sound_file = app.theme_manager.get_sound("click")
-                if sound_file:
-                    app.audio_service.play(sound_file)
+            self._play_sound("click")
             
             self.current_language = language
             
             # Применяем язык
-            app.localizer.load(language)
-            event_bus.emit("language_changed")
+            if hasattr(app, 'localizer'):
+                app.localizer.load(language)
+                event_bus.publish("language_changed", {"language": language})
             
             logger.info(f"Language changed to: {language}")
 
@@ -196,22 +204,15 @@ class SettingsScreen(Screen):
         
         if not self.light_sensor_available:
             # Воспроизводим звук ошибки
-            if hasattr(app, 'audio_service'):
-                sound_file = app.theme_manager.get_sound("error")
-                if sound_file:
-                    app.audio_service.play(sound_file)
-            
+            self._play_sound("error")
             logger.warning("Cannot toggle auto theme - sensor not available")
             return
         
         self.auto_theme_enabled = not self.auto_theme_enabled
         
         # Воспроизводим звук
-        if hasattr(app, 'audio_service'):
-            sound_name = "confirm" if self.auto_theme_enabled else "click"
-            sound_file = app.theme_manager.get_sound(sound_name)
-            if sound_file:
-                app.audio_service.play(sound_file)
+        sound_name = "confirm" if self.auto_theme_enabled else "click"
+        self._play_sound(sound_name)
         
         # Обновляем кнопку в интерфейсе
         if hasattr(self, 'ids') and 'auto_theme_button' in self.ids:
@@ -245,13 +246,12 @@ class SettingsScreen(Screen):
             test_variant = "dark" if self.current_variant == "light" else "light"
             
             # Воспроизводим звук
-            if hasattr(app, 'audio_service'):
-                sound_file = app.theme_manager.get_sound("confirm")
-                if sound_file:
-                    app.audio_service.play(sound_file)
+            self._play_sound("confirm")
             
             # Применяем тест
-            app.theme_manager.load_theme(self.current_theme, test_variant)
+            if hasattr(app, 'theme_manager'):
+                app.theme_manager.load(self.current_theme, test_variant)
+                event_bus.publish("theme_changed", {"theme": self.current_theme, "variant": test_variant})
             
             # Возвращаем обратно через 3 секунды
             Clock.schedule_once(lambda dt: self._restore_theme(), 3.0)
@@ -261,21 +261,26 @@ class SettingsScreen(Screen):
         except Exception as e:
             logger.error(f"Error in theme test: {e}")
             # Воспроизводим звук ошибки
-            if hasattr(app, 'audio_service'):
-                sound_file = app.theme_manager.get_sound("error")
-                if sound_file:
-                    app.audio_service.play(sound_file)
+            self._play_sound("error")
 
     def _restore_theme(self):
         """Восстановление исходной темы после теста"""
         app = App.get_running_app()
-        app.theme_manager.load_theme(self.current_theme, self.current_variant)
+        if hasattr(app, 'theme_manager'):
+            app.theme_manager.load(self.current_theme, self.current_variant)
+            event_bus.publish("theme_changed", {"theme": self.current_theme, "variant": self.current_variant})
         logger.info(f"Theme restored to: {self.current_theme}/{self.current_variant}")
 
     def save_all_settings(self):
         """Сохранение всех настроек"""
         try:
             app = App.get_running_app()
+            if not hasattr(app, 'user_config'):
+                self._play_sound("error")
+                logger.error("UserConfig not available")
+                return
+                
+            user_config = app.user_config
             
             # Собираем данные из полей ввода
             if hasattr(self, 'ids'):
@@ -308,21 +313,14 @@ class SettingsScreen(Screen):
             user_config.set("light_sensor_threshold", int(self.light_sensor_threshold))
             
             # Воспроизводим звук успеха
-            if hasattr(app, 'audio_service'):
-                sound_file = app.theme_manager.get_sound("confirm")
-                if sound_file:
-                    app.audio_service.play(sound_file)
+            self._play_sound("confirm")
             
             logger.info("All settings saved successfully")
             
         except Exception as e:
             logger.error(f"Error saving settings: {e}")
             # Воспроизводим звук ошибки
-            app = App.get_running_app()
-            if hasattr(app, 'audio_service'):
-                sound_file = app.theme_manager.get_sound("error")
-                if sound_file:
-                    app.audio_service.play(sound_file)
+            self._play_sound("error")
 
     def refresh_theme(self, *args):
         """Обновление темы для всех элементов"""
@@ -338,7 +336,8 @@ class SettingsScreen(Screen):
             "birthday_label", "auto_theme_label", "threshold_label", "sensor_status_label",
             "theme_spinner", "variant_spinner", "language_spinner", 
             "username_input", "birth_day_input", "birth_month_input", "birth_year_input",
-            "auto_theme_button", "test_button", "save_button"
+            "auto_theme_button", "save_button",
+            "theme_section_label", "language_section_label", "user_section_label", "auto_theme_section_label"
         ]
         
         for widget_id in widgets_to_update:
@@ -347,12 +346,22 @@ class SettingsScreen(Screen):
                 
                 # Обновляем шрифт
                 if hasattr(widget, 'font_name'):
-                    widget.font_name = tm.get_font("main")
+                    if "section" in widget_id:
+                        widget.font_name = tm.get_font("title")
+                    else:
+                        widget.font_name = tm.get_font("main")
                     
                 # Обновляем цвет текста
                 if hasattr(widget, 'color'):
-                    if "label" in widget_id:
-                        widget.color = tm.get_rgba("text")
+                    if "section" in widget_id:
+                        widget.color = tm.get_rgba("primary")
+                    elif "label" in widget_id:
+                        if widget_id == "sensor_status_label":
+                            widget.color = tm.get_rgba("text_secondary")
+                        else:
+                            widget.color = tm.get_rgba("text")
+                    elif widget_id == "save_button":
+                        widget.color = tm.get_rgba("primary")
                     else:
                         widget.color = tm.get_rgba("text")
                 
@@ -361,12 +370,11 @@ class SettingsScreen(Screen):
                     widget.background_normal = tm.get_image("button_bg")
                     widget.background_down = tm.get_image("button_bg_active")
 
-        # Обновляем спиннеры
-        for spinner_id in ["theme_spinner", "variant_spinner", "language_spinner"]:
-            if hasattr(self, 'ids') and spinner_id in self.ids:
-                spinner = self.ids[spinner_id]
-                spinner.background_normal = tm.get_image("button_bg")
-                spinner.background_down = tm.get_image("button_bg_active")
+        # Обновляем состояние кнопки автотемы
+        if hasattr(self, 'ids') and 'auto_theme_button' in self.ids:
+            self.ids.auto_theme_button.text = "ON" if self.auto_theme_enabled else "OFF"
+            if hasattr(self.ids.auto_theme_button, 'color'):
+                self.ids.auto_theme_button.color = tm.get_rgba("primary") if self.auto_theme_enabled else tm.get_rgba("text_secondary")
 
     def refresh_text(self, *args):
         """Обновление локализованного текста"""
@@ -376,9 +384,13 @@ class SettingsScreen(Screen):
             
         # Обновляем все локализованные тексты
         if hasattr(self, 'ids'):
-            if 'theme_label' in self.ids:
-                self.ids.theme_label.text = app.localizer.t("settings_theme")
-            if 'language_label' in self.ids:
-                self.ids.language_label.text = app.localizer.t("settings_language")
-            if 'save_button' in self.ids:
-                self.ids.save_button.text = app.localizer.t("save")
+            # Основные лейблы
+            labels_map = {
+                'theme_label': ('settings_theme', 'Theme'),
+                'language_label': ('settings_language', 'Language'),
+                'save_button': ('save', 'Save Settings')
+            }
+            
+            for widget_id, (key, default) in labels_map.items():
+                if widget_id in self.ids:
+                    self.ids[widget_id].text = app.localizer.tr(key, default)

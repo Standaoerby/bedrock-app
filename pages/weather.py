@@ -16,22 +16,21 @@ class DayForecastItem(BoxLayout):
         super().__init__(**kwargs)
         self.orientation = "horizontal"
         self.size_hint_y = None
-        self.height = dp(32)  # Уменьшено с dp(48)
+        self.height = dp(32)
         self.spacing = dp(8)
-        self.padding = [dp(8), dp(2)]  # Уменьшен вертикальный отступ
+        self.padding = [dp(8), dp(2)]
         
-        # Получаем приложение для доступа к теме
         app = App.get_running_app()
-        tm = app.theme_manager
+        tm = app.theme_manager if hasattr(app, 'theme_manager') else None
         
         # День недели
         day_name = day_data.get("day", "")
         is_weekend = day_name in ["Sat", "Sun"]
-        day_color = tm.get_rgba("primary") if is_weekend else tm.get_rgba("text")
+        day_color = tm.get_rgba("primary") if (tm and is_weekend) else (tm.get_rgba("text") if tm else [1, 1, 1, 1])
         
         day_label = Label(
             text=day_name,
-            font_name=tm.get_font("main"),
+            font_name=tm.get_font("main") if tm else "",
             font_size="14sp",
             halign="left",
             valign="middle",
@@ -45,12 +44,12 @@ class DayForecastItem(BoxLayout):
         temp_max = day_data.get("temp_max", 0)
         temp_label = Label(
             text=f"{temp_max:.1f}°C",
-            font_name=tm.get_font("main"),
+            font_name=tm.get_font("main") if tm else "",
             font_size="14sp",
             halign="center",
             valign="middle",
             size_hint_x=0.2,
-            color=tm.get_rgba("primary"),
+            color=tm.get_rgba("primary") if tm else [1, 1, 1, 1],
             text_size=(None, None)
         )
         temp_label.bind(size=temp_label.setter('text_size'))
@@ -62,12 +61,12 @@ class DayForecastItem(BoxLayout):
         
         condition_label = Label(
             text=condition,
-            font_name=tm.get_font("main"),
+            font_name=tm.get_font("main") if tm else "",
             font_size="12sp",
             halign="left",
             valign="middle",
             size_hint_x=0.45,
-            color=tm.get_rgba("text"),
+            color=tm.get_rgba("text") if tm else [1, 1, 1, 1],
             text_size=(None, None)
         )
         condition_label.bind(size=condition_label.setter('text_size'))
@@ -76,12 +75,12 @@ class DayForecastItem(BoxLayout):
         precip = day_data.get("precipitation_probability", 0)
         precip_label = Label(
             text=f"Rain: {precip}%",
-            font_name=tm.get_font("main"),
+            font_name=tm.get_font("main") if tm else "",
             font_size="12sp",
             halign="right",
             valign="middle",
             size_hint_x=0.2,
-            color=tm.get_rgba("text_secondary"),
+            color=tm.get_rgba("text_secondary") if tm else [0.7, 0.7, 0.7, 1],
             text_size=(None, None)
         )
         precip_label.bind(size=precip_label.setter('text_size'))
@@ -101,11 +100,10 @@ class WeatherScreen(Screen):
     current_condition = StringProperty("Loading...")
     current_precipitation = StringProperty("Rain: --%")
     
-    # Показания датчиков (новый упрощенный формат)
+    # Показания датчиков
     sensor_temp_humidity = StringProperty("--°C H: --%")
     sensor_co2_tvoc = StringProperty("CO2: -- ppm, TVOC: -- ppb")
     sensor_air_quality = StringProperty("Air Quality: Unknown")
-    sensor_status = StringProperty("")
     
     # Статус датчиков
     sensor_available = BooleanProperty(False)
@@ -122,12 +120,6 @@ class WeatherScreen(Screen):
         
         # События для обновлений
         self._update_events = []
-        
-        # Инициализация начальных значений
-        self.sensor_temp_humidity = "--°C H: --%"
-        self.sensor_co2_tvoc = "CO2: -- ppm, TVOC: -- ppb"
-        self.sensor_air_quality = "Air Quality: Unknown"
-        self.sensor_status = ""
 
     def on_pre_enter(self, *args):
         """Вызывается при входе на экран"""
@@ -224,17 +216,6 @@ class WeatherScreen(Screen):
             try:
                 sensors = app.sensor_service.get_readings()
                 
-                # Определяем статус датчиков
-                if not self.sensor_available:
-                    status = "[OFFLINE]"
-                elif self.using_mock_sensors:
-                    status = "[MOCK]"
-                else:
-                    status = "[REAL]"
-                
-                #self.sensor_status = status
-                
-                # Обновляем показания - объединенный формат
                 temp_value = sensors.get('temperature', 0)
                 humidity_value = sensors.get('humidity', 0)
                 co2_value = sensors.get('co2', 0)
@@ -251,13 +232,11 @@ class WeatherScreen(Screen):
                 self.sensor_temp_humidity = "Sensor error"
                 self.sensor_co2_tvoc = "Sensor error"
                 self.sensor_air_quality = "Sensor error"
-                self.sensor_status = "[ERROR]"
         else:
             # Если сервис датчиков недоступен
             self.sensor_temp_humidity = "Room: --°C, Humidity: --%"
             self.sensor_co2_tvoc = "CO2: -- ppm, TVOC: -- ppb"
             self.sensor_air_quality = "Air Quality: Unknown"
-            self.sensor_status = "[OFFLINE]"
 
     def update_weekly_forecast(self):
         """Обновление виджета недельного прогноза"""
@@ -278,19 +257,21 @@ class WeatherScreen(Screen):
                 
                 # Добавляем отступ для прокрутки если нужно
                 if len(self.weekly_forecast) < 7:
-                    padding_height = (7 - len(self.weekly_forecast)) * dp(32)  # Обновлено для новой высоты
+                    padding_height = (7 - len(self.weekly_forecast)) * dp(32)
                     padding = BoxLayout(size_hint_y=None, height=padding_height)
                     container.add_widget(padding)
             else:
                 # Нет данных прогноза
                 app = App.get_running_app()
+                tm = app.theme_manager if hasattr(app, 'theme_manager') else None
+                
                 no_data_label = Label(
                     text="No weekly forecast available",
-                    font_name=app.theme_manager.get_font("main"),
+                    font_name=tm.get_font("main") if tm else "",
                     font_size="18sp",
                     halign="center",
                     valign="center",
-                    color=app.theme_manager.get_rgba("text_secondary"),
+                    color=tm.get_rgba("text_secondary") if tm else [0.7, 0.7, 0.7, 1],
                     size_hint_y=None,
                     height=dp(80)
                 )
@@ -312,7 +293,7 @@ class WeatherScreen(Screen):
         elif temp_value < 18:
             return [0.2, 0.6, 1, 1]  # Синий для холодной погоды
         else:
-            return app.theme_manager.get_rgba("primary")  # Обычный цвет темы
+            return app.theme_manager.get_rgba("primary") if hasattr(app, 'theme_manager') else [1, 1, 1, 1]
 
     def set_temp_color(self, widget, temp_str):
         """Установка цвета температуры в зависимости от значения"""
@@ -323,7 +304,7 @@ class WeatherScreen(Screen):
         except (ValueError, IndexError):
             # Если не удается распарсить температуру, используем стандартный цвет
             app = App.get_running_app()
-            widget.color = app.theme_manager.get_rgba("text")
+            widget.color = app.theme_manager.get_rgba("text") if hasattr(app, 'theme_manager') else [1, 1, 1, 1]
 
     def refresh_theme(self, *args):
         """Обновление темы для всех элементов"""
@@ -337,7 +318,7 @@ class WeatherScreen(Screen):
         widgets_to_update = [
             "current_temp_label", "current_condition_label", "current_precipitation_label",
             "sensor_temp_humidity_label", "sensor_co2_tvoc_label", 
-            "sensor_air_quality_label", "sensor_status_label"
+            "sensor_air_quality_label"
         ]
         
         for widget_id in widgets_to_update:
@@ -356,7 +337,7 @@ class WeatherScreen(Screen):
                     elif widget_id == "sensor_temp_humidity_label":
                         # Применяем цветовую логику для температуры датчиков
                         try:
-                            temp_str = self.sensor_temp_humidity.split('°')[0]
+                            temp_str = self.sensor_temp_humidity.split('°')[0].split()[-1]
                             temp_value = float(temp_str)
                             widget.color = self.get_temperature_color(temp_value)
                         except (ValueError, IndexError):
@@ -381,8 +362,7 @@ class WeatherScreen(Screen):
         if not hasattr(app, 'localizer'):
             return
             
-        # Здесь можно добавить локализацию заголовков
-        # self.some_title = app.localizer.t("weather_title")
+        # Можно добавить локализацию заголовков
         pass
 
     def force_refresh(self):

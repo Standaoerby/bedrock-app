@@ -8,7 +8,7 @@
         padding: [dp(16), dp(16), dp(16), dp(16)]
         spacing: dp(12)
 
-        # Верхний блок: дата слева, будильник справа (увеличенный)
+        # Верхний блок: дата слева, будильник справа
         BoxLayout:
             orientation: 'horizontal'
             spacing: dp(24)
@@ -23,9 +23,9 @@
                     id: date_label
                     text: root.current_date
                     font_size: '16sp'
-                    font_name: app.theme_manager.get_font("main")
+                    font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                     padding: [dp(16), dp(0), dp(4), dp(2)]
-                    color: app.theme_manager.get_rgba("text")
+                    color: app.theme_manager.get_rgba("text") if app.theme_manager else [1, 1, 1, 1]
                     halign: 'left'
                     text_size: self.size
 
@@ -36,7 +36,7 @@
                     size_hint: None, None
                     size: dp(1), dp(1)
 
-            # Будильник справа (увеличенный)
+            # Будильник справа
             OverlayCard:
                 size_hint_x: 0.30
                 padding: [0]
@@ -52,21 +52,23 @@
                             id: alarm_time_label
                             text: root.current_alarm_time
                             font_size: '24sp'
-                            font_name: app.theme_manager.get_font("main")
+                            font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             padding: [dp(8), dp(0), dp(4), dp(8)]
                             size_hint_y: 0.7
+                            color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1, 1, 1, 1]
                             halign: 'center'
                             valign: 'middle'
                             text_size: self.size
 
                     Button:
                         id: alarm_toggle_btn
-                        text: root.alarm_status_text   # Локализуем в Python!
+                        text: root.alarm_status_text
                         font_size: '16sp'
-                        font_name: app.theme_manager.get_font("main")
+                        font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                         padding: [dp(0)]
-                        background_normal: app.theme_manager.get_image("button_bg")
-                        background_down: app.theme_manager.get_image("button_bg_active")
+                        color: app.theme_manager.get_rgba("text") if app.theme_manager else [1, 1, 1, 1]
+                        background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
+                        background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
                         size_hint_x: 0.35
                         on_release: root.toggle_alarm()
 
@@ -80,12 +82,12 @@
                 size_hint: None, None
                 size: dp(400), dp(180)
 
-                # Тени часов
+                # Тени часов (многослойные для эффекта глубины)
                 Label:
                     id: clock_shadow3
                     text: root.clock_time
                     font_size: '144sp'
-                    font_name: app.theme_manager.get_font("main")
+                    font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                     color: (0, 0, 0, 0.1)
                     size_hint: None, None
                     size: self.texture_size
@@ -97,7 +99,7 @@
                     id: clock_shadow2
                     text: root.clock_time
                     font_size: '144sp'
-                    font_name: app.theme_manager.get_font("main")
+                    font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                     color: (0, 0, 0, 0.2)
                     size_hint: None, None
                     size: self.texture_size
@@ -109,7 +111,7 @@
                     id: clock_shadow1
                     text: root.clock_time
                     font_size: '144sp'
-                    font_name: app.theme_manager.get_font("main")
+                    font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                     color: (0, 0, 0, 0.3)
                     size_hint: None, None
                     size: self.texture_size
@@ -122,7 +124,7 @@
                     id: clock_label
                     text: root.clock_time
                     font_size: '144sp'
-                    font_name: app.theme_manager.get_font("main")
+                    font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                     color: (1, 1, 1, 1)
                     size_hint: None, None
                     size: self.texture_size
@@ -144,8 +146,8 @@
                     id: weather_now_label
                     text: root.weather_now_str
                     font_size: '16sp'
-                    font_name: app.theme_manager.get_font("main")
-                    color: app.theme_manager.get_rgba("primary")
+                    font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
+                    color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1, 1, 1, 1]
                     size_hint_x: 0.455
                     halign: 'center'
                     valign: 'middle'
@@ -156,8 +158,8 @@
                     id: weather_trend_label
                     text: root.weather_trend_arrow
                     font_size: '20sp'
-                    font_name: app.theme_manager.get_font("main")
-                    color: app.theme_manager.get_rgba("primary")
+                    font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
+                    color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1, 1, 1, 1]
                     size_hint_x: 0.1
                     halign: 'center'
                     valign: 'middle'
@@ -168,8 +170,8 @@
                     id: weather_5h_label
                     text: root.weather_5h_str
                     font_size: '16sp'
-                    font_name: app.theme_manager.get_font("main")
-                    color: app.theme_manager.get_rgba("text")
+                    font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
+                    color: app.theme_manager.get_rgba("text") if app.theme_manager else [1, 1, 1, 1]
                     size_hint_x: 0.45
                     halign: 'center'
                     valign: 'middle'
@@ -183,18 +185,19 @@
                 orientation: 'horizontal'
                 padding: [dp(16), dp(4)]
                 spacing: dp(12)
+                
                 Widget:
                     id: notification_container
 
                     Label:
                         id: notification_text_label
-                        text: root.notification_text  # Тоже через python, не прямо текстом!
+                        text: root.notification_text
                         font_size: '16sp'
-                        font_name: app.theme_manager.get_font("main")
+                        font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
+                        color: app.theme_manager.get_rgba("text") if app.theme_manager else [1, 1, 1, 1]
                         size_hint: None, None
                         size: self.texture_size
                         x: self.parent.x + root.notification_scroll_x
                         y: self.parent.center_y - self.height/2
                         halign: 'left'
                         valign: 'middle'
-                        clipping: True

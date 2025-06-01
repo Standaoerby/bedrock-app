@@ -1,7 +1,7 @@
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.widget import Widget
-from kivy.properties import NumericProperty, ColorProperty, StringProperty, BooleanProperty
+from kivy.properties import NumericProperty, ColorProperty, StringProperty
 from kivy.graphics import Color, Rectangle
 from kivy.clock import Clock
 from kivy.app import App
@@ -70,14 +70,6 @@ class PigsScreen(Screen):
         
         # События для обновлений
         self._update_events = []
-        
-        # Инициализация значений по умолчанию
-        self.water_value = 75
-        self.food_value = 75
-        self.clean_value = 75
-        self.overall_status = 75
-        self.status_text = "Loading..."
-        self.current_image = "pigs_1.png"
 
     def on_pre_enter(self, *args):
         """Вызывается при входе на экран"""
@@ -107,6 +99,8 @@ class PigsScreen(Screen):
     def update_all_data(self, *args):
         """Полное обновление всех данных"""
         app = App.get_running_app()
+        
+        # Получаем данные от сервиса
         if hasattr(app, 'pigs_service') and app.pigs_service:
             try:
                 # Получаем значения от сервиса
@@ -134,32 +128,49 @@ class PigsScreen(Screen):
             except Exception as e:
                 logger.error(f"Error updating pigs data: {e}")
                 # Устанавливаем значения по умолчанию
-                self.water_value = 75
-                self.food_value = 75
-                self.clean_value = 75
-                self.overall_status = 75
-                self.status_text = "Mock data - service error"
+                self._set_default_values()
         else:
             # Если сервис недоступен, используем тестовые данные
             logger.warning("PigsService not available, using mock data")
-            self.water_value = 75
-            self.food_value = 60
-            self.clean_value = 85
-            self.overall_status = 73
-            self.status_text = "Mock data - service unavailable"
+            self._set_default_values()
+
+    def _set_default_values(self):
+        """Установка значений по умолчанию"""
+        self.water_value = 75
+        self.food_value = 60
+        self.clean_value = 85
+        self.overall_status = 73
+        self.status_text = "Mock data"
+        self.update_pig_image()
+        self.update_progress_bars()
 
     def update_status_text(self):
         """Обновление текста статуса на основе общего процента"""
-        if self.overall_status >= 90:
-            self.status_text = "Perfect! 🐷✨"
-        elif self.overall_status >= 75:
-            self.status_text = "Happy 🐷😊"
-        elif self.overall_status >= 50:
-            self.status_text = "OK 🐷😐"
-        elif self.overall_status >= 25:
-            self.status_text = "Needs care 🐷😟"
+        app = App.get_running_app()
+        
+        if hasattr(app, 'localizer'):
+            if self.overall_status >= 90:
+                self.status_text = app.localizer.tr("pigs_status_perfect", "Perfect! 🐷✨")
+            elif self.overall_status >= 75:
+                self.status_text = app.localizer.tr("pigs_status_happy", "Happy 🐷😊")
+            elif self.overall_status >= 50:
+                self.status_text = app.localizer.tr("pigs_status_ok", "OK 🐷😐")
+            elif self.overall_status >= 25:
+                self.status_text = app.localizer.tr("pigs_status_needs_care", "Needs care 🐷😟")
+            else:
+                self.status_text = app.localizer.tr("pigs_status_critical", "Critical! 🐷😰")
         else:
-            self.status_text = "Critical! 🐷😰"
+            # Fallback без локализации
+            if self.overall_status >= 90:
+                self.status_text = "Perfect! 🐷✨"
+            elif self.overall_status >= 75:
+                self.status_text = "Happy 🐷😊"
+            elif self.overall_status >= 50:
+                self.status_text = "OK 🐷😐"
+            elif self.overall_status >= 25:
+                self.status_text = "Needs care 🐷😟"
+            else:
+                self.status_text = "Critical! 🐷😰"
 
     def update_pig_image(self):
         """Обновление изображения питомцев на основе статуса"""
@@ -203,7 +214,7 @@ class PigsScreen(Screen):
             app = App.get_running_app()
             
             # Воспроизводим звук подтверждения
-            if hasattr(app, 'audio_service'):
+            if hasattr(app, 'audio_service') and hasattr(app, 'theme_manager'):
                 sound_file = app.theme_manager.get_sound("confirm")
                 if sound_file:
                     app.audio_service.play(sound_file)
@@ -233,13 +244,13 @@ class PigsScreen(Screen):
                 self.update_progress_bars()
             
             # Немедленно обновляем данные из сервиса
-            self.update_all_data()
+            Clock.schedule_once(lambda dt: self.update_all_data(), 0.1)
             
         except Exception as e:
             logger.error(f"Error resetting {bar_type} bar: {e}")
             # Воспроизводим звук ошибки
             app = App.get_running_app()
-            if hasattr(app, 'audio_service'):
+            if hasattr(app, 'audio_service') and hasattr(app, 'theme_manager'):
                 sound_file = app.theme_manager.get_sound("error")
                 if sound_file:
                     app.audio_service.play(sound_file)
@@ -296,24 +307,16 @@ class PigsScreen(Screen):
         # Обновляем локализованные тексты
         if hasattr(self, 'ids'):
             if 'water_label' in self.ids:
-                self.ids.water_label.text = app.localizer.t("water")
+                self.ids.water_label.text = app.localizer.tr("water", "Water")
             if 'food_label' in self.ids:
-                self.ids.food_label.text = app.localizer.t("food")
+                self.ids.food_label.text = app.localizer.tr("food", "Food")
             if 'clean_label' in self.ids:
-                self.ids.clean_label.text = app.localizer.t("cleaning")
+                self.ids.clean_label.text = app.localizer.tr("cleaning", "Cleaning")
             
             # Обновляем кнопки
             for btn_id in ['water_button', 'food_button', 'clean_button']:
                 if btn_id in self.ids:
-                    self.ids[btn_id].text = app.localizer.t("done")
-
-    def get_bar_color(self, value):
-        """Получение цвета прогресс бара в зависимости от значения"""
-        if value > 75:
-            return [0.2, 0.8, 0.2, 0.8]  # Зелёный
-        elif value > 50:
-            return [1, 0.8, 0.2, 0.8]   # Жёлтый
-        elif value > 25:
-            return [1, 0.6, 0.2, 0.8]   # Оранжевый
-        else:
-            return [1, 0.2, 0.2, 0.8]   # Красный
+                    self.ids[btn_id].text = app.localizer.tr("done", "Done")
+        
+        # Обновляем текст статуса
+        self.update_status_text()
