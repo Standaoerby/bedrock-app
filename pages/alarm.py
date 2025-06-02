@@ -822,7 +822,7 @@ class AlarmScreen(Screen):
             self._sound_playing = False
 
     def refresh_theme(self, *args):
-        """Обновление темы для всех элементов"""
+        """Обновление темы для всех элементов - ПОЛНАЯ ВЕРСИЯ"""
         if not self._initialized:
             return
             
@@ -831,26 +831,100 @@ class AlarmScreen(Screen):
             return
         
         try:
-            # Список виджетов для обновления темы
-            widgets = [
+            # ИСПРАВЛЕНО: Полный список всех виджетов включая кнопки времени
+            main_widgets = [
                 "hour_label", "minute_label", "active_button", "fadein_button", 
-                "play_button", "ringtone_button"
+                "play_button", "ringtone_button",
+                # ДОБАВЛЕНО: Кнопки изменения времени
+                "hour_plus_button", "hour_minus_button", 
+                "minute_plus_button", "minute_minus_button",
+                # ДОБАВЛЕНО: Разделитель времени
+                "time_separator_label"
             ]
             
-            for widget_id in widgets:
+            # Обновляем основные виджеты
+            for widget_id in main_widgets:
                 if hasattr(self, 'ids') and widget_id in self.ids:
                     widget = self.ids[widget_id]
                     
+                    # Обновляем шрифт
                     if hasattr(widget, 'font_name'):
                         widget.font_name = tm.get_font("main")
+                    
+                    # Обновляем цвет текста
                     if hasattr(widget, 'color'):
-                        widget.color = tm.get_rgba("primary") if widget_id in ["hour_label", "minute_label"] else tm.get_rgba("text")
+                        if widget_id in ["hour_label", "minute_label", "time_separator_label"]:
+                            # Время и разделитель - основной цвет
+                            widget.color = tm.get_rgba("primary")
+                        elif widget_id in ["hour_plus_button", "hour_minus_button", 
+                                         "minute_plus_button", "minute_minus_button"]:
+                            # Кнопки времени - основной цвет
+                            widget.color = tm.get_rgba("primary")
+                        elif widget_id == "active_button":
+                            # Кнопка активации - зависит от состояния
+                            widget.color = tm.get_rgba("primary") if self.alarm_active else tm.get_rgba("text_secondary")
+                        elif widget_id == "fadein_button":
+                            # Кнопка fadein - зависит от состояния
+                            widget.color = tm.get_rgba("primary") if self.alarm_fadein else tm.get_rgba("text_secondary")
+                        elif widget_id == "play_button":
+                            # Кнопка воспроизведения - основной цвет
+                            widget.color = tm.get_rgba("primary")
+                        else:
+                            # Остальные виджеты - стандартный цвет текста
+                            widget.color = tm.get_rgba("text")
+                    
+                    # Обновляем фон кнопок
                     if hasattr(widget, 'background_normal'):
                         widget.background_normal = tm.get_image("button_bg")
                         widget.background_down = tm.get_image("button_bg_active")
                         
+            # ДОБАВЛЕНО: Обновляем кнопки дней недели
+            day_buttons = [
+                "repeat_mon", "repeat_tue", "repeat_wed", "repeat_thu", 
+                "repeat_fri", "repeat_sat", "repeat_sun"
+            ]
+            
+            for btn_id in day_buttons:
+                if hasattr(self, 'ids') and btn_id in self.ids:
+                    btn = self.ids[btn_id]
+                    day = btn_id.split("_")[1].capitalize()
+                    is_active = day in self.alarm_repeat
+                    
+                    if hasattr(btn, 'font_name'):
+                        btn.font_name = tm.get_font("main")
+                    if hasattr(btn, 'color'):
+                        btn.color = tm.get_rgba("primary") if is_active else tm.get_rgba("text_secondary")
+                    if hasattr(btn, 'background_normal'):
+                        btn.background_normal = tm.get_image("button_bg")
+                        btn.background_down = tm.get_image("button_bg_active")
+
+            # ДОБАВЛЕНО: Обновляем дополнительные лейблы
+            additional_labels = [
+                "enable_label",  # Если есть лейбл Enable
+            ]
+            
+            for label_id in additional_labels:
+                if hasattr(self, 'ids') and label_id in self.ids:
+                    label = self.ids[label_id]
+                    if hasattr(label, 'font_name'):
+                        label.font_name = tm.get_font("main")
+                    if hasattr(label, 'color'):
+                        label.color = tm.get_rgba("text")
+
+            # ДОБАВЛЕНО: Обновляем состояние кнопки активации с правильным текстом
+            if hasattr(self, 'ids') and 'active_button' in self.ids:
+                self.ids.active_button.text = "ON" if self.alarm_active else "OFF"
+                
+            # ДОБАВЛЕНО: Обновляем состояние кнопки fadein с правильным текстом
+            if hasattr(self, 'ids') and 'fadein_button' in self.ids:
+                self.ids.fadein_button.text = "ON" if self.alarm_fadein else "OFF"
+                        
+            logger.debug("✅ Alarm screen theme refreshed successfully")
+                        
         except Exception as e:
-            logger.error(f"Error refreshing theme: {e}")
+            logger.error(f"❌ Error refreshing alarm theme: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
 
     def refresh_text(self, *args):
         """Обновление локализованного текста"""

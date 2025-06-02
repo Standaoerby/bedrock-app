@@ -1,7 +1,7 @@
 {
   "current": {
-    "time": "2025-06-02T22:30",
-    "temperature": 14.6,
+    "time": "2025-06-02T22:45",
+    "temperature": 14.2,
     "condition": "Clear Sky",
     "precipitation_probability": 0
   },
@@ -38,25 +38,25 @@
     {
       "day": "Thu",
       "date": "2025-06-05",
-      "temp_max": 17.5,
-      "temp_min": 12.0,
-      "condition": "Slight Rain Showers",
+      "temp_max": 19.1,
+      "temp_min": 10.6,
+      "condition": "Slight Rain",
       "precipitation_probability": 63
     },
     {
       "day": "Fri",
       "date": "2025-06-06",
-      "temp_max": 18.0,
-      "temp_min": 12.4,
-      "condition": "Slight Rain Showers",
+      "temp_max": 19.4,
+      "temp_min": 12.2,
+      "condition": "Slight Rain",
       "precipitation_probability": 58
     },
     {
       "day": "Sat",
       "date": "2025-06-07",
-      "temp_max": 16.9,
-      "temp_min": 12.2,
-      "condition": "Slight Rain Showers",
+      "temp_max": 17.2,
+      "temp_min": 12.1,
+      "condition": "Thunderstorm",
       "precipitation_probability": 78
     },
     {
@@ -68,5 +68,5 @@
       "precipitation_probability": 62
     }
   ],
-  "updated": "2025-06-02T22:41:47.061536"
+  "updated": "2025-06-02T22:48:53.262709"
 }

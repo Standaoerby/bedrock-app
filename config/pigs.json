@@ -32,7 +32,7 @@
     "food": {
       "label": "Food",
       "max_hours": 6,
-      "last_reset": "2025-06-02T21:08:30.798825",
+      "last_reset": "2025-06-02T22:49:01.246337",
       "description": "Hay, pellets, and vegetables",
       "icon": "🥕",
       "color": [

@@ -1,7 +1,7 @@
 {
   "alarm": {
     "time": "21:34",
-    "enabled": false,
+    "enabled": true,
     "repeat": [
       "Mon",
       "Tue",

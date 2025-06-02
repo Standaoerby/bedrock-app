@@ -32,6 +32,7 @@
                         size_hint_x: 0.4
 
                         Button:
+                            id: hour_plus_button
                             text: "+"
                             font_size: "24sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
@@ -59,6 +60,7 @@
                             width: self.parent.width / 2
 
                         Button:
+                            id: hour_minus_button
                             text: "-"
                             font_size: "24sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
@@ -74,6 +76,7 @@
 
                     # Разделитель
                     Label:
+                        id: time_separator_label
                         text: ":"
                         font_size: "40sp"
                         font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
@@ -90,6 +93,7 @@
                         size_hint_x: 0.4
 
                         Button:
+                            id: minute_plus_button
                             text: "+"
                             font_size: "24sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
@@ -114,6 +118,7 @@
                             text_size: self.size
 
                         Button:
+                            id: minute_minus_button
                             text: "-"
                             font_size: "24sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
