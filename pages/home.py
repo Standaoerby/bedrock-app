@@ -232,6 +232,10 @@ class HomeScreen(Screen):
                 
             label = self.ids.notification_text_label
             
+            # Проверяем, что label и container корректно инициализированы
+            if not container.width or not label.texture_size:
+                return
+            
             # Если текст помещается в контейнер, не прокручиваем
             if label.texture_size[0] <= container.width:
                 self.notification_scroll_x = 0
@@ -292,18 +296,22 @@ class HomeScreen(Screen):
             "date_label", "alarm_time_label", "alarm_toggle_btn", 
             "clock_label", "clock_shadow1", "clock_shadow2", "clock_shadow3",
             "weather_now_label", "weather_trend_label", "weather_5h_label",
-            "notification_text_label"
+            "notification_text_label"  # Добавлен notification_text_label
         ]
+        
+        # Получаем путь к шрифту один раз
+        font_path = tm.get_font("main")
         
         for widget_id in widgets_to_update:
             if hasattr(self, 'ids') and widget_id in self.ids:
                 widget = self.ids[widget_id]
                 
-                # Обновляем шрифт
-                if hasattr(widget, 'font_name'):
-                    font_path = tm.get_font("main")
-                    if font_path:
+                # Обновляем шрифт только если путь корректный
+                if hasattr(widget, 'font_name') and font_path:
+                    try:
                         widget.font_name = font_path
+                    except Exception as e:
+                        logger.warning(f"Failed to set font for {widget_id}: {e}")
                     
                 # Обновляем цвет текста
                 if hasattr(widget, 'color'):
@@ -335,3 +343,11 @@ class HomeScreen(Screen):
         self.update_time()
         self.update_alarm_status() 
         self.update_notifications()
+
+    def on_kv_post(self, base_widget):
+        """Вызывается после загрузки KV файла"""
+        try:
+            # Применяем тему после загрузки KV
+            Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
+        except Exception as e:
+            logger.error(f"Error in HomeScreen on_kv_post: {e}")
