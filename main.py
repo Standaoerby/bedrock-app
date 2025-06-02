@@ -190,12 +190,16 @@ class BedrockApp(App):
                 self._startup_complete = True
                 
                 # Воспроизводим звук запуска
-                if hasattr(self, 'audio_service') and self.audio_service:
-                    success = self.audio_service.play_startup_sound()
-                    if success:
-                        logger.info("Startup sound played successfully")
-                    else:
-                        logger.warning("Failed to play startup sound")
+                if hasattr(self, 'audio_service') and self.audio_service and hasattr(self, 'theme_manager') and self.theme_manager:
+                    try:
+                        startup_sound = self.theme_manager.get_sound("startup")
+                        if startup_sound:
+                            self.audio_service.play(startup_sound)
+                            logger.info("Startup sound played successfully")
+                        else:
+                            logger.warning("Startup sound file not found")
+                    except Exception as e:
+                        logger.error(f"Error playing startup sound: {e}")
                 
                 # Добавляем приветственное уведомление
                 if hasattr(self, 'notification_service') and self.notification_service:

@@ -61,8 +61,8 @@ class TopMenu(BoxLayout):
             if hasattr(app, 'audio_service') and app.audio_service and tm:
                 sound_file = tm.get_sound("click")
                 if sound_file:
-                    # Используем низкий приоритет чтобы не мешать другим звукам
-                    app.audio_service.play(sound_file, priority='low')
+                    # Remove the priority parameter since AudioService doesn't support it
+                    app.audio_service.play(sound_file)
         except Exception as e:
             logger.error(f"Error playing click sound: {e}")
 
