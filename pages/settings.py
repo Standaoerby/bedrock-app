@@ -201,35 +201,218 @@ class SettingsScreen(Screen):
         """Проверка доступности датчика освещения"""
         app = App.get_running_app()
         try:
-            if hasattr(app, 'sensor_service') and app.sensor_service:
+            # ОБНОВЛЕНО: Проверяем через AutoThemeService
+            if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
+                auto_status = app.auto_theme_service.get_status()
+                self.light_sensor_available = auto_status.get('sensor_available', False)
+                logger.info(f"Light sensor available (via AutoTheme): {self.light_sensor_available}")
+            elif hasattr(app, 'sensor_service') and app.sensor_service:
+                # Fallback к SensorService
                 self.light_sensor_available = app.sensor_service.sensor_available
-                logger.info(f"Light sensor available: {self.light_sensor_available}")
+                logger.info(f"Light sensor available (via Sensor): {self.light_sensor_available}")
             else:
                 self.light_sensor_available = False
-                logger.info("Sensor service not available")
+                logger.info("Sensor services not available")
         except Exception as e:
             logger.error(f"Error checking sensor availability: {e}")
             self.light_sensor_available = False
+
+    def toggle_auto_theme(self):
+        """Переключение автоматической смены темы"""
+        app = App.get_running_app()
+        
+        if not self.light_sensor_available:
+            # Воспроизводим звук ошибки
+            self._play_sound("error")
+            logger.warning("Cannot toggle auto theme - sensor not available")
+            return
+        
+        # Переключаем состояние
+        self.auto_theme_enabled = not self.auto_theme_enabled
+        
+        # Воспроизводим звук
+        sound_name = "confirm" if self.auto_theme_enabled else "click"
+        self._play_sound(sound_name)
+        
+        # ДОБАВЛЕНО: Интеграция с AutoThemeService
+        if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
+            try:
+                if self.auto_theme_enabled:
+                    # Калибруем датчик с текущими настройками
+                    app.auto_theme_service.calibrate_sensor(int(self.light_sensor_threshold))
+                    
+                    # Делаем первичную проверку
+                    app.auto_theme_service.force_check()
+                    logger.info("Auto-theme enabled and calibrated")
+                else:
+                    logger.info("Auto-theme disabled")
+            except Exception as e:
+                logger.error(f"Error updating auto-theme service: {e}")
+        
+        # Обновляем UI
+        Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
+        
+        logger.info(f"Auto theme toggled: {self.auto_theme_enabled}")
+
+    def on_threshold_change(self, value):
+        """Изменение порога датчика освещения"""
+        try:
+            new_threshold = max(1, min(int(value), 5))
+            if new_threshold != self.light_sensor_threshold:
+                self.light_sensor_threshold = new_threshold
+                
+                app = App.get_running_app()
+                
+                # ДОБАВЛЕНО: Обновляем AutoThemeService
+                if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
+                    app.auto_theme_service.calibrate_sensor(new_threshold)
+                    logger.info(f"Auto-theme threshold updated to {new_threshold}s")
+                
+                # Обновляем калибровку датчика в SensorService
+                if hasattr(app, 'sensor_service') and app.sensor_service:
+                    app.sensor_service.calibrate_light_sensor(new_threshold)
+                
+                logger.info(f"Light sensor threshold changed to: {new_threshold}")
+                
+        except Exception as e:
+            logger.error(f"Error changing threshold: {e}")
+    # ОБНОВЛЕННЫЙ: Метод для тестирования автотемы
+    def test_auto_theme(self):
+        """Тестирование автоматической темы с полным обновлением UI"""
+        try:
+            app = App.get_running_app()
+            
+            if not self.auto_theme_enabled:
+                logger.info("Auto-theme is disabled, cannot test")
+                self._play_sound("error")
+                return
+                
+            if not self.light_sensor_available:
+                logger.info("Light sensor not available, cannot test")
+                self._play_sound("error")
+                return
+            
+            if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
+                logger.info("🧪 Testing auto-theme with force check...")
+                
+                # Принудительно обновляем показания датчика
+                if hasattr(app, 'sensor_service') and app.sensor_service:
+                    app.sensor_service.update_readings()
+                
+                # Выполняем проверку
+                success = app.auto_theme_service.force_check()
+                
+                if success:
+                    self._play_sound("confirm")
+                    logger.info("✅ Auto-theme test - theme switched")
+                else:
+                    self._play_sound("notify")  
+                    logger.info("ℹ️ Auto-theme test - no switch needed")
+                
+                # Принудительно обновляем статус датчика через 500мс
+                Clock.schedule_once(lambda dt: self.update_sensor_status(), 0.5)
+                
+            else:
+                logger.error("AutoThemeService not available")
+                self._play_sound("error")
+                
+        except Exception as e:
+            logger.error(f"Error testing auto-theme: {e}")
+            self._play_sound("error")
+        # ДОБАВЛЕНО: Метод для ручного переключения темы (для тестирования)
+    def manual_theme_switch(self):
+        """Ручное переключение темы для тестирования"""
+        try:
+            app = App.get_running_app()
+            
+            if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
+                logger.info("🔄 Manual theme switch test...")
+                success = app.auto_theme_service.manual_theme_switch()
+                
+                if success:
+                    self._play_sound("confirm")
+                    logger.info("✅ Manual theme switch completed")
+                    
+                    # Обновляем UI через 500мс
+                    Clock.schedule_once(lambda dt: self.refresh_theme(), 0.5)
+                else:
+                    self._play_sound("error")
+                    logger.error("❌ Manual theme switch failed")
+            else:
+                logger.error("AutoThemeService not available")
+                self._play_sound("error")
+                
+        except Exception as e:
+            logger.error(f"Error in manual theme switch: {e}")
+            self._play_sound("error")
+
+    # ДОБАВЛЕНО: Метод для принудительного обновления всего UI
+    def force_ui_refresh(self):
+        """Принудительное обновление всего интерфейса"""
+        try:
+            app = App.get_running_app()
+            
+            logger.info("🔄 Force refreshing entire UI...")
+            self._play_sound("click")
+            
+            # Обновляем через AutoThemeService если доступен
+            if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
+                app.auto_theme_service._force_ui_refresh()
+            
+            # Дополнительно обновляем текущий экран
+            Clock.schedule_once(lambda dt: self.refresh_theme(), 0.2)
+            Clock.schedule_once(lambda dt: self.update_sensor_status(), 0.4)
+            
+            logger.info("✅ UI refresh triggered")
+                
+        except Exception as e:
+            logger.error(f"Error in force UI refresh: {e}")
+            self._play_sound("error")
 
     def update_sensor_status(self):
         """Обновление статуса датчика освещения"""
         app = App.get_running_app()
         try:
-            if hasattr(app, 'sensor_service') and app.sensor_service:
+            # ОБНОВЛЕНО: Получаем более детальный статус
+            if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
+                auto_status = app.auto_theme_service.get_status()
+                
+                self.light_sensor_available = auto_status.get('sensor_available', False)
+                using_mock = auto_status.get('using_mock', True)
+                light_level = auto_status.get('current_light', True)
+                service_running = auto_status.get('service_running', False)
+                
+                # Формируем подробный статус
+                if not self.light_sensor_available:
+                    self.current_light_status = "Sensor Offline"
+                elif not service_running:
+                    self.current_light_status = "Service Stopped"
+                else:
+                    status_type = "Mock" if using_mock else "Real"
+                    light_text = "☀️Light" if light_level else "🌙Dark"
+                    auto_text = "Auto✅" if self.auto_theme_enabled else "Auto❌"
+                    self.current_light_status = f"{light_text} ({status_type}, {auto_text})"
+                
+            elif hasattr(app, 'sensor_service') and app.sensor_service:
+                # Fallback к SensorService
                 readings = app.sensor_service.get_readings()
                 light_level = readings.get('light_level', True)
                 using_mock = getattr(app.sensor_service, 'using_mock_sensors', True)
+                self.light_sensor_available = app.sensor_service.sensor_available
                 
-                status = "Mock" if using_mock else "Real"
-                light_text = "Light" if light_level else "Dark"
-                self.current_light_status = f"{light_text} ({status})"
-                
+                if not self.light_sensor_available:
+                    self.current_light_status = "Offline"
+                else:
+                    status = "Mock" if using_mock else "Real"
+                    light_text = "☀️Light" if light_level else "🌙Dark"
+                    self.current_light_status = f"{light_text} ({status})"
             else:
-                self.current_light_status = "Offline"
+                self.current_light_status = "Services Offline"
+                self.light_sensor_available = False
                 
         except Exception as e:
             logger.error(f"Error updating sensor status: {e}")
-            self.current_light_status = "Error"
+            self.current_light_status = "Status Error"
 
     # МЕТОДЫ ОБРАБОТКИ СОБЫТИЙ UI - вызываются из SelectButton
     
@@ -330,40 +513,6 @@ class SettingsScreen(Screen):
             self.birth_year = "2000"
             instance.text = self.birth_year
 
-    def toggle_auto_theme(self):
-        """Переключение автоматической смены темы"""
-        app = App.get_running_app()
-        
-        if not self.light_sensor_available:
-            # Воспроизводим звук ошибки
-            self._play_sound("error")
-            logger.warning("Cannot toggle auto theme - sensor not available")
-            return
-        
-        self.auto_theme_enabled = not self.auto_theme_enabled
-        
-        # Воспроизводим звук
-        sound_name = "confirm" if self.auto_theme_enabled else "click"
-        self._play_sound(sound_name)
-        
-        logger.info(f"Auto theme toggled: {self.auto_theme_enabled}")
-
-    def on_threshold_change(self, value):
-        """Изменение порога датчика освещения"""
-        try:
-            new_threshold = max(1, min(int(value), 5))
-            if new_threshold != self.light_sensor_threshold:
-                self.light_sensor_threshold = new_threshold
-                
-                app = App.get_running_app()
-                # Обновляем калибровку датчика
-                if hasattr(app, 'sensor_service') and app.sensor_service:
-                    app.sensor_service.calibrate_light_sensor(new_threshold)
-                
-                logger.info(f"Light sensor threshold changed to: {new_threshold}")
-                
-        except Exception as e:
-            logger.error(f"Error changing threshold: {e}")
 
     def save_all_settings(self):
         """Сохранение всех настроек"""

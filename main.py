@@ -1,4 +1,4 @@
-# main.py — версия с звуком запуска и оптимизациями
+# main.py — версия с автотемой по датчику освещенности
 
 from kivy.config import Config
 import sys
@@ -45,6 +45,7 @@ from services.weather_service import WeatherService
 from services.sensor_service import SensorService
 from services.pigs_service import PigsService
 from services.schedule_service import ScheduleService
+from services.auto_theme_service import AutoThemeService  # ДОБАВЛЕНО
 
 # AlarmClock может отсутствовать — защищаем импорт
 try:
@@ -92,6 +93,7 @@ class BedrockApp(App):
         self.pigs_service = None
         self.schedule_service = None
         self.alarm_clock = None
+        self.auto_theme_service = None  # ДОБАВЛЕНО
         
         self._services_stopped = False
         self._startup_complete = False
@@ -153,6 +155,7 @@ class BedrockApp(App):
                 ('sensor_service', SensorService, {}),
                 ('pigs_service', PigsService, {}),
                 ('schedule_service', ScheduleService, {}),
+                ('auto_theme_service', AutoThemeService, {}),  # ДОБАВЛЕНО
             ]
             
             for service_name, service_class, kwargs in services_config:
@@ -180,8 +183,42 @@ class BedrockApp(App):
                     logger.error(f"AlarmClock initialization failed: {ex}")
                     self.alarm_clock = None
             
+            # ДОБАВЛЕНО: Дополнительная настройка автотемы
+            self._setup_auto_theme()
+            
         except Exception as e:
             logger.error(f"Error initializing services: {e}")
+
+    def _setup_auto_theme(self):
+        """Настройка автоматической темы"""
+        try:
+            if hasattr(self, 'auto_theme_service') and self.auto_theme_service:
+                # Получаем настройки из конфига
+                threshold = self.user_config.get("light_sensor_threshold", 3)
+                
+                # Калибруем датчик
+                if hasattr(self, 'sensor_service') and self.sensor_service:
+                    self.auto_theme_service.calibrate_sensor(threshold)
+                
+                # Проверяем включена ли автотема
+                auto_enabled = self.user_config.get("auto_theme_enabled", False)
+                logger.info(f"Auto-theme setup: enabled={auto_enabled}, threshold={threshold}s")
+                
+                # Если включена, делаем первичную проверку через 3 секунды
+                if auto_enabled:
+                    Clock.schedule_once(lambda dt: self._initial_auto_theme_check(), 3.0)
+                    
+        except Exception as e:
+            logger.error(f"Error setting up auto-theme: {e}")
+
+    def _initial_auto_theme_check(self):
+        """Первичная проверка автотемы при запуске"""
+        try:
+            if hasattr(self, 'auto_theme_service') and self.auto_theme_service:
+                logger.info("🌓 Performing initial auto-theme check...")
+                self.auto_theme_service.force_check()
+        except Exception as e:
+            logger.error(f"Error in initial auto-theme check: {e}")
 
     def _on_startup_complete(self, dt):
         """Вызывается после завершения инициализации"""
@@ -227,7 +264,8 @@ class BedrockApp(App):
         # Остановка всех сервисов
         services = [
             'alarm_service', 'notification_service', 'weather_service',
-            'sensor_service', 'pigs_service', 'schedule_service'
+            'sensor_service', 'pigs_service', 'schedule_service', 
+            'auto_theme_service'  # ДОБАВЛЕНО
         ]
         
         for service_name in services:
