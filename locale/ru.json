@@ -10,6 +10,8 @@
   "hello_user": "Привет, {username}!",
   "alarm_time": "Время будильника",
   "alarm_enabled": "Будильник включён",
+  "alarm_on": "ВКЛ",
+  "alarm_off": "ВЫКЛ",
   "save": "Сохранить",
   "cancel": "Отмена",
   "example_form": "Пример формы:",

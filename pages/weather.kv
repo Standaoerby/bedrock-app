@@ -73,7 +73,7 @@
                     spacing: dp(12)
                     padding: [dp(32),dp(8)]
                     
-                    # ИЗМЕНЕНО: Температура и влажность с раздельными цветами
+                    # ИСПРАВЛЕНО: Температура и влажность с раздельными лейблами и цветами
                     BoxLayout:
                         orientation: 'horizontal'
                         size_hint_y: None
@@ -87,7 +87,7 @@
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             size_hint_x: None
-                            width: self.texture_size[0]
+                            width: self.texture_size[0] if self.texture_size[0] > 0 else dp(80)
                             halign: 'left'
                             valign: 'middle'
                         
@@ -99,7 +99,7 @@
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("primary")
                             size_hint_x: None
-                            width: self.texture_size[0]
+                            width: self.texture_size[0] if self.texture_size[0] > 0 else dp(80)
                             halign: 'left'
                             valign: 'middle'
                         
@@ -111,7 +111,7 @@
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             size_hint_x: None
-                            width: self.texture_size[0]
+                            width: self.texture_size[0] if self.texture_size[0] > 0 else dp(120)
                             halign: 'left'
                             valign: 'middle'
                         
@@ -123,9 +123,12 @@
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             size_hint_x: None
-                            width: self.texture_size[0]
+                            width: self.texture_size[0] if self.texture_size[0] > 0 else dp(60)
                             halign: 'left'
                             valign: 'middle'
+                        
+                        # Заполнитель
+                        Widget:
                     
                     # CO2 и TVOC в одной строке
                     Label:

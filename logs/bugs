@@ -1,51 +1,129 @@
-[INFO   ] 🎵 Starting playback...
-[INFO   ] ✅ Playback started successfully
-[INFO   ] [🎵 Playing audio] click.ogg on device: hw:0,0
-[INFO   ] [🎵 Final state - is_playing] True, current_file: themes/minecraft/sounds/click.ogg
-[INFO   ] [🎵 AudioService.play() called]
-[INFO   ] [  filepath  ] themes/minecraft/sounds/click.ogg
-[INFO   ] [  is_ringtone] False
-[INFO   ] [  is_theme_sound] True
-[INFO   ] [  fadein    ] 0
-[INFO   ] [  current state - is_playing] True, current_file: themes/minecraft/sounds/click.ogg
-[INFO   ] [  current state - is_long_audio] False
-[INFO   ] ❌ Skipping theme sound - too frequent
-[INFO   ] [🎮 Toggle play ringtone] state=down, current _sound_playing=False
-[INFO   ] ▶️ Starting ringtone playback...
-[INFO   ] 🎵 === STARTING RINGTONE PLAYBACK ===
-[INFO   ] [Selected ringtone] morning.mp3
-[INFO   ] [Alarm fadein] True
-[INFO   ] 🛑 === STOPPING RINGTONE ===
-[INFO   ] [_sound_playing before stop] False
-[INFO   ] [Audio service current_file] themes/minecraft/sounds/click.ogg
-[INFO   ] [Audio service is_busy] True
-[INFO   ] ℹ️ Not stopping audio - no ringtone playing
-[INFO   ] ✅ Ringtone stop completed
-[INFO   ] [Ringtone path] media/ringtones/morning.mp3
-[INFO   ] [Path exists ] True
-[INFO   ] [Ringtone file size] 8753697 bytes
-[INFO   ] [AudioService before play - is_playing] True, current_file: themes/minecraft/sounds/click.ogg
-[INFO   ] 🎵 Calling audio_service.play with fadein=2.0
-[INFO   ] [🎵 AudioService.play() called]
-[INFO   ] [  filepath  ] media/ringtones/morning.mp3
-[INFO   ] [  is_ringtone] True
-[INFO   ] [  is_theme_sound] False
-[INFO   ] [  fadein    ] 2.0
-[INFO   ] [  current state - is_playing] True, current_file: themes/minecraft/sounds/click.ogg
-[INFO   ] [  current state - is_long_audio] False
-[INFO   ] ❌ Skipping theme sound - too frequent
-[INFO   ] ✅ audio_service.play() completed successfully
-[INFO   ] [AudioService after play - is_playing] True, current_file: themes/minecraft/sounds/click.ogg
-[INFO   ] [AudioService is_busy()] True
-[ERROR  ] [❌ AudioService didn't load ringtone - current_file] themes/minecraft/sounds/click.ogg
-[INFO   ] [🎵 AudioService.play() called]
-[INFO   ] [  filepath  ] themes/minecraft/sounds/error.ogg
-[INFO   ] [  is_ringtone] False
-[INFO   ] [  is_theme_sound] True
-[INFO   ] [  fadein    ] 0
-[INFO   ] [  current state - is_playing] True, current_file: themes/minecraft/sounds/click.ogg
-[INFO   ] [  current state - is_long_audio] False
-[INFO   ] ❌ Skipping theme sound - too frequent
-[INFO   ] [🎮 Toggle play ringtone] state=normal, current _sound_playing=False
-[INFO   ] ⏹️ Stopping ringtone playback...
-[INFO   ] 🛑 === STOPPING RINGTONE ===
+ntering HomeScreen
+[ERROR  ] [Critical error in build()] Parser: File "/home/standa/bedrock-app/pages/weather.kv", line 109:
+...
+    107:                        Label:
+    108:                            id: sensor_comma_label
+>>  109:                            text: root.sensor_comma_text
+    110:                            font_size: '32sp'
+    111:                            font_name: app.theme_manager.get_font("main")
+...
+BuilderException: Parser: File "/home/standa/bedrock-app/pages/weather.kv", line 109:
+...
+    107:                        Label:
+    108:                            id: sensor_comma_label
+>>  109:                            text: root.sensor_comma_text
+    110:                            font_size: '32sp'
+    111:                            font_name: app.theme_manager.get_font("main")
+...
+AttributeError: 'WeatherScreen' object has no attribute 'sensor_comma_text'
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 245, in create_handler
+    return eval(value, idmap), bound_list
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/standa/bedrock-app/pages/weather.kv", line 109, in <module>
+    text: root.sensor_comma_text
+    ^^^^^^^^^^^^^^^^^^^^^^
+  File "kivy/weakproxy.pyx", line 32, in kivy.weakproxy.WeakProxy.__getattr__
+
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 699, in _apply_rule
+    value, bound = create_handler(
+                   ^^^^^^^^^^^^^^^
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 248, in create_handler
+    raise BuilderException(rule.ctx, rule.line,
+Traceback (most recent call last):
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 245, in create_handler
+    return eval(value, idmap), bound_list
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/standa/bedrock-app/pages/weather.kv", line 109, in <module>
+    text: root.sensor_comma_text
+    ^^^^^^^^^^^^^^^^^^^^^^
+  File "kivy/weakproxy.pyx", line 32, in kivy.weakproxy.WeakProxy.__getattr__
+AttributeError: 'WeatherScreen' object has no attribute 'sensor_comma_text'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 699, in _apply_rule
+    value, bound = create_handler(
+                   ^^^^^^^^^^^^^^^
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 248, in create_handler
+    raise BuilderException(rule.ctx, rule.line,
+kivy.lang.builder.BuilderException: Parser: File "/home/standa/bedrock-app/pages/weather.kv", line 109:
+...
+    107:                        Label:
+    108:                            id: sensor_comma_label
+>>  109:                            text: root.sensor_comma_text
+    110:                            font_size: '32sp'
+    111:                            font_name: app.theme_manager.get_font("main")
+...
+AttributeError: 'WeatherScreen' object has no attribute 'sensor_comma_text'
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 245, in create_handler
+    return eval(value, idmap), bound_list
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/standa/bedrock-app/pages/weather.kv", line 109, in <module>
+    text: root.sensor_comma_text
+    ^^^^^^^^^^^^^^^^^^^^^^
+  File "kivy/weakproxy.pyx", line 32, in kivy.weakproxy.WeakProxy.__getattr__
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/standa/bedrock-app/main.py", line 111, in build
+    root_widget = RootWidget()
+                  ^^^^^^^^^^^^
+  File "/home/standa/bedrock-app/widgets/root_widget.py", line 14, in __init__
+    super().__init__(**kwargs)
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/uix/floatlayout.py", line 65, in __init__
+    super(FloatLayout, self).__init__(**kwargs)
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/uix/layout.py", line 76, in __init__
+    super(Layout, self).__init__(**kwargs)
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/uix/widget.py", line 366, in __init__
+    self.apply_class_lang_rules(
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/uix/widget.py", line 470, in apply_class_lang_rules
+    Builder.apply(
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 545, in apply
+    self._apply_rule(
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 667, in _apply_rule
+    self._apply_rule(
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 667, in _apply_rule
+    self._apply_rule(
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 667, in _apply_rule
+    self._apply_rule(
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 665, in _apply_rule
+    child.apply_class_lang_rules(
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/uix/widget.py", line 470, in apply_class_lang_rules
+    Builder.apply(
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 545, in apply
+    self._apply_rule(
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 714, in _apply_rule
+    raise BuilderException(rule.ctx, rule.line,
+kivy.lang.builder.BuilderException: Parser: File "/home/standa/bedrock-app/pages/weather.kv", line 109:
+...
+    107:                        Label:
+    108:                            id: sensor_comma_label
+>>  109:                            text: root.sensor_comma_text
+    110:                            font_size: '32sp'
+    111:                            font_name: app.theme_manager.get_font("main")
+...
+BuilderException: Parser: File "/home/standa/bedrock-app/pages/weather.kv", line 109:
+...
+    107:                        Label:
+    108:                            id: sensor_comma_label
+>>  109:                            text: root.sensor_comma_text
+    110:                            font_size: '32sp'
+    111:                            font_name: app.theme_manager.get_font("main")
+...
+AttributeError: 'WeatherScreen' object has no attribute 'sensor_comma_text'
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 245, in create_handler
+    return eval(value, idmap), bound_list
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/standa/bedrock-app/pages/weather.kv", line 109, in <module>
+    text: root.sensor_comma_text
+    ^^^^^^^^^^^^^^^^^^^^^^
+  File "kivy/weakproxy.pyx", line 32, in kivy.weakproxy.WeakProxy.__getattr__
+
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 699, in _apply_rule
+    value, bound = create_handler(
+                   ^^^^^^^^^^^^^^^
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 248, in create_handler
+    raise BuilderException(rule.ctx, rule.li

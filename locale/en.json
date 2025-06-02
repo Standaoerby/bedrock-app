@@ -10,6 +10,8 @@
   "hello_user": "Hello, {username}!",
   "alarm_time": "Alarm time",
   "alarm_enabled": "Alarm enabled",
+  "alarm_on": "ON",
+  "alarm_off": "OFF",
   "save": "Save",
   "cancel": "Cancel",
   "example_form": "Example form:",
