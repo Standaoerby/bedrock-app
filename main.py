@@ -1,4 +1,4 @@
-# main.py — исправленная версия с правильной архитектурой
+# main.py — версия с звуком запуска и оптимизациями
 
 from kivy.config import Config
 import sys
@@ -18,6 +18,7 @@ else:
 
 from kivy.app import App
 from kivy.lang import Builder
+from kivy.clock import Clock
 
 # Импорты страниц
 from pages.home import HomeScreen
@@ -93,6 +94,7 @@ class BedrockApp(App):
         self.alarm_clock = None
         
         self._services_stopped = False
+        self._startup_complete = False
 
     def build(self):
         """Построение приложения"""
@@ -104,7 +106,12 @@ class BedrockApp(App):
             self._initialize_services()
             
             # Создаем корневой виджет
-            return RootWidget()
+            root_widget = RootWidget()
+            
+            # Запланируем воспроизведение startup звука после инициализации UI
+            Clock.schedule_once(self._on_startup_complete, 1.0)
+            
+            return root_widget
             
         except Exception as e:
             logger.exception(f"Critical error in build(): {e}")
@@ -176,6 +183,35 @@ class BedrockApp(App):
         except Exception as e:
             logger.error(f"Error initializing services: {e}")
 
+    def _on_startup_complete(self, dt):
+        """Вызывается после завершения инициализации"""
+        try:
+            if not self._startup_complete:
+                self._startup_complete = True
+                
+                # Воспроизводим звук запуска
+                if hasattr(self, 'audio_service') and self.audio_service:
+                    success = self.audio_service.play_startup_sound()
+                    if success:
+                        logger.info("Startup sound played successfully")
+                    else:
+                        logger.warning("Failed to play startup sound")
+                
+                # Добавляем приветственное уведомление
+                if hasattr(self, 'notification_service') and self.notification_service:
+                    try:
+                        username = self.user_config.get("username", "User")
+                        welcome_msg = f"Welcome back, {username}! Bedrock 2.0 is ready."
+                        self.notification_service.add(welcome_msg, "system")
+                        logger.info("Welcome notification added")
+                    except Exception as e:
+                        logger.error(f"Error adding welcome notification: {e}")
+                
+                logger.info("=== Bedrock 2.0 Startup Complete ===")
+                
+        except Exception as e:
+            logger.error(f"Error in startup completion: {e}")
+
     def on_stop(self):
         """Остановка приложения"""
         if self._services_stopped:
@@ -207,6 +243,14 @@ class BedrockApp(App):
                 logger.info("AlarmClock stopped")
             except Exception as ex:
                 logger.warning(f"Failed to stop AlarmClock: {ex}")
+
+        # Остановка audio_service
+        if hasattr(self, 'audio_service') and self.audio_service:
+            try:
+                self.audio_service.stop()
+                logger.info("AudioService stopped")
+            except Exception as ex:
+                logger.warning(f"Failed to stop AudioService: {ex}")
 
         logger.info("=== Bedrock 2.0 Stopped ===")
 

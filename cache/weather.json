@@ -1,12 +1,12 @@
 {
   "current": {
-    "time": "2025-06-02T01:30",
-    "temperature": 13.2,
-    "condition": "Partly Cloudy",
+    "time": "2025-06-02T04:00",
+    "temperature": 12.2,
+    "condition": "Cloudy",
     "precipitation_probability": 0
   },
   "forecast_5h": {
-    "temperature": 12.9,
+    "temperature": 11.9,
     "condition": "Mostly Clear",
     "precipitation_probability": 0
   },
@@ -14,15 +14,15 @@
     {
       "day": "Mon",
       "date": "2025-06-02",
-      "temp_max": 20.4,
-      "temp_min": 11.7,
+      "temp_max": 20.0,
+      "temp_min": 11.6,
       "condition": "Cloudy",
       "precipitation_probability": 0
     },
     {
       "day": "Tue",
       "date": "2025-06-03",
-      "temp_max": 17.5,
+      "temp_max": 16.9,
       "temp_min": 11.1,
       "condition": "Slight Rain Showers",
       "precipitation_probability": 70
@@ -68,5 +68,5 @@
       "precipitation_probability": 49
     }
   ],
-  "updated": "2025-06-02T01:35:01.333812"
+  "updated": "2025-06-02T04:07:44.096768"
 }
