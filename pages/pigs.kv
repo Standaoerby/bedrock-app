@@ -26,44 +26,45 @@
                 
                 BoxLayout:
                     orientation: 'vertical'
-                    spacing: dp(12)  # Еще компактнее: было 16dp
+                    spacing: dp(40)  # Еще компактнее: было 16dp
+                    padding: [dp(16),dp(16)]
                     
                     # Секция воды
                     BoxLayout:
                         orientation: 'vertical'
                         spacing: dp(8)
                         size_hint_y: None
-                        height: dp(56)  # Еще компактнее: было 56dp
+                        height: dp(80)  # Еще компактнее: было 56dp
                         
                         Label:
                             id: water_label
                             text: "Water"
-                            font_size: '16sp'  # Меньше: было 18sp
+                            font_size: '32sp'  # Меньше: было 18sp
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             size_hint_y: None
-                            height: dp(20)  # Компактнее: было 24dp
+                            height: dp(48)  # Компактнее: было 24dp
                             halign: 'left'
                             valign: 'middle'
                             text_size: self.size
                         
                         BoxLayout:
                             orientation: 'horizontal'
-                            spacing: dp(8)  # Меньше: было 12dp
+                            spacing: dp(12)  # Меньше: было 12dp
                             size_hint_y: None
-                            height: dp(24)  # Меньше: было 32dp
+                            height: dp(48)  # Меньше: было 32dp
                             
                             CustomProgressBar:
                                 id: water_bar
                                 value: root.water_value
                                 bar_color: [0.2, 0.6, 1, 0.8]  # Голубой
                                 size_hint_x: 0.65
-                                height: dp(24)
+                                height: dp(48)
                             
                             Button:
                                 id: water_button
                                 text: "Done"
-                                font_size: '12sp'  # Меньше: было 14sp
+                                font_size: '24sp'  # Меньше: было 14sp
                                 font_name: app.theme_manager.get_font("main")
                                 color: app.theme_manager.get_rgba("text")
                                 background_normal: app.theme_manager.get_image("button_bg")
@@ -76,37 +77,37 @@
                         orientation: 'vertical'
                         spacing: dp(8)
                         size_hint_y: None
-                        height: dp(56)  # Еще компактнее: было 56dp
+                        height: dp(80)  # Еще компактнее: было 56dp
                         
                         Label:
                             id: food_label
                             text: "Food"
-                            font_size: '16sp'  # Меньше: было 18sp
+                            font_size: '32sp'  # Меньше: было 18sp
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             size_hint_y: None
-                            height: dp(20)  # Компактнее: было 24dp
+                            height: dp(48)  # Компактнее: было 24dp
                             halign: 'left'
                             valign: 'middle'
                             text_size: self.size
                         
                         BoxLayout:
                             orientation: 'horizontal'
-                            spacing: dp(8)  # Меньше: было 12dp
+                            spacing: dp(12)  # Меньше: было 12dp
                             size_hint_y: None
-                            height: dp(24)  # Меньше: было 32dp
+                            height: dp(48)  # Меньше: было 32dp
                             
                             CustomProgressBar:
                                 id: food_bar
                                 value: root.food_value
                                 bar_color: [1, 0.6, 0.2, 0.8]  # Оранжевый
                                 size_hint_x: 0.65
-                                height: dp(24)
+                                height: dp(48)
                             
                             Button:
                                 id: food_button
                                 text: "Done"
-                                font_size: '12sp'  # Меньше: было 14sp
+                                font_size: '24sp'  # Меньше: было 14sp
                                 font_name: app.theme_manager.get_font("main")
                                 color: app.theme_manager.get_rgba("text")
                                 background_normal: app.theme_manager.get_image("button_bg")
@@ -119,38 +120,38 @@
                         orientation: 'vertical'
                         spacing: dp(8)
                         size_hint_y: None
-                        height: dp(56)  # Еще компактнее: было 56dp
+                        height: dp(80)  # Еще компактнее: было 56dp
                         
                         Label:
                             id: clean_label
                             text: "Cleaning"
-                            font_size: '16sp'  # Меньше: было 18sp
+                            font_size: '32sp'  # Меньше: было 18sp
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             size_hint_y: None
-                            height: dp(20)  # Компактнее: было 24dp
+                            height: dp(48)  # Компактнее: было 24dp
                             halign: 'left'
                             valign: 'middle'
                             text_size: self.size
                         
                         BoxLayout:
                             orientation: 'horizontal'
-                            spacing: dp(8)  # Меньше: было 12dp
+                            spacing: dp(12)  # Меньше: было 12dp
                             size_hint_y: None
-                            height: dp(24)  # Меньше: было 32dp
+                            height: dp(48)  # Меньше: было 32dp
                             
                             CustomProgressBar:
                                 id: clean_bar
                                 value: root.clean_value
                                 bar_color: [0.2, 0.8, 0.2, 0.8]  # Зелёный
                                 size_hint_x: 0.65
-                                height: dp(24)
-                                padding: [0]  # Меньше отступы: было [dp(8), dp(8)]
+                                height: dp(48)
+                         
                             
                             Button:
                                 id: clean_button
                                 text: "Done"
-                                font_size: '12sp'  # Меньше: было 14sp
+                                font_size: '24sp'  # Меньше: было 14sp
                                 font_name: app.theme_manager.get_font("main")
                                 color: app.theme_manager.get_rgba("text")
                                 background_normal: app.theme_manager.get_image("button_bg")
@@ -185,17 +186,20 @@
         # Нижняя панель с именами питомцев
         OverlayCard:
             size_hint_y: None
-            height: dp(48)
+            height: dp(64)
             padding: [dp(16), dp(8)]
             
             BoxLayout:
                 orientation: 'horizontal'
                 spacing: dp(16)
+                padding:[dp(12),0]
+                size_hint_y: None
+                height: dp(64)
                 
 
                 Label:
                     text: "Korovka & Karamelka"
-                    font_size: '16sp'
+                    font_size: '24sp'
                     font_name: app.theme_manager.get_font("main")
                     color: app.theme_manager.get_rgba("text")                        
                     text_size: self.size
@@ -204,25 +208,24 @@
                     orientation: 'horizontal'
                     spacing: dp(8)
                     size_hint_y: None
-                    height: dp(32)
+                    height: dp(48)
                     
                     Label:
                         text: "Overall Status:"
-                        font_size: '14sp'
+                        font_size: '24sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("text_secondary")
-                        size_hint_x: 0.6
-                        halign: 'left'
-                        valign: 'middle'
+                        size_hint_x: 0.75
+                        halign: 'right'
                         text_size: self.size
                     
                     Label:
                         text: f"{root.overall_status}%"
-                        font_size: '16sp'
+                        font_size: '24sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("primary") if root.overall_status > 75 else app.theme_manager.get_rgba("text")
-                        size_hint_x: 0.4
-                        halign: 'right'
+                        size_hint_x: 0.25
+                        halign: 'center'
                         valign: 'middle'
                         text_size: self.size
                     

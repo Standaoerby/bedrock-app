@@ -21,13 +21,13 @@
                     orientation: "horizontal"
                     spacing: dp(16)
                     size_hint_y: None
-                    height: dp(144)
+                    height: dp(224)
 
                     # Часы
                     BoxLayout:
                         orientation: "vertical"
                         spacing: dp(4)
-                        size_hint_x: 0.3
+                        size_hint_x: 0.4
 
                         Button:
                             text: "+"
@@ -37,18 +37,25 @@
                             background_normal: app.theme_manager.get_image("button_bg")
                             background_down: app.theme_manager.get_image("button_bg_active")
                             size_hint_y: None
-                            height: dp(32)
+                            height: dp(64)
+                            size_hint_x: None
+                            pos_hint: {"center_x": 0.5}
+                            width: self.parent.width / 2
                             on_release: root.increment_hour()
+
 
                         Label:
                             id: hour_label
                             text: root.alarm_time.split(":")[0]
-                            font_size: "40sp"
+                            font_size: "64sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("primary")
                             halign: "center"
                             valign: "middle"
                             text_size: self.size
+                            size_hint_x: None
+                            pos_hint: {"center_x": 0.5}
+                            width: self.parent.width / 2
 
                         Button:
                             text: "-"
@@ -58,8 +65,11 @@
                             background_normal: app.theme_manager.get_image("button_bg")
                             background_down: app.theme_manager.get_image("button_bg_active")
                             size_hint_y: None
-                            height: dp(32)
+                            height: dp(64)
                             on_release: root.decrement_hour()
+                            size_hint_x: None
+                            pos_hint: {"center_x": 0.5}
+                            width: self.parent.width / 2
 
                     # Разделитель
                     Label:
@@ -76,7 +86,7 @@
                     BoxLayout:
                         orientation: "vertical"
                         spacing: dp(4)
-                        size_hint_x: 0.3
+                        size_hint_x: 0.4
 
                         Button:
                             text: "+"
@@ -86,13 +96,17 @@
                             background_normal: app.theme_manager.get_image("button_bg")
                             background_down: app.theme_manager.get_image("button_bg_active")
                             size_hint_y: None
-                            height: dp(32)
+                            height: dp(64)
+                            size_hint_x: None
+                            pos_hint: {"center_x": 0.5}
+                            width: self.parent.width / 2
                             on_release: root.increment_minute()
+
 
                         Label:
                             id: minute_label
                             text: root.alarm_time.split(":")[1]
-                            font_size: "40sp"
+                            font_size: "64sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("primary")
                             halign: "center"
@@ -107,28 +121,31 @@
                             background_normal: app.theme_manager.get_image("button_bg")
                             background_down: app.theme_manager.get_image("button_bg_active")
                             size_hint_y: None
-                            height: dp(32)
+                            height: dp(64)
+                            size_hint_x: None
+                            pos_hint: {"center_x": 0.5}
+                            width: self.parent.width / 2
                             on_release: root.decrement_minute()
 
                     # Кнопка включения/выключения
                     BoxLayout:
                         orientation: "vertical"
                         spacing: dp(8)
-                        size_hint_x: 0.4
+                        size_hint_x: 0.2
 
                         Label:
                             text: "Enable"
-                            font_size: "16sp"
+                            font_size: "24sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             size_hint_y: None
-                            height: dp(24)
+                            height: dp(40)
                             halign: "center"
 
                         ToggleButton:
                             id: active_button
                             text: "ON" if root.alarm_active else "OFF"
-                            font_size: "20sp"
+                            font_size: "72sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("primary") if root.alarm_active else app.theme_manager.get_rgba("text_secondary")
                             background_normal: app.theme_manager.get_image("button_bg")
@@ -141,19 +158,19 @@
                     orientation: "vertical"
                     spacing: dp(8)
                     size_hint_y: None
-                    height: dp(52)
+                    height: dp(112)
 
                     GridLayout:
                         cols: 7
                         spacing: dp(6)
                         size_hint_y: None
-                        height: dp(44)
+                        height: dp(96)
 
                         ToggleButton:
                             id: repeat_mon
-                            text: "Mon"
+                            text: "MON"
                             state: "down" if "Mon" in root.alarm_repeat else "normal"
-                            font_size: "14sp"
+                            font_size: "24sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("primary") if "Mon" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
                             background_normal: app.theme_manager.get_image("button_bg")
@@ -162,9 +179,9 @@
 
                         ToggleButton:
                             id: repeat_tue
-                            text: "Tue"
+                            text: "TUE"
                             state: "down" if "Tue" in root.alarm_repeat else "normal"
-                            font_size: "14sp"
+                            font_size: "24sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("primary") if "Tue" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
                             background_normal: app.theme_manager.get_image("button_bg")
@@ -173,9 +190,9 @@
 
                         ToggleButton:
                             id: repeat_wed
-                            text: "Wed"
+                            text: "WED"
                             state: "down" if "Wed" in root.alarm_repeat else "normal"
-                            font_size: "14sp"
+                            font_size: "24sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("primary") if "Wed" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
                             background_normal: app.theme_manager.get_image("button_bg")
@@ -184,9 +201,9 @@
 
                         ToggleButton:
                             id: repeat_thu
-                            text: "Thu"
+                            text: "THU"
                             state: "down" if "Thu" in root.alarm_repeat else "normal"
-                            font_size: "14sp"
+                            font_size: "24sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("primary") if "Thu" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
                             background_normal: app.theme_manager.get_image("button_bg")
@@ -195,9 +212,9 @@
 
                         ToggleButton:
                             id: repeat_fri
-                            text: "Fri"
+                            text: "FRI"
                             state: "down" if "Fri" in root.alarm_repeat else "normal"
-                            font_size: "14sp"
+                            font_size: "24sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("primary") if "Fri" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
                             background_normal: app.theme_manager.get_image("button_bg")
@@ -206,9 +223,9 @@
 
                         ToggleButton:
                             id: repeat_sat
-                            text: "Sat"
+                            text: "SAT"
                             state: "down" if "Sat" in root.alarm_repeat else "normal"
-                            font_size: "14sp"
+                            font_size: "24sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("primary") if "Sat" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
                             background_normal: app.theme_manager.get_image("button_bg")
@@ -217,9 +234,9 @@
 
                         ToggleButton:
                             id: repeat_sun
-                            text: "Sun"
+                            text: "SUN"
                             state: "down" if "Sun" in root.alarm_repeat else "normal"
-                            font_size: "14sp"
+                            font_size: "24sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("primary") if "Sun" in root.alarm_repeat else app.theme_manager.get_rgba("text_secondary")
                             background_normal: app.theme_manager.get_image("button_bg")
@@ -238,14 +255,14 @@
                         orientation: "horizontal"
                         spacing: dp(12)
                         size_hint_y: None
-                        height: dp(44)
+                        height: dp(64)
                         Label:
-                            text: "Fade-in:"
-                            font_size: "16sp"
+                            text: "Fade:"
+                            font_size: "18sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             size_hint_x: None
-                            width: dp(96)
+                            width: dp(64)
                             halign: "left"
                             valign: "middle"
                             text_size: self.size
@@ -265,12 +282,12 @@
 
                         Label:
                             text: "Ringtone:"
-                            font_size: "16sp"
+                            font_size: "18sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             size_hint_x: None
-                            width: dp(96)
-                            halign: "left"
+                            width: dp(128)
+                            halign: "right"
                             valign: "middle"
                             text_size: self.size
 
@@ -278,7 +295,7 @@
                             id: ringtone_spinner
                             text: root.selected_ringtone
                             values: root.ringtone_list
-                            font_size: "16sp"
+                            font_size: "24sp"
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             background_normal: app.theme_manager.get_image("button_bg")

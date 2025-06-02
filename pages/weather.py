@@ -31,10 +31,10 @@ class DayForecastItem(BoxLayout):
         day_label = Label(
             text=day_name,
             font_name=tm.get_font("main") if tm else "",
-            font_size="14sp",
+            font_size="16sp",
             halign="left",
             valign="middle",
-            size_hint_x=0.15,
+            size_hint_x=0.05,
             color=day_color,
             text_size=(None, None)
         )
@@ -45,10 +45,10 @@ class DayForecastItem(BoxLayout):
         temp_label = Label(
             text=f"{temp_max:.1f}°C",
             font_name=tm.get_font("main") if tm else "",
-            font_size="14sp",
+            font_size="16sp",
             halign="center",
             valign="middle",
-            size_hint_x=0.2,
+            size_hint_x=0.15,
             color=tm.get_rgba("primary") if tm else [1, 1, 1, 1],
             text_size=(None, None)
         )
@@ -56,16 +56,16 @@ class DayForecastItem(BoxLayout):
         
         # Условие погоды
         condition = day_data.get("condition", "")
-        if len(condition) > 15:
-            condition = condition[:12] + "..."
+        if len(condition) > 40:
+            condition = condition[:35] + "..."
         
         condition_label = Label(
             text=condition,
             font_name=tm.get_font("main") if tm else "",
-            font_size="12sp",
+            font_size="16sp",
             halign="left",
             valign="middle",
-            size_hint_x=0.45,
+            size_hint_x=0.55,
             color=tm.get_rgba("text") if tm else [1, 1, 1, 1],
             text_size=(None, None)
         )
@@ -74,12 +74,12 @@ class DayForecastItem(BoxLayout):
         # Вероятность осадков
         precip = day_data.get("precipitation_probability", 0)
         precip_label = Label(
-            text=f"Rain: {precip}%",
+            text=f"{precip}%",
             font_name=tm.get_font("main") if tm else "",
-            font_size="12sp",
-            halign="right",
+            font_size="16sp",
+            halign="center",
             valign="middle",
-            size_hint_x=0.2,
+            size_hint_x=0.25,
             color=tm.get_rgba("text_secondary") if tm else [0.7, 0.7, 0.7, 1],
             text_size=(None, None)
         )
@@ -352,7 +352,7 @@ class WeatherScreen(Screen):
                     elif widget_id == "current_precipitation_label":
                         widget.color = tm.get_rgba("text_secondary")
                     elif widget_id == "sensor_co2_tvoc_label":
-                        widget.color = tm.get_rgba("text_secondary")
+                        widget.color = tm.get_rgba("primary")
                     elif widget_id == "sensor_air_quality_label":
                         widget.color = tm.get_rgba("primary")
                     else:

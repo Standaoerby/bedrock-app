@@ -12,26 +12,27 @@
         BoxLayout:
             orientation: 'horizontal'
             spacing: dp(16)
-            size_hint_y: 0.4
+            size_hint_y: 0.5
             
             # Левая часть: внешняя погода
             OverlayCard:
                 size_hint_x: 0.4
-                padding: [dp(16), dp(8)]
+                padding: [dp(16), dp(16)]
                 
                 BoxLayout:
                     orientation: 'vertical'
-                    spacing: dp(8)
+                    spacing: dp(12)
+                    padding: [dp(32),dp(8)]
                     
                     # Температура (большая)
                     Label:
                         id: current_temp_label
                         text: root.current_temp
-                        font_size: '28sp'
+                        font_size: '72sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("primary")
                         size_hint_y: None
-                        height: dp(40)
+                        height: dp(88)
                         halign: 'left'
                         valign: 'middle'
                         text_size: self.size
@@ -40,11 +41,11 @@
                     Label:
                         id: current_condition_label
                         text: root.current_condition
-                        font_size: '14sp'
+                        font_size: '28sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("text")
                         size_hint_y: None
-                        height: dp(24)
+                        height: dp(36)
                         halign: 'left'
                         valign: 'middle'
                         text_size: self.size
@@ -53,11 +54,11 @@
                     Label:
                         id: current_precipitation_label
                         text: root.current_precipitation
-                        font_size: '12sp'
+                        font_size: '20sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("text_secondary")
                         size_hint_y: None
-                        height: dp(20)
+                        height: dp(32)
                         halign: 'left'
                         valign: 'middle'
                         text_size: self.size
@@ -65,26 +66,27 @@
             # Правая часть: датчики комнаты
             OverlayCard:
                 size_hint_x: 0.6
-                padding: [dp(16), dp(8)]
+                padding: [dp(16), dp(16)]
                 
                 BoxLayout:
                     orientation: 'vertical'
-                    spacing: dp(8)
+                    spacing: dp(12)
+                    padding: [dp(32),dp(8)]
                     
-                    # Индикатор статуса датчиков
-                    # AnchorLayout:
+                    # индикатор статуса датчиков
+                    # anchorlayout:
                     #     anchor_x: 'right'
                     #     anchor_y: 'top'
-                    #     size_hint_y: None
+                    #     size_hint_y: none
                     #     height: dp(16)
                         
-                    #     Label:
+                    #     label:
                     #         id: sensor_status_label
                     #         text: root.sensor_status
                     #         font_size: '10sp'
                     #         font_name: app.theme_manager.get_font("main")
                     #         color: app.theme_manager.get_rgba("text_accent") if not root.using_mock_sensors else app.theme_manager.get_rgba("text_secondary")
-                    #         size_hint: None, None
+                    #         size_hint: none, none
                     #         size: self.texture_size
                     #         halign: 'right'
                     #         valign: 'top'
@@ -93,11 +95,11 @@
                     Label:
                         id: sensor_temp_humidity_label
                         text: root.sensor_temp_humidity
-                        font_size: '16sp'
+                        font_size: '32sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("text")
                         size_hint_y: None
-                        height: dp(32)
+                        height: dp(64)
                         halign: 'left'
                         valign: 'middle'
                         text_size: self.size
@@ -106,11 +108,11 @@
                     Label:
                         id: sensor_co2_tvoc_label
                         text: root.sensor_co2_tvoc
-                        font_size: '14sp'
+                        font_size: '24sp'
                         font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("text_secondary")
+                        color: app.theme_manager.get_rgba("primary")
                         size_hint_y: None
-                        height: dp(24)
+                        height: dp(32)
                         halign: 'left'
                         valign: 'middle'
                         text_size: self.size
@@ -119,18 +121,18 @@
                     Label:
                         id: sensor_air_quality_label
                         text: root.sensor_air_quality
-                        font_size: '14sp'
+                        font_size: '24sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("primary")
                         size_hint_y: None
-                        height: dp(24)
+                        height: dp(32)
                         halign: 'left'
                         valign: 'middle'
                         text_size: self.size
         
         # Нижний блок: недельный прогноз
         OverlayCard:
-            size_hint_y: 0.6
+            size_hint_y: 0.5
             padding: [dp(16), dp(16)]
             
             BoxLayout:
@@ -147,41 +149,41 @@
                     
                     Label:
                         text: "Day"
-                        font_size: '14sp'
+                        font_size: '16sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("text_secondary")
-                        size_hint_x: 0.15
+                        size_hint_x: 0.05
                         halign: 'left'
                         valign: 'middle'
                         text_size: self.size
                     
                     Label:
                         text: "Temp"
-                        font_size: '14sp'
+                        font_size: '16sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("text_secondary")
-                        size_hint_x: 0.2
+                        size_hint_x: 0.15
                         halign: 'center'
                         valign: 'middle'
                         text_size: self.size
                     
                     Label:
                         text: "Condition"
-                        font_size: '14sp'
+                        font_size: '16sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("text_secondary")
-                        size_hint_x: 0.45
+                        size_hint_x: 0.55
                         halign: 'left'
                         valign: 'middle'
                         text_size: self.size
                     
                     Label:
                         text: "Rain"
-                        font_size: '14sp'
+                        font_size: '16sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("text_secondary")
-                        size_hint_x: 0.2
-                        halign: 'right'
+                        size_hint_x: 0.25
+                        halign: 'center'
                         valign: 'middle'
                         text_size: self.size
                 

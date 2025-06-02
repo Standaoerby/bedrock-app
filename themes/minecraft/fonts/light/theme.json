@@ -13,8 +13,8 @@
     "menu_button_text_active": "#FFD700"
   },
   "menu": {
-    "menu_button_height": 48,
-    "menu_button_width": 152,
+    "menu_button_height": 56,
+    "menu_button_width": 160,
     "menu_height": 64  
   },
   "fonts": {

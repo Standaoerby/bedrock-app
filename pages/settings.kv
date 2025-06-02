@@ -6,14 +6,14 @@
     BoxLayout:
         orientation: 'vertical'
         padding: [dp(16), dp(16), dp(16), dp(16)]
-        spacing: dp(8)
+        spacing: dp(12)
 
         # Верхний ряд: Тема и Язык
         BoxLayout:
             orientation: 'horizontal'
             spacing: dp(16)
             size_hint_y: None
-            height: dp(120)
+            height: dp(248)
             
             # Настройки темы
             OverlayCard:
@@ -22,7 +22,7 @@
                 
                 BoxLayout:
                     orientation: 'vertical'
-                    spacing: dp(8)
+                    spacing: dp(16)
                     
                     Label:
                         id: theme_section_label
@@ -40,12 +40,12 @@
                         orientation: 'horizontal'
                         spacing: dp(8)
                         size_hint_y: None
-                        height: dp(32)
+                        height: dp(48)
                         
                         Label:
                             id: theme_label
                             text: "Theme:"
-                            font_size: '14sp'
+                            font_size: '16sp'
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             size_hint_x: 0.3
@@ -57,7 +57,7 @@
                             id: theme_spinner
                             text: root.current_theme
                             values: ["minecraft"]
-                            font_size: '14sp'
+                            font_size: '16sp'
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             background_normal: app.theme_manager.get_image("button_bg")
@@ -69,12 +69,12 @@
                         orientation: 'horizontal'
                         spacing: dp(8)
                         size_hint_y: None
-                        height: dp(32)
+                        height: dp(48)
                         
                         Label:
                             id: variant_label
                             text: "Mode:"
-                            font_size: '14sp'
+                            font_size: '16sp'
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             size_hint_x: 0.3
@@ -86,7 +86,7 @@
                             id: variant_spinner
                             text: root.current_variant
                             values: ["light", "dark"]
-                            font_size: '14sp'
+                            font_size: '16sp'
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             background_normal: app.theme_manager.get_image("button_bg")
@@ -101,11 +101,11 @@
                 
                 BoxLayout:
                     orientation: 'vertical'
-                    spacing: dp(8)
+                    spacing: dp(16)
                     
                     Label:
                         id: language_section_label
-                        text: "Language"
+                        text: "Localization"
                         font_size: '18sp'
                         font_name: app.theme_manager.get_font("title")
                         color: app.theme_manager.get_rgba("primary")
@@ -121,16 +121,16 @@
                         size_hint_y: None
                         height: dp(32)
                         
-                        # Label:
-                        #     id: language_label
-                        #     text: "Language:"
-                        #     font_size: '14sp'
-                        #     font_name: app.theme_manager.get_font("main")
-                        #     color: app.theme_manager.get_rgba("text")
-                        #     size_hint_x: 0.4
-                        #     halign: 'right'
-                        #     valign: 'middle'
-                        #     text_size: self.size
+                        Label:
+                            id: language_label
+                            text: "Language:"
+                            font_size: '14sp'
+                            font_name: app.theme_manager.get_font("main")
+                            color: app.theme_manager.get_rgba("text")
+                            size_hint_x: 0.4
+                            halign: 'right'
+                            valign: 'middle'
+                            text_size: self.size
                         
                         Spinner:
                             id: language_spinner
@@ -152,7 +152,7 @@
             orientation: 'horizontal'
             spacing: dp(16)
             size_hint_y: None
-            height: dp(136)
+            height: dp(160)
             
             # Настройки пользователя
             OverlayCard:
@@ -184,7 +184,7 @@
                         Label:
                             id: username_label
                             text: "Name:"
-                            font_size: '14sp'
+                            font_size: '18sp'
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             size_hint_x: 0.25
@@ -195,7 +195,7 @@
                         TextInput:
                             id: username_input
                             text: root.username
-                            font_size: '14sp'
+                            font_size: '18sp'
                             font_name: app.theme_manager.get_font("main")
                             foreground_color: app.theme_manager.get_rgba("text")
                             background_color: app.theme_manager.get_rgba("overlay_card")
@@ -212,7 +212,7 @@
                         Label:
                             id: birthday_label
                             text: "Birth:"
-                            font_size: '14sp'
+                            font_size: '18sp'
                             font_name: app.theme_manager.get_font("main")
                             color: app.theme_manager.get_rgba("text")
                             size_hint_x: 0.25
@@ -223,7 +223,7 @@
                         TextInput:
                             id: birth_day_input
                             text: root.birth_day
-                            font_size: '14sp'
+                            font_size: '18sp'
                             font_name: app.theme_manager.get_font("main")
                             foreground_color: app.theme_manager.get_rgba("text")
                             background_color: app.theme_manager.get_rgba("overlay_card")
@@ -234,7 +234,7 @@
                         
                         Label:
                             text: "/"
-                            font_size: '14sp'
+                            font_size: '18sp'
                             color: app.theme_manager.get_rgba("text")
                             size_hint_x: 0.05
                             halign: 'center'
@@ -242,7 +242,7 @@
                         TextInput:
                             id: birth_month_input
                             text: root.birth_month
-                            font_size: '14sp'
+                            font_size: '18sp'
                             font_name: app.theme_manager.get_font("main")
                             foreground_color: app.theme_manager.get_rgba("text")
                             background_color: app.theme_manager.get_rgba("overlay_card")
@@ -253,7 +253,7 @@
                         
                         Label:
                             text: "/"
-                            font_size: '14sp'
+                            font_size: '18sp'
                             color: app.theme_manager.get_rgba("text")
                             size_hint_x: 0.05
                             halign: 'center'
@@ -261,7 +261,7 @@
                         TextInput:
                             id: birth_year_input
                             text: root.birth_year
-                            font_size: '14sp'
+                            font_size: '18sp'
                             font_name: app.theme_manager.get_font("main")
                             foreground_color: app.theme_manager.get_rgba("text")
                             background_color: app.theme_manager.get_rgba("overlay_card")

@@ -17,7 +17,7 @@ class AlarmService:
             "time": "07:30",
             "enabled": True,
             "repeat": ["Mon", "Tue", "Wed", "Thu", "Fri"],
-            "ringtones": "robot.mp3",
+            "ringtone": "robot.mp3",  # ИСПРАВЛЕНО: было "ringtones"
             "fadein": False,
         }
         
@@ -31,21 +31,31 @@ class AlarmService:
         try:
             if os.path.exists(self.config_file):
                 with open(self.config_file, "r") as f:
-                    self.alarm_data = json.load(f)
+                    data = json.load(f)
+                    self.alarm_data = data
+                    # Проверяем структуру данных
+                    if "alarm" not in self.alarm_data:
+                        logger.warning("No 'alarm' key in config, creating default")
+                        self.alarm_data = {"alarm": self.default_alarm}
+                        self.save_config()
             else:
                 self.alarm_data = {"alarm": self.default_alarm}
                 self.save_config()
+                
+            logger.info(f"Alarm config loaded: {self.alarm_data}")
         except Exception as e:
             logger.error(f"Error loading alarm config: {e}")
             self.alarm_data = {"alarm": self.default_alarm}
     
     def save_config(self):
         if self._is_stopped:
+            logger.warning("AlarmService is stopped, cannot save config")
             return False
             
         try:
             with open(self.config_file, "w") as f:
                 json.dump(self.alarm_data, f, indent=2)
+            logger.info(f"Alarm config saved: {self.alarm_data}")
             return True
         except Exception as e:
             logger.error(f"Error saving alarm config: {e}")
@@ -53,16 +63,28 @@ class AlarmService:
     
     def get_alarm(self):
         if self._is_stopped:
+            logger.warning("AlarmService is stopped, returning None")
             return None
-        return self.alarm_data.get("alarm", self.default_alarm)
+        
+        alarm = self.alarm_data.get("alarm", self.default_alarm.copy())
+        logger.debug(f"Getting alarm: {alarm}")
+        return alarm
     
     def set_alarm(self, alarm_settings):
         if self._is_stopped:
+            logger.warning("AlarmService is stopped, cannot set alarm")
             return False
             
-        self.alarm_data["alarm"] = alarm_settings
-        self.save_config()
-        return True
+        try:
+            logger.info(f"Setting alarm: {alarm_settings}")
+            self.alarm_data["alarm"] = alarm_settings
+            success = self.save_config()
+            if success:
+                logger.info("Alarm settings updated successfully")
+            return success
+        except Exception as e:
+            logger.error(f"Error setting alarm: {e}")
+            return False
     
     def test_alarm(self):
         if self._is_stopped:
@@ -90,14 +112,17 @@ class AlarmService:
         if self._is_stopped:
             return
         
-        self._is_stopped = True
+        logger.info("Stopping AlarmService...")
         
         try:
-            self._is_stopped = False
-            self.save_config()
-            self._is_stopped = True
+            # Сохраняем перед остановкой
+            if not self._is_stopped:
+                self.save_config()
         except Exception as e:
             logger.error(f"Error during final save: {e}")
+        finally:
+            self._is_stopped = True
+            logger.info("AlarmService stopped")
     
     def is_stopped(self):
         return self._is_stopped
