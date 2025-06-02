@@ -8,7 +8,7 @@ from datetime import datetime
 
 
 class SettingsScreen(Screen):
-    """Экран настроек приложения"""
+    """Экран настроек приложения """
     
     # Theme properties
     current_theme = StringProperty("minecraft")
