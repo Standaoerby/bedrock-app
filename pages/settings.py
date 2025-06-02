@@ -35,19 +35,48 @@ class SettingsScreen(Screen):
         event_bus.subscribe("language_changed", self.refresh_text)
         event_bus.subscribe("theme_changed", self.refresh_theme)
         self._update_events = []
+        self._initialized = False
 
     def on_pre_enter(self, *args):
         """Вызывается при входе на экран"""
         logger.info("Entering SettingsScreen")
-        self.load_all_settings()
-        self.refresh_theme()
-        self.refresh_text()
-        self.check_sensor_availability()
-        self.start_updates()
+        try:
+            self.load_all_settings()
+            self.refresh_theme()
+            self.refresh_text()
+            self.check_sensor_availability()
+            self.start_updates()
+            self._initialized = True
+        except Exception as e:
+            logger.error(f"Error in SettingsScreen.on_pre_enter: {e}")
 
     def on_pre_leave(self, *args):
         """Вызывается при выходе с экрана"""
-        self.stop_updates()
+        try:
+            self.stop_updates()
+            # Очищаем Spinner'ы для предотвращения ошибок DropDown
+            self._cleanup_spinners()
+        except Exception as e:
+            logger.error(f"Error in SettingsScreen.on_pre_leave: {e}")
+
+    def _cleanup_spinners(self):
+        """Очистка Spinner виджетов для предотвращения ошибок DropDown"""
+        try:
+            if hasattr(self, 'ids'):
+                spinner_ids = ['theme_spinner', 'variant_spinner', 'language_spinner']
+                for spinner_id in spinner_ids:
+                    if spinner_id in self.ids:
+                        spinner = self.ids[spinner_id]
+                        if hasattr(spinner, '_dropdown') and spinner._dropdown:
+                            try:
+                                if spinner._dropdown.parent:
+                                    spinner._dropdown.parent.remove_widget(spinner._dropdown)
+                                spinner._dropdown.dismiss()
+                                spinner.is_open = False
+                            except Exception as e:
+                                logger.warning(f"Error cleaning up spinner {spinner_id}: {e}")
+        except Exception as e:
+            logger.error(f"Error in _cleanup_spinners: {e}")
 
     def get_theme_manager(self):
         """Безопасное получение theme_manager"""
@@ -117,10 +146,40 @@ class SettingsScreen(Screen):
             self.auto_theme_enabled = user_config.get("auto_theme_enabled", False)
             self.light_sensor_threshold = user_config.get("light_sensor_threshold", 3)
             
+            # Обновляем поля ввода если экран уже инициализирован
+            Clock.schedule_once(lambda dt: self._update_input_fields(), 0.1)
+            
             logger.info("Settings loaded successfully")
             
         except Exception as e:
             logger.error(f"Error loading settings: {e}")
+
+    def _update_input_fields(self):
+        """Обновление полей ввода значениями из настроек"""
+        try:
+            if not hasattr(self, 'ids'):
+                return
+                
+            # Обновляем поля ввода
+            if 'username_input' in self.ids:
+                self.ids.username_input.text = self.username
+            if 'birth_day_input' in self.ids:
+                self.ids.birth_day_input.text = self.birth_day
+            if 'birth_month_input' in self.ids:
+                self.ids.birth_month_input.text = self.birth_month
+            if 'birth_year_input' in self.ids:
+                self.ids.birth_year_input.text = self.birth_year
+                
+            # Обновляем Spinner'ы
+            if 'theme_spinner' in self.ids:
+                self.ids.theme_spinner.text = self.current_theme
+            if 'variant_spinner' in self.ids:
+                self.ids.variant_spinner.text = self.current_variant
+            if 'language_spinner' in self.ids:
+                self.ids.language_spinner.text = self.current_language
+                
+        except Exception as e:
+            logger.error(f"Error updating input fields: {e}")
 
     def check_sensor_availability(self):
         """Проверка доступности датчика освещения"""
@@ -156,6 +215,8 @@ class SettingsScreen(Screen):
             logger.error(f"Error updating sensor status: {e}")
             self.current_light_status = "Error"
 
+    # МЕТОДЫ ОБРАБОТКИ СОБЫТИЙ UI
+    
     def on_theme_select(self, theme_name):
         """Выбор темы"""
         if theme_name != self.current_theme:
@@ -206,6 +267,47 @@ class SettingsScreen(Screen):
                 event_bus.publish("language_changed", {"language": language})
             
             logger.info(f"Language changed to: {language}")
+
+    def on_username_change(self, instance, value):
+        """Обработка изменения имени пользователя"""
+        try:
+            self.username = value.strip()
+            logger.debug(f"Username changed to: {self.username}")
+        except Exception as e:
+            logger.error(f"Error in on_username_change: {e}")
+
+    def on_birth_day_change(self, instance, value):
+        """Обработка изменения дня рождения"""
+        try:
+            day = max(1, min(int(value) if value.isdigit() else 1, 31))
+            self.birth_day = f"{day:02d}"
+            instance.text = self.birth_day
+        except Exception as e:
+            logger.error(f"Error in on_birth_day_change: {e}")
+            self.birth_day = "01"
+            instance.text = self.birth_day
+
+    def on_birth_month_change(self, instance, value):
+        """Обработка изменения месяца рождения"""
+        try:
+            month = max(1, min(int(value) if value.isdigit() else 1, 12))
+            self.birth_month = f"{month:02d}"
+            instance.text = self.birth_month
+        except Exception as e:
+            logger.error(f"Error in on_birth_month_change: {e}")
+            self.birth_month = "01"
+            instance.text = self.birth_month
+
+    def on_birth_year_change(self, instance, value):
+        """Обработка изменения года рождения"""
+        try:
+            year = max(1900, min(int(value) if value.isdigit() else 2000, 2100))
+            self.birth_year = f"{year:04d}"
+            instance.text = self.birth_year
+        except Exception as e:
+            logger.error(f"Error in on_birth_year_change: {e}")
+            self.birth_year = "2000"
+            instance.text = self.birth_year
 
     def toggle_auto_theme(self):
         """Переключение автоматической смены темы"""
@@ -294,7 +396,7 @@ class SettingsScreen(Screen):
             # Собираем данные из полей ввода
             if hasattr(self, 'ids'):
                 if 'username_input' in self.ids:
-                    self.username = self.ids.username_input.text
+                    self.username = self.ids.username_input.text.strip()
                 if 'birth_day_input' in self.ids:
                     self.birth_day = self.ids.birth_day_input.text
                 if 'birth_month_input' in self.ids:
@@ -333,71 +435,84 @@ class SettingsScreen(Screen):
 
     def refresh_theme(self, *args):
         """Обновление темы для всех элементов"""
+        if not self._initialized:
+            return
+            
         tm = self.get_theme_manager()
         if not tm or not tm.is_loaded():
             return
 
-        # Список виджетов для обновления темы
-        widgets_to_update = [
-            "theme_label", "variant_label", "language_label", "username_label",
-            "birthday_label", "auto_theme_label", "threshold_label", "sensor_status_label",
-            "theme_spinner", "variant_spinner", "language_spinner", 
-            "username_input", "birth_day_input", "birth_month_input", "birth_year_input",
-            "auto_theme_button", "save_button",
-            "theme_section_label", "language_section_label", "user_section_label", "auto_theme_section_label"
-        ]
-        
-        for widget_id in widgets_to_update:
-            if hasattr(self, 'ids') and widget_id in self.ids:
-                widget = self.ids[widget_id]
-                
-                # Обновляем шрифт
-                if hasattr(widget, 'font_name'):
-                    if "section" in widget_id:
-                        widget.font_name = tm.get_font("title")
-                    else:
-                        widget.font_name = tm.get_font("main")
+        try:
+            # Список виджетов для обновления темы
+            widgets_to_update = [
+                "theme_label", "variant_label", "language_label", "username_label",
+                "birthday_label", "auto_theme_label", "threshold_label", "sensor_status_label",
+                "theme_spinner", "variant_spinner", "language_spinner", 
+                "username_input", "birth_day_input", "birth_month_input", "birth_year_input",
+                "auto_theme_button", "save_button",
+                "theme_section_label", "language_section_label", "user_section_label", "auto_theme_section_label"
+            ]
+            
+            for widget_id in widgets_to_update:
+                if hasattr(self, 'ids') and widget_id in self.ids:
+                    widget = self.ids[widget_id]
                     
-                # Обновляем цвет текста
-                if hasattr(widget, 'color'):
-                    if "section" in widget_id:
-                        widget.color = tm.get_rgba("primary")
-                    elif "label" in widget_id:
-                        if widget_id == "sensor_status_label":
-                            widget.color = tm.get_rgba("text_secondary")
+                    # Обновляем шрифт
+                    if hasattr(widget, 'font_name'):
+                        if "section" in widget_id:
+                            widget.font_name = tm.get_font("title")
+                        else:
+                            widget.font_name = tm.get_font("main")
+                        
+                    # Обновляем цвет текста
+                    if hasattr(widget, 'color'):
+                        if "section" in widget_id:
+                            widget.color = tm.get_rgba("primary")
+                        elif "label" in widget_id:
+                            if widget_id == "sensor_status_label":
+                                widget.color = tm.get_rgba("text_secondary")
+                            else:
+                                widget.color = tm.get_rgba("text")
+                        elif widget_id == "save_button":
+                            widget.color = tm.get_rgba("primary")
                         else:
                             widget.color = tm.get_rgba("text")
-                    elif widget_id == "save_button":
-                        widget.color = tm.get_rgba("primary")
-                    else:
-                        widget.color = tm.get_rgba("text")
-                
-                # Обновляем фон кнопок и полей
-                if hasattr(widget, 'background_normal'):
-                    widget.background_normal = tm.get_image("button_bg")
-                    widget.background_down = tm.get_image("button_bg_active")
+                    
+                    # Обновляем фон кнопок и полей
+                    if hasattr(widget, 'background_normal'):
+                        widget.background_normal = tm.get_image("button_bg")
+                        widget.background_down = tm.get_image("button_bg_active")
 
-        # Обновляем состояние кнопки автотемы
-        if hasattr(self, 'ids') and 'auto_theme_button' in self.ids:
-            self.ids.auto_theme_button.text = "ON" if self.auto_theme_enabled else "OFF"
-            if hasattr(self.ids.auto_theme_button, 'color'):
-                self.ids.auto_theme_button.color = tm.get_rgba("primary") if self.auto_theme_enabled else tm.get_rgba("text_secondary")
+            # Обновляем состояние кнопки автотемы
+            if hasattr(self, 'ids') and 'auto_theme_button' in self.ids:
+                self.ids.auto_theme_button.text = "ON" if self.auto_theme_enabled else "OFF"
+                if hasattr(self.ids.auto_theme_button, 'color'):
+                    self.ids.auto_theme_button.color = tm.get_rgba("primary") if self.auto_theme_enabled else tm.get_rgba("text_secondary")
+                    
+        except Exception as e:
+            logger.error(f"Error refreshing theme: {e}")
 
     def refresh_text(self, *args):
         """Обновление локализованного текста"""
+        if not self._initialized:
+            return
+            
         app = App.get_running_app()
         if not hasattr(app, 'localizer'):
             return
             
-        # Обновляем все локализованные тексты
-        if hasattr(self, 'ids'):
-            # Основные лейблы
-            labels_map = {
-                'theme_label': ('settings_theme', 'Theme'),
-                'language_label': ('settings_language', 'Language'),
-                'save_button': ('save', 'Save Settings')
-            }
-            
-            for widget_id, (key, default) in labels_map.items():
-                if widget_id in self.ids:
-                    self.ids[widget_id].text = app.localizer.tr(key, default)
+        try:
+            # Обновляем все локализованные тексты
+            if hasattr(self, 'ids'):
+                # Основные лейблы
+                labels_map = {
+                    'theme_label': ('settings_theme', 'Theme'),
+                    'language_label': ('settings_language', 'Language'),
+                    'save_button': ('save', 'Save Settings')
+                }
+                
+                for widget_id, (key, default) in labels_map.items():
+                    if widget_id in self.ids:
+                        self.ids[widget_id].text = app.localizer.tr(key, default)
+        except Exception as e:
+            logger.error(f"Error refreshing text: {e}")

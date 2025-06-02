@@ -25,6 +25,7 @@ class AlarmScreen(Screen):
         self._settings_changed = False
         self._sound_playing = False
         self._sound_check_event = None
+        self._initialized = False
         
         # Подписка на события
         event_bus.subscribe("theme_changed", self.refresh_theme)
@@ -33,27 +34,51 @@ class AlarmScreen(Screen):
     def on_pre_enter(self, *args):
         """Вызывается при входе на экран"""
         logger.info("Entering AlarmScreen")
-        Clock.schedule_once(lambda dt: self.stop_ringtone(), 0.2)
-        self.load_ringtones()
-        self.load_alarm_config()
-        self.update_ui()
-        self.refresh_theme()
-        self.refresh_text()
+        try:
+            Clock.schedule_once(lambda dt: self.stop_ringtone(), 0.2)
+            self.load_ringtones()
+            self.load_alarm_config()
+            self.update_ui()
+            self.refresh_theme()
+            self.refresh_text()
+            self._initialized = True
+        except Exception as e:
+            logger.error(f"Error in AlarmScreen.on_pre_enter: {e}")
 
     def on_pre_leave(self, *args):
         """Вызывается при выходе с экрана"""
-        if self._settings_changed:
-            self.save_alarm(silent=True)
-        self.stop_ringtone()
-        self._reset_play_button()
-        
-        # Отменяем отложенные события
-        if self._auto_save_event:
-            self._auto_save_event.cancel()
-            self._auto_save_event = None
-        if self._sound_check_event:
-            self._sound_check_event.cancel()
-            self._sound_check_event = None
+        try:
+            if self._settings_changed:
+                self.save_alarm(silent=True)
+            self.stop_ringtone()
+            self._reset_play_button()
+            self._cleanup_spinners()
+            
+            # Отменяем отложенные события
+            if self._auto_save_event:
+                self._auto_save_event.cancel()
+                self._auto_save_event = None
+            if self._sound_check_event:
+                self._sound_check_event.cancel()
+                self._sound_check_event = None
+        except Exception as e:
+            logger.error(f"Error in AlarmScreen.on_pre_leave: {e}")
+
+    def _cleanup_spinners(self):
+        """Очистка Spinner виджетов для предотвращения ошибок DropDown"""
+        try:
+            if hasattr(self, 'ids') and 'ringtone_spinner' in self.ids:
+                spinner = self.ids.ringtone_spinner
+                if hasattr(spinner, '_dropdown') and spinner._dropdown:
+                    try:
+                        if spinner._dropdown.parent:
+                            spinner._dropdown.parent.remove_widget(spinner._dropdown)
+                        spinner._dropdown.dismiss()
+                        spinner.is_open = False
+                    except Exception as e:
+                        logger.warning(f"Error cleaning up ringtone spinner: {e}")
+        except Exception as e:
+            logger.error(f"Error in _cleanup_spinners: {e}")
 
     def get_theme_manager(self):
         """Безопасное получение theme_manager"""
@@ -96,7 +121,7 @@ class AlarmScreen(Screen):
                 files = [f for f in os.listdir(folder)
                         if f.lower().endswith((".mp3", ".ogg", ".wav"))]
                 if files:
-                    self.ringtone_list = files
+                    self.ringtone_list = sorted(files)
                     if self.selected_ringtone not in self.ringtone_list:
                         self.selected_ringtone = self.ringtone_list[0]
                 else:
@@ -106,6 +131,8 @@ class AlarmScreen(Screen):
             else:
                 self.ringtone_list = ["robot.mp3", "morning.mp3", "gentle.mp3", "loud.mp3"]
                 self.selected_ringtone = "robot.mp3"
+                
+            logger.debug(f"Loaded {len(self.ringtone_list)} ringtones")
         except Exception as e:
             logger.error(f"Error loading ringtones: {e}")
             self.ringtone_list = ["robot.mp3"]
@@ -173,19 +200,34 @@ class AlarmScreen(Screen):
         """Обновление интерфейса после изменения данных"""
         try:
             # Обновляем время
-            hours, minutes = self.alarm_time.split(':')
-            if hasattr(self, 'ids'):
-                if 'hour_label' in self.ids:
-                    self.ids.hour_label.text = hours
-                if 'minute_label' in self.ids:
-                    self.ids.minute_label.text = minutes
+            if ":" in self.alarm_time:
+                hours, minutes = self.alarm_time.split(':')
+                if hasattr(self, 'ids'):
+                    if 'hour_label' in self.ids:
+                        self.ids.hour_label.text = hours
+                    if 'minute_label' in self.ids:
+                        self.ids.minute_label.text = minutes
 
             self._update_toggle_buttons()
             self._update_day_buttons()
             self._reset_play_button()
             
+            # Обновляем spinner, если он существует
+            Clock.schedule_once(lambda dt: self._update_spinner(), 0.1)
+            
         except Exception as e:
             logger.error(f"Error updating UI: {e}")
+
+    def _update_spinner(self):
+        """Безопасное обновление спиннера"""
+        try:
+            if hasattr(self, 'ids') and 'ringtone_spinner' in self.ids:
+                spinner = self.ids.ringtone_spinner
+                if self.ringtone_list and self.selected_ringtone in self.ringtone_list:
+                    spinner.values = self.ringtone_list
+                    spinner.text = self.selected_ringtone
+        except Exception as e:
+            logger.error(f"Error updating spinner: {e}")
 
     def _update_toggle_buttons(self):
         """Обновление кнопок переключения"""
@@ -194,19 +236,13 @@ class AlarmScreen(Screen):
         # Кнопка включения будильника
         if hasattr(self, 'ids') and 'active_button' in self.ids:
             active_button = self.ids.active_button
-            if hasattr(app, 'localizer'):
-                active_button.text = "ON" if self.alarm_active else "OFF"
-            else:
-                active_button.text = "ON" if self.alarm_active else "OFF"
+            active_button.text = "ON" if self.alarm_active else "OFF"
             active_button.state = "down" if self.alarm_active else "normal"
 
         # Кнопка fade-in
         if hasattr(self, 'ids') and 'fadein_button' in self.ids:
             fadein_button = self.ids.fadein_button
-            if hasattr(app, 'localizer'):
-                fadein_button.text = "ON" if self.alarm_fadein else "OFF"
-            else:
-                fadein_button.text = "ON" if self.alarm_fadein else "OFF"
+            fadein_button.text = "ON" if self.alarm_fadein else "OFF"
             fadein_button.state = "down" if self.alarm_fadein else "normal"
 
     def _update_day_buttons(self):
@@ -233,42 +269,54 @@ class AlarmScreen(Screen):
     def increment_hour(self):
         """Увеличение часа"""
         self._play_sound("click")
-        hours, minutes = self.alarm_time.split(':')
-        new_hour = (int(hours) + 1) % 24
-        self.alarm_time = f"{new_hour:02d}:{minutes}"
-        if hasattr(self, 'ids') and 'hour_label' in self.ids:
-            self.ids.hour_label.text = f"{new_hour:02d}"
-        self._schedule_auto_save()
+        try:
+            hours, minutes = self.alarm_time.split(':')
+            new_hour = (int(hours) + 1) % 24
+            self.alarm_time = f"{new_hour:02d}:{minutes}"
+            if hasattr(self, 'ids') and 'hour_label' in self.ids:
+                self.ids.hour_label.text = f"{new_hour:02d}"
+            self._schedule_auto_save()
+        except Exception as e:
+            logger.error(f"Error incrementing hour: {e}")
 
     def decrement_hour(self):
         """Уменьшение часа"""
         self._play_sound("click")
-        hours, minutes = self.alarm_time.split(':')
-        new_hour = (int(hours) - 1) % 24
-        self.alarm_time = f"{new_hour:02d}:{minutes}"
-        if hasattr(self, 'ids') and 'hour_label' in self.ids:
-            self.ids.hour_label.text = f"{new_hour:02d}"
-        self._schedule_auto_save()
+        try:
+            hours, minutes = self.alarm_time.split(':')
+            new_hour = (int(hours) - 1) % 24
+            self.alarm_time = f"{new_hour:02d}:{minutes}"
+            if hasattr(self, 'ids') and 'hour_label' in self.ids:
+                self.ids.hour_label.text = f"{new_hour:02d}"
+            self._schedule_auto_save()
+        except Exception as e:
+            logger.error(f"Error decrementing hour: {e}")
 
     def increment_minute(self):
         """Увеличение минут"""
         self._play_sound("click")
-        hours, minutes = self.alarm_time.split(':')
-        new_minute = (int(minutes) + 1) % 60
-        self.alarm_time = f"{hours}:{new_minute:02d}"
-        if hasattr(self, 'ids') and 'minute_label' in self.ids:
-            self.ids.minute_label.text = f"{new_minute:02d}"
-        self._schedule_auto_save()
+        try:
+            hours, minutes = self.alarm_time.split(':')
+            new_minute = (int(minutes) + 1) % 60
+            self.alarm_time = f"{hours}:{new_minute:02d}"
+            if hasattr(self, 'ids') and 'minute_label' in self.ids:
+                self.ids.minute_label.text = f"{new_minute:02d}"
+            self._schedule_auto_save()
+        except Exception as e:
+            logger.error(f"Error incrementing minute: {e}")
 
     def decrement_minute(self):
         """Уменьшение минут"""
         self._play_sound("click")
-        hours, minutes = self.alarm_time.split(':')
-        new_minute = (int(minutes) - 1) % 60
-        self.alarm_time = f"{hours}:{new_minute:02d}"
-        if hasattr(self, 'ids') and 'minute_label' in self.ids:
-            self.ids.minute_label.text = f"{new_minute:02d}"
-        self._schedule_auto_save()
+        try:
+            hours, minutes = self.alarm_time.split(':')
+            new_minute = (int(minutes) - 1) % 60
+            self.alarm_time = f"{hours}:{new_minute:02d}"
+            if hasattr(self, 'ids') and 'minute_label' in self.ids:
+                self.ids.minute_label.text = f"{new_minute:02d}"
+            self._schedule_auto_save()
+        except Exception as e:
+            logger.error(f"Error decrementing minute: {e}")
 
     def on_active_toggled(self, active):
         """Переключение активности будильника"""
@@ -299,12 +347,13 @@ class AlarmScreen(Screen):
 
     def select_ringtone(self, name):
         """Выбор мелодии"""
-        if name != self.selected_ringtone:
+        if name != self.selected_ringtone and name in self.ringtone_list:
             self._play_sound("click")
             self.selected_ringtone = name
             self.stop_ringtone()
             self._reset_play_button()
             self._schedule_auto_save()
+            logger.debug(f"Selected ringtone: {name}")
 
     def toggle_play_ringtone(self, state):
         """Переключение воспроизведения мелодии"""
@@ -339,6 +388,7 @@ class AlarmScreen(Screen):
                 app.audio_service.play(path, fadein=fadein_time)
                 self._sound_playing = True
                 self._start_sound_monitoring()
+                logger.debug(f"Playing ringtone: {self.selected_ringtone}")
             else:
                 self._play_sound("error")
                 self._reset_play_button()
@@ -395,28 +445,36 @@ class AlarmScreen(Screen):
 
     def refresh_theme(self, *args):
         """Обновление темы для всех элементов"""
+        if not self._initialized:
+            return
+            
         tm = self.get_theme_manager()
         if not tm or not tm.is_loaded():
             return
-            
-        widgets = [
-            "hour_label", "minute_label", "active_button", "fadein_button", 
-            "play_button", "ringtone_spinner"
-        ]
         
-        for widget_id in widgets:
-            if hasattr(self, 'ids') and widget_id in self.ids:
-                widget = self.ids[widget_id]
-                
-                if hasattr(widget, 'font_name'):
-                    widget.font_name = tm.get_font("main")
-                if hasattr(widget, 'color'):
-                    widget.color = tm.get_rgba("primary")
-                if hasattr(widget, 'background_normal'):
-                    widget.background_normal = tm.get_image("button_bg")
-                    widget.background_down = tm.get_image("button_bg_active")
+        try:
+            widgets = [
+                "hour_label", "minute_label", "active_button", "fadein_button", 
+                "play_button", "ringtone_spinner"
+            ]
+            
+            for widget_id in widgets:
+                if hasattr(self, 'ids') and widget_id in self.ids:
+                    widget = self.ids[widget_id]
+                    
+                    if hasattr(widget, 'font_name'):
+                        widget.font_name = tm.get_font("main")
+                    if hasattr(widget, 'color'):
+                        widget.color = tm.get_rgba("primary")
+                    if hasattr(widget, 'background_normal'):
+                        widget.background_normal = tm.get_image("button_bg")
+                        widget.background_down = tm.get_image("button_bg_active")
+        except Exception as e:
+            logger.error(f"Error refreshing theme: {e}")
 
     def refresh_text(self, *args):
         """Обновление локализованного текста"""
+        if not self._initialized:
+            return
         # Обновляем тексты кнопок
         self._update_toggle_buttons()

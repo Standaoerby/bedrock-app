@@ -1,0 +1,38 @@
+[INFO   ] [Base        ] Leaving application in progress...
+[ERROR  ] [Critical application error] Cannot add <kivy.uix.dropdown.DropDown object at 0x7fff882747c0> to window, it already has a parent <kivy.core.window.window_sdl2.WindowSDL object at 0x7fffa2bc3380>
+Traceback (most recent call last):
+  File "/home/standa/bedrock-app/main.py", line 297, in <module>
+    BedrockApp().run()
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/app.py", line 956, in run
+    runTouchApp()
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/base.py", line 574, in runTouchApp
+    EventLoop.mainloop()
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/base.py", line 339, in mainloop
+    self.idle()
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/base.py", line 383, in idle
+    self.dispatch_input()
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/base.py", line 334, in dispatch_input
+    post_dispatch_input(*pop(0))
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/base.py", line 302, in post_dispatch_input
+    wid.dispatch('on_touch_up', me)
+  File "kivy/_event.pyx", line 731, in kivy._event.EventDispatcher.dispatch
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/uix/behaviors/button.py", line 179, in on_touch_up
+    self.dispatch('on_release')
+  File "kivy/_event.pyx", line 727, in kivy._event.EventDispatcher.dispatch
+  File "kivy/_event.pyx", line 1307, in kivy._event.EventObservers.dispatch
+  File "kivy/_event.pyx", line 1231, in kivy._event.EventObservers._dispatch
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/uix/spinner.py", line 207, in _toggle_dropdown
+    self.is_open = not self.is_open
+    ^^^^^^^^^^^^
+  File "kivy/properties.pyx", line 520, in kivy.properties.Property.__set__
+  File "kivy/properties.pyx", line 567, in kivy.properties.Property.set
+  File "kivy/properties.pyx", line 606, in kivy.properties.Property._dispatch
+  File "kivy/_event.pyx", line 1307, in kivy._event.EventObservers.dispatch
+  File "kivy/_event.pyx", line 1213, in kivy._event.EventObservers._dispatch
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/uix/spinner.py", line 218, in on_is_open
+    self._dropdown.open(self)
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/uix/dropdown.py", line 254, in open
+    self._win.add_widget(self)
+  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/core/window/__init__.py", line 1536, in add_widget
+    raise WidgetException(
+kivy.uix.widget.WidgetException: Cannot add <kivy.uix.dropdown.DropDown object at 0x7fff882747c0> to window, it already has a parent <kivy.core.window.window_sdl2.WindowSDL object at 0x7fffa2bc3380>
