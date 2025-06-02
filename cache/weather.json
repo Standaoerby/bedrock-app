@@ -1,12 +1,12 @@
 {
   "current": {
-    "time": "2025-06-02T18:30",
-    "temperature": 19.6,
-    "condition": "Partly Cloudy",
+    "time": "2025-06-02T19:15",
+    "temperature": 19.2,
+    "condition": "Mostly Clear",
     "precipitation_probability": 0
   },
   "forecast_5h": {
-    "temperature": 19.4,
+    "temperature": 18.4,
     "condition": "Mostly Clear",
     "precipitation_probability": 0
   },
@@ -68,5 +68,5 @@
       "precipitation_probability": 62
     }
   ],
-  "updated": "2025-06-02T18:31:49.442952"
+  "updated": "2025-06-02T19:28:56.697206"
 }

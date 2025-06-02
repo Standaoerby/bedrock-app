@@ -190,17 +190,18 @@ class HomeScreen(Screen):
             self.alarm_status_text = "ERROR"
 
     def update_notifications(self, *args):
-        """Обновление уведомлений"""
+        """Обновление уведомлений - показываем только последнее"""
         try:
             app = App.get_running_app()
             
             if hasattr(app, 'notification_service') and app.notification_service:
                 notifications = app.notification_service.list_unread()
                 if notifications:
-                    # Объединяем все уведомления в одну строку
-                    texts = [n.get("text", "").strip() for n in notifications if n.get("text")]
-                    if texts:
-                        self.notification_text = "   •   ".join(texts)
+                    # Берём только последнее уведомление вместо объединения всех
+                    last_notification = notifications[-1]
+                    text = last_notification.get("text", "").strip()
+                    if text:
+                        self.notification_text = text
                     else:
                         self.notification_text = "No new notifications"
                 else:

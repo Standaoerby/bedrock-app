@@ -156,6 +156,35 @@ class ScheduleScreen(Screen):
         for day_data in self.schedule_data:
             day_column = self.create_day_column(day_data, tm)
             container.add_widget(day_column)
+        
+        # ИСПРАВЛЕНИЕ: Правильно устанавливаем высоту контейнера после добавления виджетов
+        Clock.schedule_once(self._fix_container_height, 0.1)
+
+    def _fix_container_height(self, dt):
+        """Исправление высоты контейнера расписания"""
+        try:
+            if hasattr(self, 'ids') and 'schedule_container' in self.ids:
+                container = self.ids.schedule_container
+                
+                # Вычисляем максимальную высоту среди колонок
+                max_column_height = 0
+                for child in container.children:
+                    if hasattr(child, 'height'):
+                        max_column_height = max(max_column_height, child.height)
+                
+                # Устанавливаем высоту контейнера с запасом
+                if max_column_height > 0:
+                    container.height = max_column_height + dp(32)
+                    logger.debug(f"Set schedule container height to {container.height}")
+                
+                # ИСПРАВЛЕНИЕ: Принудительно сбрасываем скролл наверх
+                parent_scroll = container.parent
+                if hasattr(parent_scroll, 'scroll_y'):
+                    parent_scroll.scroll_y = 1
+                    logger.debug("Reset schedule scroll to top")
+                    
+        except Exception as e:
+            logger.error(f"Error fixing container height: {e}")
 
     def create_day_column(self, day_data, theme_manager):
         """Создание колонки для одного дня"""
@@ -167,7 +196,8 @@ class ScheduleScreen(Screen):
         column = BoxLayout(
             orientation="vertical",
             spacing=dp(8),
-            size_hint_x=0.2  # 5 колонок
+            size_hint_x=0.2,  # 5 колонок
+            size_hint_y=None
         )
         
         # Заголовок дня
@@ -201,7 +231,8 @@ class ScheduleScreen(Screen):
         lessons_container = BoxLayout(
             orientation="vertical",
             spacing=dp(4),
-            padding=[dp(8), dp(8)]
+            padding=[dp(8), dp(8)],
+            size_hint_y=None
         )
         
         if not lessons:
@@ -218,13 +249,23 @@ class ScheduleScreen(Screen):
                 italic=True
             )
             lessons_container.add_widget(free_label)
+            lessons_container.height = dp(48)  # Минимальная высота
         else:
             # Добавляем уроки
+            total_height = 0
             for lesson in lessons:
                 lesson_widget = self.create_lesson_widget(lesson, theme_manager, is_today)
                 lessons_container.add_widget(lesson_widget)
+                total_height += lesson_widget.height
+            
+            # ИСПРАВЛЕНИЕ: Устанавливаем правильную высоту контейнера уроков
+            lessons_container.height = total_height + (len(lessons) - 1) * dp(4) + dp(16)  # spacing + padding
         
         column.add_widget(lessons_container)
+        
+        # ИСПРАВЛЕНИЕ: Устанавливаем общую высоту колонки
+        column.height = header.height + lessons_container.height + dp(8)  # spacing между header и lessons
+        
         return column
 
     def create_lesson_widget(self, lesson, theme_manager, is_today):

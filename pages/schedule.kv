@@ -111,20 +111,24 @@
                             pos: self.pos
                             size: self.size
 
-                # Контейнер для расписания
+                # ИСПРАВЛЕНИЕ: Контейнер для расписания с правильными настройками прокрутки
                 ScrollView:
                     do_scroll_x: False
                     do_scroll_y: True
                     bar_width: dp(8)
                     bar_color: app.theme_manager.get_rgba("primary")
                     bar_inactive_color: app.theme_manager.get_rgba("text_secondary")
+                    # ИСПРАВЛЕНИЕ: Устанавливаем скролл в начало
+                    scroll_y: 1
+                    effect_cls: "DampedScrollEffect"
                     
                     BoxLayout:
                         id: schedule_container
                         orientation: 'horizontal'
                         spacing: dp(8)
                         size_hint_y: None
-                        height: self.minimum_height
+                        # ИСПРАВЛЕНИЕ: Правильный расчёт высоты контента
+                        height: max(self.minimum_height, self.parent.height - dp(16))
                         padding: [0, dp(8), 0, dp(8)]
 
         # Нижняя панель с дополнительной информацией

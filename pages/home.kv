@@ -13,7 +13,7 @@
             orientation: 'horizontal'
             spacing: dp(24)
             size_hint_y: None
-            height: dp(64)
+            height: dp(40)
 
             # Дата слева
             OverlayCard:
@@ -22,8 +22,8 @@
                 Label:
                     id: date_label
                     text: root.current_date
-                    font_size: '32sp'
-                    padding: [dp(32), dp(0), dp(8), dp(0)]
+                    font_size: '16sp'
+                    padding: [dp(16), dp(0), dp(4), dp(2)]
                     color: [1, 1, 1, 1]
                     halign: 'left'
                     text_size: self.size
@@ -50,7 +50,7 @@
                         Label:
                             id: alarm_time_label
                             text: root.current_alarm_time
-                            font_size: '32sp'
+                            font_size: '24sp'
                             padding: [dp(8), dp(0), dp(4), dp(8)]
                             size_hint_y: 0.7
                             color: [1, 1, 1, 1]
@@ -70,48 +70,46 @@
                         on_release: root.toggle_alarm()
 
         # Центральный блок с большими часами и тенью
-        
         AnchorLayout:
             anchor_x: 'right'
             anchor_y: 'center'
-            padding: [0, 0, dp(144), 0]            
+            padding: [0, 0, dp(24), 0]
 
             FloatLayout:
                 size_hint: None, None
-                size: dp(336), dp(180)
-                
+                size: dp(400), dp(180)
 
                 # Тени часов (многослойные для эффекта глубины)
                 Label:
                     id: clock_shadow3
                     text: root.clock_time
-                    font_size: '192sp'
+                    font_size: '144sp'
                     color: (0, 0, 0, 0.1)
                     size_hint: None, None
                     size: self.texture_size
-                    pos: self.parent.center[0] - self.width/2 + dp(8), self.parent.center[1] - self.height/2 - dp(6)
+                    pos: self.parent.center[0] - self.width/2 + dp(6), self.parent.center[1] - self.height/2 - dp(6)
                     halign: 'center'
                     valign: 'middle'
 
                 Label:
                     id: clock_shadow2
                     text: root.clock_time
-                    font_size: '192sp'
+                    font_size: '144sp'
                     color: (0, 0, 0, 0.2)
                     size_hint: None, None
                     size: self.texture_size
-                    pos: self.parent.center[0] - self.width/2 + dp(6), self.parent.center[1] - self.height/2 - dp(4)
+                    pos: self.parent.center[0] - self.width/2 + dp(4), self.parent.center[1] - self.height/2 - dp(4)
                     halign: 'center'
                     valign: 'middle'
 
                 Label:
                     id: clock_shadow1
                     text: root.clock_time
-                    font_size: '192sp'
+                    font_size: '144sp'
                     color: (0, 0, 0, 0.3)
                     size_hint: None, None
                     size: self.texture_size
-                    pos: self.parent.center[0] - self.width/2 + dp(4), self.parent.center[1] - self.height/2 - dp(2)
+                    pos: self.parent.center[0] - self.width/2 + dp(2), self.parent.center[1] - self.height/2 - dp(2)
                     halign: 'center'
                     valign: 'middle'
 
@@ -119,7 +117,7 @@
                 Label:
                     id: clock_label
                     text: root.clock_time
-                    font_size: '192sp'
+                    font_size: '144sp'
                     color: (1, 1, 1, 1)
                     size_hint: None, None
                     size: self.texture_size
@@ -130,10 +128,7 @@
         # Блок погоды
         OverlayCard:
             size_hint_y: None
-            height: dp(64)
-            padding: [0,dp(8),0,0]
-            size_hint_x: 0.9
-            pos_hint: {"center_x": 0.5}
+            height: dp(48)
             BoxLayout:
                 orientation: 'horizontal'
                 spacing: dp(16)
@@ -143,7 +138,7 @@
                 Label:
                     id: weather_now_label
                     text: root.weather_now_str
-                    font_size: '24sp'
+                    font_size: '16sp'
                     color: [1, 1, 1, 1]
                     size_hint_x: 0.455
                     halign: 'center'
@@ -154,7 +149,7 @@
                 Label:
                     id: weather_trend_label
                     text: root.weather_trend_arrow
-                    font_size: '24sp'
+                    font_size: '20sp'
                     color: [1, 1, 1, 1]
                     size_hint_x: 0.1
                     halign: 'center'
@@ -165,7 +160,7 @@
                 Label:
                     id: weather_5h_label
                     text: root.weather_5h_str
-                    font_size: '24sp'
+                    font_size: '16sp'
                     color: [1, 1, 1, 1]
                     size_hint_x: 0.45
                     halign: 'center'
