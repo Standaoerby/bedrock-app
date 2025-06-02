@@ -1,0 +1,45 @@
+{
+  "colors": {
+    "background": "#1e1e1e",
+    "overlay_card": "#282B2350",
+    "primary": "#F9F6F2",
+    "text": "#F9F6F2",
+    "text_secondary": "#aaaaaa",
+    "text_inactive": "#AAAAAA",
+    "text_accent": "#FFD700",
+    "clock_main": "#F9F6F2",
+    "menu_color": "#25252580",
+    "menu_button_text": "#F9F6F2",
+    "menu_button_text_active": "#FFD700"
+  },
+  "menu": {
+    "menu_button_height": 48,
+    "menu_button_width": 152,
+    "menu_height": 64  
+  },
+  "fonts": {
+    "main": "Minecraftia-Regular.ttf",
+    "title": "Minecraftia-Regular.ttf"
+  },
+  "images": {
+    "background": "background.png",
+    "overlay_home": "overlay_home.png",
+    "overlay_alarm": "overlay_alarm.png",
+    "overlay_schedule": "overlay_schedule.png",
+    "overlay_weather": "overlay_weather.png",
+    "overlay_pigs": "overlay_pigs.png",
+    "overlay_settings": "overlay_settings.png",
+    "overlay_default": "overlay_default.png",
+    "button_bg": "btn_bg.png",
+    "button_bg_active": "btn_bg_active.png",
+    "menu_button_bg": "menu_btn.png",
+    "menu_button_bg_active": "menu_btn_active.png"
+  },
+  "sounds": {
+    "click": "click.ogg",
+    "notify": "notify.ogg",
+    "error": "error.ogg",
+    "confirm": "confirm.ogg",
+    "startup": "startup.ogg"
+  }
+}
