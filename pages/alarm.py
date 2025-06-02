@@ -8,6 +8,9 @@ from app.logger import app_logger as logger
 
 DAYS_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
+# ИСПРАВЛЕНИЕ: Константа для настройки дебаунсинга кнопок времени
+TIME_BUTTON_DEBOUNCE_DELAY = 0.15  # 150ms между нажатиями
+
 class AlarmScreen(Screen):
     """Экран настройки будильника"""
     
@@ -30,6 +33,11 @@ class AlarmScreen(Screen):
         self._sound_check_event = None
         self._initialized = False
         
+        # ИСПРАВЛЕНИЕ: Добавляем дебаунсинг для кнопок времени
+        self._last_time_change = 0
+        self._time_change_delay = TIME_BUTTON_DEBOUNCE_DELAY
+        self._time_buttons_locked = False
+        
         # Подписка на события
         event_bus.subscribe("theme_changed", self._on_theme_changed_delayed)
         event_bus.subscribe("language_changed", self.refresh_text)
@@ -46,6 +54,13 @@ class AlarmScreen(Screen):
             Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
             Clock.schedule_once(lambda dt: self.refresh_text(), 0.1)
             Clock.schedule_once(lambda dt: self._setup_ringtone_button(), 0.2)  # Настройка кнопки
+            
+            # ИСПРАВЛЕНИЕ: Информация о дебаунсинге для отладки
+            logger.info(f"Time button debounce delay: {self._time_change_delay:.3f}s")
+            
+            # ДИАГНОСТИКА: Автоматическая проверка аудио-системы
+            Clock.schedule_once(lambda dt: self.diagnose_audio_system(), 1.0)
+            
             self._initialized = True
         except Exception as e:
             logger.error(f"Error in AlarmScreen.on_pre_enter: {e}")
@@ -102,6 +117,35 @@ class AlarmScreen(Screen):
         except Exception as e:
             logger.error(f"Error playing sound {sound_name}: {e}")
 
+    def _can_change_time(self):
+        """Проверка возможности изменения времени (дебаунсинг)"""
+        # ИСПРАВЛЕНИЕ: Двойная защита - временная блокировка + временной интервал
+        if self._time_buttons_locked:
+            logger.debug("Time change blocked - buttons locked")
+            return False
+            
+        import time
+        current_time = time.time()
+        time_since_last = current_time - self._last_time_change
+        
+        if time_since_last < self._time_change_delay:
+            logger.debug(f"Time change blocked by debouncing (since last: {time_since_last:.3f}s, required: {self._time_change_delay:.3f}s)")
+            return False
+            
+        self._last_time_change = current_time
+        logger.debug(f"Time change allowed (since last: {time_since_last:.3f}s)")
+        return True
+
+    def _lock_time_buttons(self):
+        """Временная блокировка кнопок времени"""
+        self._time_buttons_locked = True
+        Clock.schedule_once(lambda dt: setattr(self, '_time_buttons_locked', False), 0.1)
+
+    def set_time_debounce_delay(self, delay_seconds):
+        """Настройка задержки дебаунсинга для кнопок времени"""
+        self._time_change_delay = max(0.05, min(1.0, delay_seconds))  # От 50ms до 1s
+        logger.info(f"Time button debounce delay set to {self._time_change_delay:.3f}s")
+
     def _schedule_auto_save(self, delay=1.5):
         """Планирование автосохранения"""
         if self._auto_save_event:
@@ -110,10 +154,29 @@ class AlarmScreen(Screen):
         self._auto_save_event = Clock.schedule_once(lambda dt: self._auto_save(), delay)
 
     def _auto_save(self):
-        """Автосохранение настроек"""
+        """Автосохранение настроек - оптимизированное"""
         if self._settings_changed:
-            self.save_alarm(silent=True)
-            self._settings_changed = False
+            try:
+                # Сохраняем БЕЗ звуков и логирования для бесшовности
+                app = App.get_running_app()
+                if hasattr(app, 'alarm_service') and app.alarm_service:
+                    alarm = {
+                        "time": self.alarm_time,
+                        "enabled": self.alarm_active,
+                        "repeat": self.alarm_repeat,
+                        "ringtone": self.selected_ringtone,
+                        "fadein": self.alarm_fadein,
+                    }
+                    success = app.alarm_service.set_alarm(alarm)
+                    if success:
+                        self._settings_changed = False
+                        logger.debug("Auto-saved alarm settings")
+                        
+            except Exception as e:
+                logger.error(f"Error auto-saving alarm: {e}")
+        
+        # Очищаем событие
+        self._auto_save_event = None
 
     def load_ringtones(self):
         """Загрузка списка мелодий будильника - устанавливает ringtone_list ОДИН РАЗ"""
@@ -135,7 +198,11 @@ class AlarmScreen(Screen):
                 self.ringtone_list = ["robot.mp3", "morning.mp3", "gentle.mp3", "loud.mp3"]
                 self.selected_ringtone = "robot.mp3"
                 
-            logger.debug(f"Loaded {len(self.ringtone_list)} ringtones")
+            logger.debug(f"Loaded {len(self.ringtone_list)} ringtones: {self.ringtone_list}")
+            
+            # Проверяем файлы для отладки
+            self._check_ringtone_files()
+            
         except Exception as e:
             logger.error(f"Error loading ringtones: {e}")
             self.ringtone_list = ["robot.mp3"]
@@ -214,7 +281,10 @@ class AlarmScreen(Screen):
 
             self._update_toggle_buttons()
             self._update_day_buttons()
-            self._reset_play_button()
+            
+            # НЕ сбрасываем кнопку Play если звук играет
+            if not self._sound_playing:
+                self._reset_play_button()
             
             # Обновляем кнопку выбора мелодии
             if hasattr(self, 'ids') and 'ringtone_button' in self.ids:
@@ -269,6 +339,11 @@ class AlarmScreen(Screen):
 
     def increment_hour(self):
         """Увеличение часа"""
+        # ИСПРАВЛЕНИЕ: Дебаунсинг + блокировка для предотвращения множественных нажатий
+        if not self._can_change_time():
+            return
+            
+        self._lock_time_buttons()
         self._play_sound("click")
         try:
             hours, minutes = self.alarm_time.split(':')
@@ -277,11 +352,17 @@ class AlarmScreen(Screen):
             if hasattr(self, 'ids') and 'hour_label' in self.ids:
                 self.ids.hour_label.text = f"{new_hour:02d}"
             self._schedule_auto_save()
+            logger.debug(f"Hour incremented to {new_hour:02d}")
         except Exception as e:
             logger.error(f"Error incrementing hour: {e}")
 
     def decrement_hour(self):
         """Уменьшение часа"""
+        # ИСПРАВЛЕНИЕ: Дебаунсинг + блокировка для предотвращения множественных нажатий
+        if not self._can_change_time():
+            return
+            
+        self._lock_time_buttons()
         self._play_sound("click")
         try:
             hours, minutes = self.alarm_time.split(':')
@@ -290,11 +371,17 @@ class AlarmScreen(Screen):
             if hasattr(self, 'ids') and 'hour_label' in self.ids:
                 self.ids.hour_label.text = f"{new_hour:02d}"
             self._schedule_auto_save()
+            logger.debug(f"Hour decremented to {new_hour:02d}")
         except Exception as e:
             logger.error(f"Error decrementing hour: {e}")
 
     def increment_minute(self):
         """Увеличение минут"""
+        # ИСПРАВЛЕНИЕ: Дебаунсинг + блокировка для предотвращения множественных нажатий
+        if not self._can_change_time():
+            return
+            
+        self._lock_time_buttons()
         self._play_sound("click")
         try:
             hours, minutes = self.alarm_time.split(':')
@@ -303,11 +390,17 @@ class AlarmScreen(Screen):
             if hasattr(self, 'ids') and 'minute_label' in self.ids:
                 self.ids.minute_label.text = f"{new_minute:02d}"
             self._schedule_auto_save()
+            logger.debug(f"Minute incremented to {new_minute:02d}")
         except Exception as e:
             logger.error(f"Error incrementing minute: {e}")
 
     def decrement_minute(self):
         """Уменьшение минут"""
+        # ИСПРАВЛЕНИЕ: Дебаунсинг + блокировка для предотвращения множественных нажатий
+        if not self._can_change_time():
+            return
+            
+        self._lock_time_buttons()
         self._play_sound("click")
         try:
             hours, minutes = self.alarm_time.split(':')
@@ -316,6 +409,7 @@ class AlarmScreen(Screen):
             if hasattr(self, 'ids') and 'minute_label' in self.ids:
                 self.ids.minute_label.text = f"{new_minute:02d}"
             self._schedule_auto_save()
+            logger.debug(f"Minute decremented to {new_minute:02d}")
         except Exception as e:
             logger.error(f"Error decrementing minute: {e}")
 
@@ -347,14 +441,26 @@ class AlarmScreen(Screen):
             self._schedule_auto_save()
 
     def select_ringtone(self, name):
-        """Выбор мелодии - вызывается из RingtoneSelectButton"""
+        """Выбор мелодии - БЕЗ автоматического воспроизведения"""
         if name != self.selected_ringtone and name in self.ringtone_list:
+            logger.debug(f"AlarmScreen.select_ringtone called with: {name}")
+            
+            # Останавливаем текущее воспроизведение если играет
+            if self._sound_playing:
+                self.stop_ringtone()
+                self._reset_play_button()
+            
+            # Воспроизводим звук клика
             self._play_sound("click")
+            
+            # Обновляем выбранную мелодию
+            old_ringtone = self.selected_ringtone
             self.selected_ringtone = name
-            self.stop_ringtone()
-            self._reset_play_button()
+            
+            # Планируем автосохранение
             self._schedule_auto_save()
-            logger.debug(f"Selected ringtone: {name}")
+            
+            logger.info(f"Ringtone changed from {old_ringtone} to {name}")
 
     def toggle_play_ringtone(self, state):
         """Переключение воспроизведения мелодии"""
@@ -402,6 +508,7 @@ class AlarmScreen(Screen):
 
     def _start_sound_monitoring(self):
         """Запуск мониторинга воспроизведения звука"""
+        logger.info("🔄 Starting sound monitoring...")
         if self._sound_check_event:
             self._sound_check_event.cancel()
         self._sound_check_event = Clock.schedule_interval(self._check_sound_status, 0.5)
@@ -411,14 +518,114 @@ class AlarmScreen(Screen):
         try:
             app = App.get_running_app()
             if hasattr(app, 'audio_service') and app.audio_service:
-                if not app.audio_service.is_busy():
+                # Проверяем, что аудио-сервис ещё воспроизводит звук
+                is_busy = app.audio_service.is_busy()
+                current_file = getattr(app.audio_service, 'current_file', None)
+                
+                logger.debug(f"🔍 Sound check: is_busy={is_busy}, current_file={current_file}, _sound_playing={self._sound_playing}")
+                
+                if not is_busy:
+                    logger.info("🔇 Audio service reports sound finished")
                     self._on_sound_finished()
                     return False
+                else:
+                    logger.debug("🔊 Sound still playing...")
+                    
+            else:
+                logger.warning("Audio service not available during sound check")
+                self._on_sound_finished()
+                return False
+                
             return True
         except Exception as e:
             logger.error(f"Error checking sound: {e}")
             self._on_sound_finished()
             return False
+
+    def _check_ringtone_files(self):
+        """Проверка доступности файлов мелодий для отладки"""
+        try:
+            folder = "media/ringtones"
+            logger.info(f"🔍 Checking ringtone folder: {folder}")
+            
+            if not os.path.exists(folder):
+                logger.warning(f"❌ Ringtone folder does not exist: {folder}")
+                return
+                
+            files = os.listdir(folder)
+            logger.info(f"📁 Files in ringtone folder: {files}")
+            
+            for ringtone in self.ringtone_list:
+                path = os.path.join(folder, ringtone)
+                exists = os.path.exists(path)
+                size = os.path.getsize(path) if exists else 0
+                logger.info(f"🎵 Ringtone {ringtone}: exists={exists}, size={size} bytes")
+                
+        except Exception as e:
+            logger.error(f"Error checking ringtone files: {e}")
+
+    def diagnose_audio_system(self):
+        """Полная диагностика аудио-системы для отладки"""
+        logger.info("🔧 === AUDIO SYSTEM DIAGNOSIS ===")
+        
+        try:
+            app = App.get_running_app()
+            logger.info(f"App instance: {app}")
+            
+            # Проверка audio_service
+            if hasattr(app, 'audio_service'):
+                audio_service = app.audio_service
+                logger.info(f"AudioService instance: {audio_service}")
+                logger.info(f"AudioService type: {type(audio_service)}")
+                
+                if hasattr(audio_service, 'get_device_info'):
+                    device_info = audio_service.get_device_info()
+                    logger.info(f"Audio device info: {device_info}")
+                
+                logger.info(f"AudioService is_playing: {getattr(audio_service, 'is_playing', 'N/A')}")
+                logger.info(f"AudioService current_file: {getattr(audio_service, 'current_file', 'N/A')}")
+                logger.info(f"AudioService is_busy(): {audio_service.is_busy() if hasattr(audio_service, 'is_busy') else 'N/A'}")
+                
+            else:
+                logger.error("❌ AudioService not found in app")
+            
+            # Проверка theme_manager (для звуков темы)
+            if hasattr(app, 'theme_manager'):
+                tm = app.theme_manager
+                logger.info(f"ThemeManager instance: {tm}")
+                if tm and hasattr(tm, 'get_sound'):
+                    test_sound = tm.get_sound("click")
+                    logger.info(f"Test theme sound path: {test_sound}")
+                    if test_sound:
+                        logger.info(f"Theme sound exists: {os.path.exists(test_sound)}")
+            else:
+                logger.error("❌ ThemeManager not found in app")
+            
+            # Проверка файлов мелодий
+            self._check_ringtone_files()
+            
+            # Проверка состояния AlarmScreen
+            logger.info(f"AlarmScreen _sound_playing: {self._sound_playing}")
+            logger.info(f"AlarmScreen selected_ringtone: {self.selected_ringtone}")
+            logger.info(f"AlarmScreen ringtone_list: {self.ringtone_list}")
+            
+        except Exception as e:
+            logger.error(f"Error in audio system diagnosis: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+        
+        logger.info("🔧 === DIAGNOSIS COMPLETE ===")
+
+    def test_ringtone_playback(self):
+        """Тестовое воспроизведение мелодии с диагностикой"""
+        logger.info("🧪 === TESTING RINGTONE PLAYBACK ===")
+        
+        # Сначала диагностика
+        self.diagnose_audio_system()
+        
+        # Затем попытка воспроизведения
+        logger.info("Attempting test playback...")
+        self.play_ringtone()
 
     def _on_sound_finished(self):
         """Обработка завершения воспроизведения"""
@@ -430,20 +637,47 @@ class AlarmScreen(Screen):
 
     def stop_ringtone(self):
         """Остановка воспроизведения мелодии"""
+        logger.info(f"=== STOPPING RINGTONE ===")
+        logger.info(f"_sound_playing before stop: {self._sound_playing}")
+        
         try:
             app = App.get_running_app()
             if hasattr(app, 'audio_service') and app.audio_service:
-                if (self._sound_playing and 
-                    hasattr(app.audio_service, 'current_file') and 
-                    app.audio_service.current_file and
-                    'ringtones' in app.audio_service.current_file):
-                    app.audio_service.stop()
+                audio_service = app.audio_service
+                current_file = getattr(audio_service, 'current_file', None)
+                is_busy = audio_service.is_busy()
+                
+                logger.info(f"Audio service current_file: {current_file}")
+                logger.info(f"Audio service is_busy: {is_busy}")
+                
+                # Останавливаем только если это наша мелодия
+                if (self._sound_playing and current_file and 'ringtones' in current_file):
+                    logger.info("Stopping ringtone audio...")
+                    audio_service.stop()
+                    logger.info("Audio stopped")
+                elif self._sound_playing:
+                    logger.info("Stopping any audio (our flag says we're playing)...")
+                    audio_service.stop()
+                    logger.info("Audio stopped")
+                else:
+                    logger.info("Not stopping audio - _sound_playing=False")
+                    
+            else:
+                logger.warning("Audio service not available for stop")
+                
+            # Сбрасываем состояние
             self._sound_playing = False
             if self._sound_check_event:
                 self._sound_check_event.cancel()
                 self._sound_check_event = None
+                logger.info("Sound monitoring stopped")
+                
+            logger.info("✅ Ringtone stop completed")
+            
         except Exception as e:
-            logger.error(f"Error stopping ringtone: {e}")
+            logger.error(f"❌ Error stopping ringtone: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             self._sound_playing = False
 
     def refresh_theme(self, *args):

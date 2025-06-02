@@ -4,6 +4,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.properties import ListProperty, StringProperty, ObjectProperty
+from kivy.event import EventDispatcher
 from kivy.metrics import dp
 from kivy.app import App
 from app.logger import app_logger as logger
@@ -18,6 +19,9 @@ class SelectButton(Button):
     values = ListProperty([])
     selected_value = StringProperty("")
     popup_title = StringProperty("Select Option")
+    
+    # ИСПРАВЛЕНИЕ: Регистрируем событие on_select
+    __events__ = ('on_select',)
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -139,7 +143,7 @@ class SelectButton(Button):
                 old_value = self.selected_value
                 self.selected_value = value
                 
-                # Вызываем callback если установлен - ИСПРАВЛЕНО: вызываем событие on_select
+                # ИСПРАВЛЕНИЕ: Теперь это событие корректно зарегистрировано
                 self.dispatch('on_select', value, old_value)
                 
                 logger.debug(f"Selected value: {value}")
@@ -161,7 +165,7 @@ class SelectButton(Button):
         self._popup = None
     
     def on_select(self, value, old_value):
-        """Событие выбора - переопределяется в подклассах"""
+        """Событие выбора - переопределяется в подклассах или привязывается извне"""
         pass
     
     def set_values(self, values):
@@ -193,7 +197,11 @@ class ThemeSelectButton(SelectButton):
         from pages.settings import SettingsScreen
         screen = self._find_parent_screen()
         if isinstance(screen, SettingsScreen):
-            screen.on_theme_select(value)
+            # ИСПРАВЛЕНИЕ: Определяем тип кнопки по popup_title
+            if hasattr(self, 'popup_title') and 'Mode' in self.popup_title:
+                screen.on_variant_select(value)
+            else:
+                screen.on_theme_select(value)
 
     def _find_parent_screen(self):
         """Поиск родительского экрана"""
@@ -240,10 +248,17 @@ class RingtoneSelectButton(SelectButton):
     
     def on_select(self, value, old_value):
         """Обработка выбора мелодии"""
-        from pages.alarm import AlarmScreen
-        screen = self._find_parent_screen()
-        if isinstance(screen, AlarmScreen):
-            screen.select_ringtone(value)
+        try:
+            from pages.alarm import AlarmScreen
+            screen = self._find_parent_screen()
+            if isinstance(screen, AlarmScreen):
+                # ИСПРАВЛЕНИЕ: Вызываем правильный метод
+                screen.select_ringtone(value)
+                logger.debug(f"RingtoneSelectButton: Called select_ringtone with {value}")
+            else:
+                logger.warning(f"Parent screen not found or not AlarmScreen: {type(screen)}")
+        except Exception as e:
+            logger.error(f"Error in RingtoneSelectButton.on_select: {e}")
 
     def _find_parent_screen(self):
         """Поиск родительского экрана"""

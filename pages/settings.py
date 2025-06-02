@@ -76,7 +76,7 @@ class SettingsScreen(Screen):
                 theme_button.values = self.theme_list
                 theme_button.selected_value = self.current_theme
                 
-            # Настройка кнопки варианта темы
+            # ИСПРАВЛЕНИЕ: Настройка кнопки варианта темы
             if 'variant_button' in self.ids:
                 variant_button = self.ids.variant_button
                 variant_button.values = self.variant_list
