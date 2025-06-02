@@ -1,38 +1,51 @@
-[INFO   ] [Base        ] Leaving application in progress...
-[ERROR  ] [Critical application error] Cannot add <kivy.uix.dropdown.DropDown object at 0x7fff882747c0> to window, it already has a parent <kivy.core.window.window_sdl2.WindowSDL object at 0x7fffa2bc3380>
-Traceback (most recent call last):
-  File "/home/standa/bedrock-app/main.py", line 297, in <module>
-    BedrockApp().run()
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/app.py", line 956, in run
-    runTouchApp()
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/base.py", line 574, in runTouchApp
-    EventLoop.mainloop()
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/base.py", line 339, in mainloop
-    self.idle()
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/base.py", line 383, in idle
-    self.dispatch_input()
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/base.py", line 334, in dispatch_input
-    post_dispatch_input(*pop(0))
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/base.py", line 302, in post_dispatch_input
-    wid.dispatch('on_touch_up', me)
-  File "kivy/_event.pyx", line 731, in kivy._event.EventDispatcher.dispatch
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/uix/behaviors/button.py", line 179, in on_touch_up
-    self.dispatch('on_release')
-  File "kivy/_event.pyx", line 727, in kivy._event.EventDispatcher.dispatch
-  File "kivy/_event.pyx", line 1307, in kivy._event.EventObservers.dispatch
-  File "kivy/_event.pyx", line 1231, in kivy._event.EventObservers._dispatch
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/uix/spinner.py", line 207, in _toggle_dropdown
-    self.is_open = not self.is_open
-    ^^^^^^^^^^^^
-  File "kivy/properties.pyx", line 520, in kivy.properties.Property.__set__
-  File "kivy/properties.pyx", line 567, in kivy.properties.Property.set
-  File "kivy/properties.pyx", line 606, in kivy.properties.Property._dispatch
-  File "kivy/_event.pyx", line 1307, in kivy._event.EventObservers.dispatch
-  File "kivy/_event.pyx", line 1213, in kivy._event.EventObservers._dispatch
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/uix/spinner.py", line 218, in on_is_open
-    self._dropdown.open(self)
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/uix/dropdown.py", line 254, in open
-    self._win.add_widget(self)
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/core/window/__init__.py", line 1536, in add_widget
-    raise WidgetException(
-kivy.uix.widget.WidgetException: Cannot add <kivy.uix.dropdown.DropDown object at 0x7fff882747c0> to window, it already has a parent <kivy.core.window.window_sdl2.WindowSDL object at 0x7fffa2bc3380>
+[INFO   ] 🎵 Starting playback...
+[INFO   ] ✅ Playback started successfully
+[INFO   ] [🎵 Playing audio] click.ogg on device: hw:0,0
+[INFO   ] [🎵 Final state - is_playing] True, current_file: themes/minecraft/sounds/click.ogg
+[INFO   ] [🎵 AudioService.play() called]
+[INFO   ] [  filepath  ] themes/minecraft/sounds/click.ogg
+[INFO   ] [  is_ringtone] False
+[INFO   ] [  is_theme_sound] True
+[INFO   ] [  fadein    ] 0
+[INFO   ] [  current state - is_playing] True, current_file: themes/minecraft/sounds/click.ogg
+[INFO   ] [  current state - is_long_audio] False
+[INFO   ] ❌ Skipping theme sound - too frequent
+[INFO   ] [🎮 Toggle play ringtone] state=down, current _sound_playing=False
+[INFO   ] ▶️ Starting ringtone playback...
+[INFO   ] 🎵 === STARTING RINGTONE PLAYBACK ===
+[INFO   ] [Selected ringtone] morning.mp3
+[INFO   ] [Alarm fadein] True
+[INFO   ] 🛑 === STOPPING RINGTONE ===
+[INFO   ] [_sound_playing before stop] False
+[INFO   ] [Audio service current_file] themes/minecraft/sounds/click.ogg
+[INFO   ] [Audio service is_busy] True
+[INFO   ] ℹ️ Not stopping audio - no ringtone playing
+[INFO   ] ✅ Ringtone stop completed
+[INFO   ] [Ringtone path] media/ringtones/morning.mp3
+[INFO   ] [Path exists ] True
+[INFO   ] [Ringtone file size] 8753697 bytes
+[INFO   ] [AudioService before play - is_playing] True, current_file: themes/minecraft/sounds/click.ogg
+[INFO   ] 🎵 Calling audio_service.play with fadein=2.0
+[INFO   ] [🎵 AudioService.play() called]
+[INFO   ] [  filepath  ] media/ringtones/morning.mp3
+[INFO   ] [  is_ringtone] True
+[INFO   ] [  is_theme_sound] False
+[INFO   ] [  fadein    ] 2.0
+[INFO   ] [  current state - is_playing] True, current_file: themes/minecraft/sounds/click.ogg
+[INFO   ] [  current state - is_long_audio] False
+[INFO   ] ❌ Skipping theme sound - too frequent
+[INFO   ] ✅ audio_service.play() completed successfully
+[INFO   ] [AudioService after play - is_playing] True, current_file: themes/minecraft/sounds/click.ogg
+[INFO   ] [AudioService is_busy()] True
+[ERROR  ] [❌ AudioService didn't load ringtone - current_file] themes/minecraft/sounds/click.ogg
+[INFO   ] [🎵 AudioService.play() called]
+[INFO   ] [  filepath  ] themes/minecraft/sounds/error.ogg
+[INFO   ] [  is_ringtone] False
+[INFO   ] [  is_theme_sound] True
+[INFO   ] [  fadein    ] 0
+[INFO   ] [  current state - is_playing] True, current_file: themes/minecraft/sounds/click.ogg
+[INFO   ] [  current state - is_long_audio] False
+[INFO   ] ❌ Skipping theme sound - too frequent
+[INFO   ] [🎮 Toggle play ringtone] state=normal, current _sound_playing=False
+[INFO   ] ⏹️ Stopping ringtone playback...
+[INFO   ] 🛑 === STOPPING RINGTONE ===

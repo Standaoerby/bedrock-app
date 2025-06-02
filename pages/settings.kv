@@ -1,4 +1,7 @@
+#:kivy 2.1.0
 #:import dp kivy.metrics.dp
+#:import ThemeSelectButton widgets.select_button.ThemeSelectButton
+#:import LanguageSelectButton widgets.select_button.LanguageSelectButton
 
 <SettingsScreen>:
     name: "settings"
@@ -53,17 +56,14 @@
                             valign: 'middle'
                             text_size: self.size
                         
-                        Spinner:
-                            id: theme_spinner
-                            text: root.current_theme
-                            values: ["minecraft"]
+                        ThemeSelectButton:
+                            id: theme_button
                             font_size: '16sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
                             size_hint_x: 0.7
-                            on_text: if self.text != root.current_theme: root.on_theme_select(self.text)
                     
                     BoxLayout:
                         orientation: 'horizontal'
@@ -82,17 +82,15 @@
                             valign: 'middle'
                             text_size: self.size
                         
-                        Spinner:
-                            id: variant_spinner
-                            text: root.current_variant
-                            values: ["light", "dark"]
+                        ThemeSelectButton:
+                            id: variant_button
+                            popup_title: "Select Mode"
                             font_size: '16sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
                             size_hint_x: 0.7
-                            on_text: if self.text != root.current_variant: root.on_variant_select(self.text)
             
             # Настройки языка
             OverlayCard:
@@ -132,17 +130,14 @@
                             valign: 'middle'
                             text_size: self.size
                         
-                        Spinner:
-                            id: language_spinner
-                            text: root.current_language
-                            values: ["en", "ru"]
+                        LanguageSelectButton:
+                            id: language_button
                             font_size: '14sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
                             size_hint_x: 0.6
-                            on_text: if self.text != root.current_language: root.on_language_select(self.text)
                     
                     # Заполнитель
                     Widget:
@@ -277,7 +272,7 @@
                     # Заполнитель
                     Widget:
             
-            # Автоматическая тема
+            # Автоматическая тема (ОБНОВЛЕННАЯ СЕКЦИЯ)
             OverlayCard:
                 size_hint_x: 0.4
                 padding: [dp(16), dp(12)]
@@ -363,6 +358,50 @@
                             size_hint_x: 0.2
                             halign: 'center'
                             valign: 'middle'
+                    
+                    # ОБНОВЛЕНО: Кнопки тестирования
+                    BoxLayout:
+                        orientation: 'horizontal'
+                        spacing: dp(4)
+                        size_hint_y: None
+                        height: dp(24)
+                        
+                        Button:
+                            id: test_auto_theme_button
+                            text: "Test"
+                            font_size: '10sp'
+                            font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
+                            color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
+                            background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
+                            background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
+                            size_hint_x: 0.33
+                            disabled: not (root.light_sensor_available and root.auto_theme_enabled)
+                            opacity: 1.0 if (root.light_sensor_available and root.auto_theme_enabled) else 0.5
+                            on_release: root.test_auto_theme()
+                        
+                        Button:
+                            id: manual_switch_button
+                            text: "Switch"
+                            font_size: '10sp'
+                            font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
+                            color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
+                            background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
+                            background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
+                            size_hint_x: 0.33
+                            disabled: not root.light_sensor_available
+                            opacity: 1.0 if root.light_sensor_available else 0.5
+                            on_release: root.manual_theme_switch()
+                        
+                        Button:
+                            id: refresh_ui_button
+                            text: "Refresh"
+                            font_size: '10sp'
+                            font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
+                            color: app.theme_manager.get_rgba("text_secondary") if app.theme_manager else [0.7,0.7,0.7,1]
+                            background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
+                            background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
+                            size_hint_x: 0.34
+                            on_release: root.force_ui_refresh()
                     
                     Label:
                         id: sensor_status_label

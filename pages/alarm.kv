@@ -1,4 +1,6 @@
+#:kivy 2.1.0
 #:import dp kivy.metrics.dp
+#:import RingtoneSelectButton widgets.select_button.RingtoneSelectButton
 
 <AlarmScreen>:
     name: "alarm"
@@ -30,6 +32,7 @@
                         size_hint_x: 0.4
 
                         Button:
+                            id: hour_plus_button
                             text: "+"
                             font_size: "24sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
@@ -57,6 +60,7 @@
                             width: self.parent.width / 2
 
                         Button:
+                            id: hour_minus_button
                             text: "-"
                             font_size: "24sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
@@ -72,6 +76,7 @@
 
                     # Разделитель
                     Label:
+                        id: time_separator_label
                         text: ":"
                         font_size: "40sp"
                         font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
@@ -88,6 +93,7 @@
                         size_hint_x: 0.4
 
                         Button:
+                            id: minute_plus_button
                             text: "+"
                             font_size: "24sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
@@ -112,6 +118,7 @@
                             text_size: self.size
 
                         Button:
+                            id: minute_minus_button
                             text: "-"
                             font_size: "24sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
@@ -143,7 +150,7 @@
                         ToggleButton:
                             id: active_button
                             text: "ON" if root.alarm_active else "OFF"
-                            font_size: "72sp"
+                            font_size: "64sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: (app.theme_manager.get_rgba("primary") if root.alarm_active else app.theme_manager.get_rgba("text_secondary")) if app.theme_manager else ([1,1,1,1] if root.alarm_active else [0.7,0.7,0.7,1])
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
@@ -290,16 +297,13 @@
                             valign: "middle"
                             text_size: self.size
 
-                        Spinner:
-                            id: ringtone_spinner
-                            text: root.selected_ringtone if root.selected_ringtone else "robot.mp3"
-                            values: root.ringtone_list if root.ringtone_list else ["robot.mp3"]
-                            font_size: "24sp"
+                        RingtoneSelectButton:
+                            id: ringtone_button
+                            font_size: "16sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
-                            on_text: if self.text != root.selected_ringtone: root.select_ringtone(self.text)
 
                         ToggleButton:
                             id: play_button
