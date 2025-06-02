@@ -292,8 +292,8 @@
 
                         Spinner:
                             id: ringtone_spinner
-                            text: root.selected_ringtone if root.selected_ringtone else "robot.mp3"
-                            values: root.ringtone_list if root.ringtone_list else ["robot.mp3"]
+                            text: root.selected_ringtone
+                            values: root.ringtone_list
                             font_size: "24sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]

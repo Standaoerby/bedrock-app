@@ -56,7 +56,7 @@
                         Spinner:
                             id: theme_spinner
                             text: root.current_theme
-                            values: ["minecraft"]
+                            values: root.theme_list
                             font_size: '16sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
@@ -85,7 +85,7 @@
                         Spinner:
                             id: variant_spinner
                             text: root.current_variant
-                            values: ["light", "dark"]
+                            values: root.variant_list
                             font_size: '16sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
@@ -135,7 +135,7 @@
                         Spinner:
                             id: language_spinner
                             text: root.current_language
-                            values: ["en", "ru"]
+                            values: root.language_list
                             font_size: '14sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]

@@ -16,7 +16,10 @@ class AlarmScreen(Screen):
     alarm_active = BooleanProperty(True)
     alarm_repeat = ListProperty(["Mon", "Tue", "Wed", "Thu", "Fri"])
     selected_ringtone = StringProperty("robot.mp3")
-    ringtone_list = ListProperty([])
+    
+    # ListProperty для значений спиннера (устанавливается один раз)
+    ringtone_list = ListProperty(["robot.mp3"])
+    
     alarm_fadein = BooleanProperty(False)
 
     def __init__(self, **kwargs):
@@ -28,7 +31,7 @@ class AlarmScreen(Screen):
         self._initialized = False
         
         # Подписка на события
-        event_bus.subscribe("theme_changed", self.refresh_theme)
+        event_bus.subscribe("theme_changed", self._on_theme_changed_delayed)  # Асинхронно!
         event_bus.subscribe("language_changed", self.refresh_text)
 
     def on_pre_enter(self, *args):
@@ -36,11 +39,12 @@ class AlarmScreen(Screen):
         logger.info("Entering AlarmScreen")
         try:
             Clock.schedule_once(lambda dt: self.stop_ringtone(), 0.2)
-            self.load_ringtones()
+            self.load_ringtones()  # Устанавливает ringtone_list один раз
             self.load_alarm_config()
             self.update_ui()
-            self.refresh_theme()
-            self.refresh_text()
+            # Отложенная инициализация темы
+            Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
+            Clock.schedule_once(lambda dt: self.refresh_text(), 0.1)
             self._initialized = True
         except Exception as e:
             logger.error(f"Error in AlarmScreen.on_pre_enter: {e}")
@@ -52,7 +56,6 @@ class AlarmScreen(Screen):
                 self.save_alarm(silent=True)
             self.stop_ringtone()
             self._reset_play_button()
-            self._cleanup_spinners()
             
             # Отменяем отложенные события
             if self._auto_save_event:
@@ -63,22 +66,6 @@ class AlarmScreen(Screen):
                 self._sound_check_event = None
         except Exception as e:
             logger.error(f"Error in AlarmScreen.on_pre_leave: {e}")
-
-    def _cleanup_spinners(self):
-        """Очистка Spinner виджетов для предотвращения ошибок DropDown"""
-        try:
-            if hasattr(self, 'ids') and 'ringtone_spinner' in self.ids:
-                spinner = self.ids.ringtone_spinner
-                if hasattr(spinner, '_dropdown') and spinner._dropdown:
-                    try:
-                        if spinner._dropdown.parent:
-                            spinner._dropdown.parent.remove_widget(spinner._dropdown)
-                        spinner._dropdown.dismiss()
-                        spinner.is_open = False
-                    except Exception as e:
-                        logger.warning(f"Error cleaning up ringtone spinner: {e}")
-        except Exception as e:
-            logger.error(f"Error in _cleanup_spinners: {e}")
 
     def get_theme_manager(self):
         """Безопасное получение theme_manager"""
@@ -113,7 +100,7 @@ class AlarmScreen(Screen):
             self._settings_changed = False
 
     def load_ringtones(self):
-        """Загрузка списка мелодий будильника"""
+        """Загрузка списка мелодий будильника - устанавливает ringtone_list ОДИН РАЗ"""
         folder = "media/ringtones"
         try:
             os.makedirs(folder, exist_ok=True)
@@ -212,22 +199,11 @@ class AlarmScreen(Screen):
             self._update_day_buttons()
             self._reset_play_button()
             
-            # Обновляем spinner, если он существует
-            Clock.schedule_once(lambda dt: self._update_spinner(), 0.1)
+            # НЕ обновляем спиннер программно - он обновится через KV привязки:
+            # text: root.selected_ringtone, values: root.ringtone_list
             
         except Exception as e:
             logger.error(f"Error updating UI: {e}")
-
-    def _update_spinner(self):
-        """Безопасное обновление спиннера"""
-        try:
-            if hasattr(self, 'ids') and 'ringtone_spinner' in self.ids:
-                spinner = self.ids.ringtone_spinner
-                if self.ringtone_list and self.selected_ringtone in self.ringtone_list:
-                    spinner.values = self.ringtone_list
-                    spinner.text = self.selected_ringtone
-        except Exception as e:
-            logger.error(f"Error updating spinner: {e}")
 
     def _update_toggle_buttons(self):
         """Обновление кнопок переключения"""
@@ -263,6 +239,11 @@ class AlarmScreen(Screen):
             play_button.text = 'Play'
             play_button.state = 'normal'
         self._sound_playing = False
+
+    def _on_theme_changed_delayed(self, *args):
+        """Асинхронная обработка смены темы"""
+        # Отложенное обновление темы, чтобы не конфликтовать со спиннерами
+        Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
 
     # === ОБРАБОТЧИКИ СОБЫТИЙ UI ===
 
@@ -444,7 +425,7 @@ class AlarmScreen(Screen):
             self._sound_playing = False
 
     def refresh_theme(self, *args):
-        """Обновление темы для всех элементов"""
+        """Обновление темы для всех элементов (БЕЗ изменения спиннера!)"""
         if not self._initialized:
             return
             
@@ -453,15 +434,17 @@ class AlarmScreen(Screen):
             return
         
         try:
+            # Список виджетов для обновления темы (БЕЗ спиннера!)
             widgets = [
                 "hour_label", "minute_label", "active_button", "fadein_button", 
-                "play_button", "ringtone_spinner"
+                "play_button"
             ]
             
             for widget_id in widgets:
                 if hasattr(self, 'ids') and widget_id in self.ids:
                     widget = self.ids[widget_id]
                     
+                    # Обновляем ТОЛЬКО шрифт и цвет, НЕ трогаем text и values спиннера!
                     if hasattr(widget, 'font_name'):
                         widget.font_name = tm.get_font("main")
                     if hasattr(widget, 'color'):
@@ -469,6 +452,9 @@ class AlarmScreen(Screen):
                     if hasattr(widget, 'background_normal'):
                         widget.background_normal = tm.get_image("button_bg")
                         widget.background_down = tm.get_image("button_bg_active")
+                        
+            # НЕ ТРОГАЕМ ringtone_spinner - он обновится сам через KV привязки темы
+                        
         except Exception as e:
             logger.error(f"Error refreshing theme: {e}")
 

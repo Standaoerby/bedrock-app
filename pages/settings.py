@@ -1,6 +1,6 @@
 from kivy.uix.screenmanager import Screen
 from kivy.app import App
-from kivy.properties import StringProperty, BooleanProperty, NumericProperty
+from kivy.properties import StringProperty, BooleanProperty, NumericProperty, ListProperty
 from kivy.clock import Clock
 from app.event_bus import event_bus
 from app.logger import app_logger as logger
@@ -14,6 +14,11 @@ class SettingsScreen(Screen):
     current_theme = StringProperty("minecraft")
     current_variant = StringProperty("light")
     current_language = StringProperty("en")
+    
+    # ListProperty для значений спиннеров (устанавливаются один раз)
+    theme_list = ListProperty(["minecraft"])
+    variant_list = ListProperty(["light", "dark"])
+    language_list = ListProperty(["en", "ru"])
     
     # User properties
     username = StringProperty("")
@@ -33,7 +38,7 @@ class SettingsScreen(Screen):
         super().__init__(**kwargs)
         # Подписка на события
         event_bus.subscribe("language_changed", self.refresh_text)
-        event_bus.subscribe("theme_changed", self.refresh_theme)
+        event_bus.subscribe("theme_changed", self._on_theme_changed_delayed)  # Асинхронно!
         self._update_events = []
         self._initialized = False
 
@@ -42,10 +47,11 @@ class SettingsScreen(Screen):
         logger.info("Entering SettingsScreen")
         try:
             self.load_all_settings()
-            self.refresh_theme()
-            self.refresh_text()
             self.check_sensor_availability()
             self.start_updates()
+            # Отложенная инициализация темы
+            Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
+            Clock.schedule_once(lambda dt: self.refresh_text(), 0.1)
             self._initialized = True
         except Exception as e:
             logger.error(f"Error in SettingsScreen.on_pre_enter: {e}")
@@ -54,29 +60,8 @@ class SettingsScreen(Screen):
         """Вызывается при выходе с экрана"""
         try:
             self.stop_updates()
-            # Очищаем Spinner'ы для предотвращения ошибок DropDown
-            self._cleanup_spinners()
         except Exception as e:
             logger.error(f"Error in SettingsScreen.on_pre_leave: {e}")
-
-    def _cleanup_spinners(self):
-        """Очистка Spinner виджетов для предотвращения ошибок DropDown"""
-        try:
-            if hasattr(self, 'ids'):
-                spinner_ids = ['theme_spinner', 'variant_spinner', 'language_spinner']
-                for spinner_id in spinner_ids:
-                    if spinner_id in self.ids:
-                        spinner = self.ids[spinner_id]
-                        if hasattr(spinner, '_dropdown') and spinner._dropdown:
-                            try:
-                                if spinner._dropdown.parent:
-                                    spinner._dropdown.parent.remove_widget(spinner._dropdown)
-                                spinner._dropdown.dismiss()
-                                spinner.is_open = False
-                            except Exception as e:
-                                logger.warning(f"Error cleaning up spinner {spinner_id}: {e}")
-        except Exception as e:
-            logger.error(f"Error in _cleanup_spinners: {e}")
 
     def get_theme_manager(self):
         """Безопасное получение theme_manager"""
@@ -121,7 +106,16 @@ class SettingsScreen(Screen):
                 
             user_config = app.user_config
             
-            # Загружаем основные настройки
+            # Устанавливаем списки значений для спиннеров ОДИН РАЗ
+            tm = self.get_theme_manager()
+            if tm:
+                # Если есть метод получения списка тем
+                if hasattr(tm, 'get_theme_names'):
+                    self.theme_list = tm.get_theme_names()
+                else:
+                    self.theme_list = ["minecraft"]  # Фиксированный список
+            
+            # Загружаем основные настройки - KV автоматически обновит спиннеры
             self.current_theme = user_config.get("theme", "minecraft")
             self.current_variant = user_config.get("variant", "light")
             self.current_language = user_config.get("language", "en")
@@ -146,7 +140,7 @@ class SettingsScreen(Screen):
             self.auto_theme_enabled = user_config.get("auto_theme_enabled", False)
             self.light_sensor_threshold = user_config.get("light_sensor_threshold", 3)
             
-            # Обновляем поля ввода если экран уже инициализирован
+            # Обновляем только TextInput поля
             Clock.schedule_once(lambda dt: self._update_input_fields(), 0.1)
             
             logger.info("Settings loaded successfully")
@@ -155,12 +149,12 @@ class SettingsScreen(Screen):
             logger.error(f"Error loading settings: {e}")
 
     def _update_input_fields(self):
-        """Обновление полей ввода значениями из настроек"""
+        """Обновление ТОЛЬКО текстовых полей ввода (НЕ спиннеров)"""
         try:
             if not hasattr(self, 'ids'):
                 return
                 
-            # Обновляем поля ввода
+            # Обновляем ТОЛЬКО текстовые поля - спиннеры обновятся автоматически через KV привязки
             if 'username_input' in self.ids:
                 self.ids.username_input.text = self.username
             if 'birth_day_input' in self.ids:
@@ -169,14 +163,6 @@ class SettingsScreen(Screen):
                 self.ids.birth_month_input.text = self.birth_month
             if 'birth_year_input' in self.ids:
                 self.ids.birth_year_input.text = self.birth_year
-                
-            # Обновляем Spinner'ы
-            if 'theme_spinner' in self.ids:
-                self.ids.theme_spinner.text = self.current_theme
-            if 'variant_spinner' in self.ids:
-                self.ids.variant_spinner.text = self.current_variant
-            if 'language_spinner' in self.ids:
-                self.ids.language_spinner.text = self.current_language
                 
         except Exception as e:
             logger.error(f"Error updating input fields: {e}")
@@ -230,6 +216,7 @@ class SettingsScreen(Screen):
             # Применяем тему
             if hasattr(app, 'theme_manager'):
                 app.theme_manager.load(theme_name, self.current_variant)
+                # НЕ вызываем refresh_theme синхронно! Событие придет асинхронно
                 event_bus.publish("theme_changed", {"theme": theme_name, "variant": self.current_variant})
             
             logger.info(f"Theme changed to: {theme_name}")
@@ -247,6 +234,7 @@ class SettingsScreen(Screen):
             # Применяем вариант темы
             if hasattr(app, 'theme_manager'):
                 app.theme_manager.load(self.current_theme, variant)
+                # НЕ вызываем refresh_theme синхронно! Событие придет асинхронно
                 event_bus.publish("theme_changed", {"theme": self.current_theme, "variant": variant})
             
             logger.info(f"Theme variant changed to: {variant}")
@@ -267,6 +255,11 @@ class SettingsScreen(Screen):
                 event_bus.publish("language_changed", {"language": language})
             
             logger.info(f"Language changed to: {language}")
+
+    def _on_theme_changed_delayed(self, *args):
+        """Асинхронная обработка смены темы"""
+        # Отложенное обновление темы, чтобы не конфликтовать со спиннерами
+        Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
 
     def on_username_change(self, instance, value):
         """Обработка изменения имени пользователя"""
@@ -325,10 +318,6 @@ class SettingsScreen(Screen):
         sound_name = "confirm" if self.auto_theme_enabled else "click"
         self._play_sound(sound_name)
         
-        # Обновляем кнопку в интерфейсе
-        if hasattr(self, 'ids') and 'auto_theme_button' in self.ids:
-            self.ids.auto_theme_button.text = "ON" if self.auto_theme_enabled else "OFF"
-        
         logger.info(f"Auto theme toggled: {self.auto_theme_enabled}")
 
     def on_threshold_change(self, value):
@@ -347,40 +336,6 @@ class SettingsScreen(Screen):
                 
         except Exception as e:
             logger.error(f"Error changing threshold: {e}")
-
-    def test_theme_switch(self):
-        """Тест переключения темы"""
-        app = App.get_running_app()
-        
-        try:
-            # Переключаем на противоположный вариант
-            test_variant = "dark" if self.current_variant == "light" else "light"
-            
-            # Воспроизводим звук
-            self._play_sound("confirm")
-            
-            # Применяем тест
-            if hasattr(app, 'theme_manager'):
-                app.theme_manager.load(self.current_theme, test_variant)
-                event_bus.publish("theme_changed", {"theme": self.current_theme, "variant": test_variant})
-            
-            # Возвращаем обратно через 3 секунды
-            Clock.schedule_once(lambda dt: self._restore_theme(), 3.0)
-            
-            logger.info(f"Theme test: switching to {test_variant} for 3 seconds")
-            
-        except Exception as e:
-            logger.error(f"Error in theme test: {e}")
-            # Воспроизводим звук ошибки
-            self._play_sound("error")
-
-    def _restore_theme(self):
-        """Восстановление исходной темы после теста"""
-        app = App.get_running_app()
-        if hasattr(app, 'theme_manager'):
-            app.theme_manager.load(self.current_theme, self.current_variant)
-            event_bus.publish("theme_changed", {"theme": self.current_theme, "variant": self.current_variant})
-        logger.info(f"Theme restored to: {self.current_theme}/{self.current_variant}")
 
     def save_all_settings(self):
         """Сохранение всех настроек"""
@@ -434,7 +389,7 @@ class SettingsScreen(Screen):
             self._play_sound("error")
 
     def refresh_theme(self, *args):
-        """Обновление темы для всех элементов"""
+        """Обновление темы для всех элементов (БЕЗ изменения спиннеров!)"""
         if not self._initialized:
             return
             
@@ -443,11 +398,10 @@ class SettingsScreen(Screen):
             return
 
         try:
-            # Список виджетов для обновления темы
+            # Список виджетов для обновления темы (БЕЗ спиннеров!)
             widgets_to_update = [
                 "theme_label", "variant_label", "language_label", "username_label",
                 "birthday_label", "auto_theme_label", "threshold_label", "sensor_status_label",
-                "theme_spinner", "variant_spinner", "language_spinner", 
                 "username_input", "birth_day_input", "birth_month_input", "birth_year_input",
                 "auto_theme_button", "save_button",
                 "theme_section_label", "language_section_label", "user_section_label", "auto_theme_section_label"
@@ -457,7 +411,7 @@ class SettingsScreen(Screen):
                 if hasattr(self, 'ids') and widget_id in self.ids:
                     widget = self.ids[widget_id]
                     
-                    # Обновляем шрифт
+                    # Обновляем ТОЛЬКО шрифт и цвет, НЕ трогаем text и values спиннеров!
                     if hasattr(widget, 'font_name'):
                         if "section" in widget_id:
                             widget.font_name = tm.get_font("title")
