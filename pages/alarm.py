@@ -109,13 +109,70 @@ class AlarmScreen(Screen):
     def _play_sound(self, sound_name):
         """Воспроизведение звука темы"""
         try:
+            # ИСПРАВЛЕНИЕ: Не воспроизводим звуки темы если играет рингтон
+            if self._sound_playing:
+                logger.debug(f"Skipping theme sound '{sound_name}' - ringtone playing")
+                return
+                
             app = App.get_running_app()
             if hasattr(app, "theme_manager") and hasattr(app, "audio_service"):
                 path = app.theme_manager.get_sound(sound_name)
                 if path and os.path.exists(path):
+                    logger.debug(f"Playing theme sound: {sound_name}")
                     app.audio_service.play(path)
+                else:
+                    logger.warning(f"Theme sound not found: {sound_name}")
         except Exception as e:
-            logger.error(f"Error playing sound {sound_name}: {e}")
+            logger.error(f"Error playing theme sound {sound_name}: {e}")
+    def test_ringtone_direct(self, ringtone_name=None):
+        """Прямое тестирование воспроизведения рингтона без UI"""
+        if ringtone_name is None:
+            ringtone_name = self.selected_ringtone
+            
+        logger.info(f"🧪 === DIRECT RINGTONE TEST: {ringtone_name} ===")
+        
+        try:
+            folder = "media/ringtones"
+            path = os.path.join(folder, ringtone_name)
+            
+            logger.info(f"Test path: {path}")
+            logger.info(f"File exists: {os.path.exists(path)}")
+            
+            if os.path.exists(path):
+                file_size = os.path.getsize(path)
+                logger.info(f"File size: {file_size} bytes")
+                
+                app = App.get_running_app()
+                if hasattr(app, 'audio_service'):
+                    audio_service = app.audio_service
+                    logger.info(f"AudioService available: True")
+                    logger.info(f"Before test - current_file: {audio_service.current_file}")
+                    
+                    # Прямой вызов без fadein
+                    audio_service.stop()  # Останавливаем все
+                    import time
+                    time.sleep(0.2)  # Даем время остановиться
+                    
+                    logger.info(f"Calling direct play...")
+                    audio_service.play(path, fadein=0)
+                    
+                    logger.info(f"After test - current_file: {audio_service.current_file}")
+                    logger.info(f"After test - is_busy: {audio_service.is_busy()}")
+                    logger.info(f"After test - is_playing: {audio_service.is_playing}")
+                    
+                    return True
+                else:
+                    logger.error("AudioService not available")
+                    return False
+            else:
+                logger.error(f"Ringtone file not found: {path}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error in direct ringtone test: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return False
 
     def _can_change_time(self):
         """Проверка возможности изменения времени (дебаунсинг)"""
@@ -462,83 +519,81 @@ class AlarmScreen(Screen):
             
             logger.info(f"Ringtone changed from {old_ringtone} to {name}")
 
+    # Исправление для pages/alarm.py
+    # Заменить метод toggle_play_ringtone() на эту версию:
+
     def toggle_play_ringtone(self, state):
         """Переключение воспроизведения мелодии"""
+        logger.info(f"🎮 Toggle play ringtone: state={state}, current _sound_playing={self._sound_playing}")
+        
         try:
-            self._play_sound("click")
+            # ИСПРАВЛЕНИЕ: Убираем звук клика для кнопки предпрослушивания
+            # чтобы не мешать воспроизведению рингтона
+            
             if state == 'down' and not self._sound_playing:
+                logger.info("▶️ Starting ringtone playback...")
                 if hasattr(self, 'ids') and 'play_button' in self.ids:
                     self.ids.play_button.text = 'Stop'
                 self.play_ringtone()
             else:
+                logger.info("⏹️ Stopping ringtone playback...")
                 if hasattr(self, 'ids') and 'play_button' in self.ids:
                     self.ids.play_button.text = 'Play'
+                    self.ids.play_button.state = 'normal'
                 self.stop_ringtone()
+                
+            # УБРАНО: Больше не воспроизводим звук клика
+            # Clock.schedule_once(lambda dt: self._play_sound("click"), 0.1)
+            
         except Exception as e:
-            logger.error(f"Error toggling ringtone: {e}")
-            self._reset_play_button()
-
-    def play_ringtone(self):
-        """Воспроизведение выбранной мелодии"""
-        self.stop_ringtone()
-        try:
-            folder = "media/ringtones"
-            path = os.path.join(folder, self.selected_ringtone)
-            if not os.path.exists(path):
-                logger.warning(f"Ringtone file not found: {path}")
-                self._play_sound("error")
-                self._reset_play_button()
-                return
-
-            app = App.get_running_app()
-            if hasattr(app, 'audio_service') and app.audio_service:
-                fadein_time = 2.0 if self.alarm_fadein else 0
-                app.audio_service.play(path, fadein=fadein_time)
-                self._sound_playing = True
-                self._start_sound_monitoring()
-                logger.debug(f"Playing ringtone: {self.selected_ringtone}")
-            else:
-                logger.warning("Audio service not available")
-                self._play_sound("error")
-                self._reset_play_button()
-        except Exception as e:
-            logger.error(f"Error playing ringtone: {e}")
-            self._play_sound("error")
+            logger.error(f"❌ Error toggling ringtone: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             self._reset_play_button()
 
     def _start_sound_monitoring(self):
         """Запуск мониторинга воспроизведения звука"""
-        logger.info("🔄 Starting sound monitoring...")
+        logger.info("🔄 Starting ringtone sound monitoring...")
         if self._sound_check_event:
             self._sound_check_event.cancel()
-        self._sound_check_event = Clock.schedule_interval(self._check_sound_status, 0.5)
-
+        
+        # ИСПРАВЛЕНИЕ: Увеличиваем интервал проверки для больших файлов
+        self._sound_check_event = Clock.schedule_interval(self._check_sound_status, 1.0)
+ 
     def _check_sound_status(self, dt):
         """Проверка статуса воспроизведения звука"""
         try:
             app = App.get_running_app()
             if hasattr(app, 'audio_service') and app.audio_service:
-                # Проверяем, что аудио-сервис ещё воспроизводит звук
-                is_busy = app.audio_service.is_busy()
-                current_file = getattr(app.audio_service, 'current_file', None)
+                audio_service = app.audio_service
+                is_busy = audio_service.is_busy()
+                current_file = getattr(audio_service, 'current_file', None)
                 
-                logger.debug(f"🔍 Sound check: is_busy={is_busy}, current_file={current_file}, _sound_playing={self._sound_playing}")
+                logger.debug(f"🔍 Ringtone check: is_busy={is_busy}, current_file={current_file}, _sound_playing={self._sound_playing}")
                 
-                if not is_busy:
-                    logger.info("🔇 Audio service reports sound finished")
+                # ИСПРАВЛЕНИЕ: Проверяем что это действительно наш рингтон
+                if not is_busy and self._sound_playing:
+                    if current_file and 'ringtones' in current_file:
+                        logger.info("🔇 Ringtone finished playing")
+                    else:
+                        logger.info("🔇 Audio finished but wasn't ringtone")
+                    self._on_sound_finished()
+                    return False
+                elif not is_busy and not self._sound_playing:
+                    logger.debug("🔇 No audio playing and we're not tracking")
                     self._on_sound_finished()
                     return False
                 else:
-                    logger.debug("🔊 Sound still playing...")
+                    logger.debug("🔊 Ringtone still playing...")
                     
             else:
-                logger.warning("Audio service not available during sound check")
+                logger.warning("⚠️ Audio service not available during sound check")
                 self._on_sound_finished()
                 return False
                 
             return True
         except Exception as e:
-            logger.error(f"Error checking sound: {e}")
+            logger.error(f"❌ Error checking ringtone status: {e}")
             self._on_sound_finished()
             return False
 
@@ -635,9 +690,95 @@ class AlarmScreen(Screen):
             self._sound_check_event.cancel()
             self._sound_check_event = None
 
+    def play_ringtone(self):
+        """Воспроизведение выбранной мелодии"""
+        logger.info(f"🎵 === STARTING RINGTONE PLAYBACK ===")
+        logger.info(f"Selected ringtone: {self.selected_ringtone}")
+        logger.info(f"Alarm fadein: {self.alarm_fadein}")
+        
+        # Сначала останавливаем все звуки
+        self.stop_ringtone()
+        
+        try:
+            folder = "media/ringtones"
+            path = os.path.join(folder, self.selected_ringtone)
+            logger.info(f"Ringtone path: {path}")
+            logger.info(f"Path exists: {os.path.exists(path)}")
+            
+            if not os.path.exists(path):
+                logger.error(f"❌ Ringtone file not found: {path}")
+                self._play_sound("error")
+                self._reset_play_button()
+                return
+
+            # Дополнительная проверка размера файла
+            try:
+                file_size = os.path.getsize(path)
+                logger.info(f"Ringtone file size: {file_size} bytes")
+                if file_size == 0:
+                    logger.error(f"❌ Ringtone file is empty: {path}")
+                    self._play_sound("error")
+                    self._reset_play_button()
+                    return
+            except Exception as e:
+                logger.error(f"❌ Error checking file size: {e}")
+
+            app = App.get_running_app()
+            if not hasattr(app, 'audio_service') or not app.audio_service:
+                logger.error("❌ Audio service not available")
+                self._play_sound("error")
+                self._reset_play_button()
+                return
+                
+            audio_service = app.audio_service
+            logger.info(f"AudioService before play - is_playing: {audio_service.is_playing}, current_file: {audio_service.current_file}")
+            
+            # ИСПРАВЛЕНИЕ: Добавляем небольшую задержку после остановки предыдущего звука
+            # чтобы pygame mixer успел освободить ресурсы
+            import time
+            time.sleep(0.1)
+            
+            # Воспроизводим рингтон
+            fadein_time = 2.0 if self.alarm_fadein else 0
+            logger.info(f"🎵 Calling audio_service.play with fadein={fadein_time}")
+            
+            # ИСПРАВЛЕНИЕ: Ловим исключения из audio_service.play
+            try:
+                audio_service.play(path, fadein=fadein_time)
+                logger.info(f"✅ audio_service.play() completed successfully")
+            except Exception as play_error:
+                logger.error(f"❌ Error in audio_service.play(): {play_error}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                self._play_sound("error")
+                self._reset_play_button()
+                return
+            
+            # Проверяем состояние после вызова play
+            logger.info(f"AudioService after play - is_playing: {audio_service.is_playing}, current_file: {audio_service.current_file}")
+            logger.info(f"AudioService is_busy(): {audio_service.is_busy()}")
+            
+            # ИСПРАВЛЕНИЕ: Проверяем, что файл действительно загружен
+            if audio_service.current_file and 'ringtones' in audio_service.current_file:
+                self._sound_playing = True
+                self._start_sound_monitoring()
+                logger.info(f"✅ Successfully started ringtone playback: {self.selected_ringtone}")
+            else:
+                logger.error(f"❌ AudioService didn't load ringtone - current_file: {audio_service.current_file}")
+                self._play_sound("error")
+                self._reset_play_button()
+                return
+                
+        except Exception as e:
+            logger.error(f"❌ Error playing ringtone: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            self._play_sound("error")
+            self._reset_play_button()
+
     def stop_ringtone(self):
         """Остановка воспроизведения мелодии"""
-        logger.info(f"=== STOPPING RINGTONE ===")
+        logger.info(f"🛑 === STOPPING RINGTONE ===")
         logger.info(f"_sound_playing before stop: {self._sound_playing}")
         
         try:
@@ -650,27 +791,27 @@ class AlarmScreen(Screen):
                 logger.info(f"Audio service current_file: {current_file}")
                 logger.info(f"Audio service is_busy: {is_busy}")
                 
-                # Останавливаем только если это наша мелодия
-                if (self._sound_playing and current_file and 'ringtones' in current_file):
-                    logger.info("Stopping ringtone audio...")
+                # ИСПРАВЛЕНИЕ: Более агрессивная остановка для рингтонов
+                if self._sound_playing or (current_file and 'ringtones' in current_file):
+                    logger.info("🛑 Stopping ringtone audio...")
                     audio_service.stop()
-                    logger.info("Audio stopped")
-                elif self._sound_playing:
-                    logger.info("Stopping any audio (our flag says we're playing)...")
-                    audio_service.stop()
-                    logger.info("Audio stopped")
-                else:
-                    logger.info("Not stopping audio - _sound_playing=False")
+                    logger.info("✅ Audio stopped")
                     
+                    # ИСПРАВЛЕНИЕ: Добавляем небольшую задержку для освобождения ресурсов
+                    import time
+                    time.sleep(0.05)
+                else:
+                    logger.info("ℹ️ Not stopping audio - no ringtone playing")
+                        
             else:
-                logger.warning("Audio service not available for stop")
+                logger.warning("⚠️ Audio service not available for stop")
                 
             # Сбрасываем состояние
             self._sound_playing = False
             if self._sound_check_event:
                 self._sound_check_event.cancel()
                 self._sound_check_event = None
-                logger.info("Sound monitoring stopped")
+                logger.info("🔇 Sound monitoring stopped")
                 
             logger.info("✅ Ringtone stop completed")
             

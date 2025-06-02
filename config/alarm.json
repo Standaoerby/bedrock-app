@@ -1,17 +1,17 @@
 {
   "alarm": {
-    "time": "15:55",
-    "enabled": true,
+    "time": "21:34",
+    "enabled": false,
     "repeat": [
       "Mon",
       "Tue",
-      "Wed",
-      "Thu",
-      "Fri",
       "Sun",
-      "Sat"
+      "Sat",
+      "Wed",
+      "Fri",
+      "Thu"
     ],
-    "ringtone": "morning.mp3",
+    "ringtone": "robot.mp3",
     "fadein": true
   }
 }

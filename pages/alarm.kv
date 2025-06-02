@@ -145,7 +145,7 @@
                         ToggleButton:
                             id: active_button
                             text: "ON" if root.alarm_active else "OFF"
-                            font_size: "72sp"
+                            font_size: "64sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: (app.theme_manager.get_rgba("primary") if root.alarm_active else app.theme_manager.get_rgba("text_secondary")) if app.theme_manager else ([1,1,1,1] if root.alarm_active else [0.7,0.7,0.7,1])
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
