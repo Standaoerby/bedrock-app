@@ -30,6 +30,9 @@ class AlarmScreen(Screen):
         self._sound_check_event = None
         self._initialized = False
         
+        # Флаг для предотвращения бесконечных циклов
+        self._setting_spinner_values = False
+        
         # Подписка на события
         event_bus.subscribe("theme_changed", self._on_theme_changed_delayed)  # Асинхронно!
         event_bus.subscribe("language_changed", self.refresh_text)
@@ -42,9 +45,10 @@ class AlarmScreen(Screen):
             self.load_ringtones()  # Устанавливает ringtone_list один раз
             self.load_alarm_config()
             self.update_ui()
-            # Отложенная инициализация темы
+            # Отложенная инициализация темы и привязок
             Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
             Clock.schedule_once(lambda dt: self.refresh_text(), 0.1)
+            Clock.schedule_once(lambda dt: self._setup_spinner_bindings(), 0.2)  # НОВОЕ: Устанавливаем Python привязки
             self._initialized = True
         except Exception as e:
             logger.error(f"Error in AlarmScreen.on_pre_enter: {e}")
@@ -56,6 +60,7 @@ class AlarmScreen(Screen):
                 self.save_alarm(silent=True)
             self.stop_ringtone()
             self._reset_play_button()
+            self._remove_spinner_bindings()  # НОВОЕ: Удаляем привязки при выходе
             
             # Отменяем отложенные события
             if self._auto_save_event:
@@ -66,6 +71,44 @@ class AlarmScreen(Screen):
                 self._sound_check_event = None
         except Exception as e:
             logger.error(f"Error in AlarmScreen.on_pre_leave: {e}")
+
+    def _setup_spinner_bindings(self):
+        """НОВОЕ: Настройка Python привязок для спиннера с задержками"""
+        try:
+            if not hasattr(self, 'ids'):
+                return
+                
+            # Привязываем событие спиннера к нашему обработчику
+            if 'ringtone_spinner' in self.ids:
+                self.ids.ringtone_spinner.bind(text=self._on_ringtone_spinner_delayed)
+                logger.debug("Ringtone spinner binding set up")
+                
+        except Exception as e:
+            logger.error(f"Error setting up spinner bindings: {e}")
+
+    def _remove_spinner_bindings(self):
+        """НОВОЕ: Удаление Python привязок спиннера"""
+        try:
+            if not hasattr(self, 'ids'):
+                return
+                
+            if 'ringtone_spinner' in self.ids:
+                self.ids.ringtone_spinner.unbind(text=self._on_ringtone_spinner_delayed)
+                
+            logger.debug("Spinner bindings removed")
+        except Exception as e:
+            logger.error(f"Error removing spinner bindings: {e}")
+
+    def _on_ringtone_spinner_delayed(self, spinner, text):
+        """НОВОЕ: Отложенный обработчик изменения мелодии"""
+        if self._setting_spinner_values:
+            return
+        Clock.schedule_once(lambda dt: self._handle_ringtone_change(text), 0.1)
+
+    def _handle_ringtone_change(self, ringtone_name):
+        """НОВОЕ: Безопасная обработка изменения мелодии"""
+        if ringtone_name != self.selected_ringtone:
+            self.select_ringtone(ringtone_name)
 
     def get_theme_manager(self):
         """Безопасное получение theme_manager"""
@@ -132,6 +175,9 @@ class AlarmScreen(Screen):
             return
             
         try:
+            # НОВОЕ: Блокируем обработчики при программном изменении
+            self._setting_spinner_values = True
+            
             alarm = app.alarm_service.get_alarm()
             if alarm:
                 self.alarm_time = alarm.get("time", "07:30")
@@ -149,6 +195,10 @@ class AlarmScreen(Screen):
                 self.alarm_fadein = alarm.get("fadein", False)
                 
                 logger.info(f"Loaded alarm config: {self.alarm_time}, active: {self.alarm_active}")
+            
+            # НОВОЕ: Разблокируем обработчики после небольшой задержки
+            Clock.schedule_once(lambda dt: setattr(self, '_setting_spinner_values', False), 0.3)
+            
         except Exception as e:
             logger.error(f"Error loading alarm config: {e}")
 

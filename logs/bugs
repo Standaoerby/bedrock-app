@@ -1,4 +1,5 @@
-[ERROR  ] [Critical application error] Cannot add <kivy.uix.dropdown.DropDown object at 0x7fffa81c9be0> to window, it already has a parent <kivy.core.window.window_sdl2.WindowSDL object at 0x7fffb4953230>
+[INFO   ] [Base        ] Leaving application in progress...
+[ERROR  ] [Critical application error] Cannot add <kivy.uix.dropdown.DropDown object at 0x7ffeb5137460> to window, it already has a parent <kivy.core.window.window_sdl2.WindowSDL object at 0x7ffecf861cc0>
 Traceback (most recent call last):
   File "/home/standa/bedrock-app/main.py", line 297, in <module>
     BedrockApp().run()
@@ -34,4 +35,4 @@ Traceback (most recent call last):
     self._win.add_widget(self)
   File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/core/window/__init__.py", line 1536, in add_widget
     raise WidgetException(
-kivy.uix.widget.WidgetException: Cannot add <kivy.uix.dropdown.DropDown object at 0x7fffa81c9be0> to window, it already has a parent <kivy.core.window.window_sdl2.WindowSDL object at 0x7fffb4953230>
+kivy.uix.widget.WidgetException: Cannot add <kivy.uix.dropdown.DropDown object at 0x7ffeb5137460> to window, it already has a parent <kivy.core.window.window_sdl2.WindowSDL object at 0x7ffecf861cc0>

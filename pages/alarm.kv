@@ -1,4 +1,5 @@
 #:import dp kivy.metrics.dp
+#:import RingtoneSelectButton widgets.select_button.RingtoneSelectButton
 
 <AlarmScreen>:
     name: "alarm"
@@ -290,16 +291,15 @@
                             valign: "middle"
                             text_size: self.size
 
-                        Spinner:
-                            id: ringtone_spinner
-                            text: root.selected_ringtone
+                        RingtoneSelectButton:
+                            id: ringtone_button
+                            selected_value: root.selected_ringtone
                             values: root.ringtone_list
                             font_size: "24sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
-                            on_text: if self.text != root.selected_ringtone: root.select_ringtone(self.text)
 
                         ToggleButton:
                             id: play_button

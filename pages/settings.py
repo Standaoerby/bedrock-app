@@ -41,6 +41,9 @@ class SettingsScreen(Screen):
         event_bus.subscribe("theme_changed", self._on_theme_changed_delayed)  # Асинхронно!
         self._update_events = []
         self._initialized = False
+        
+        # Флаги для предотвращения бесконечных циклов
+        self._setting_spinner_values = False
 
     def on_pre_enter(self, *args):
         """Вызывается при входе на экран"""
@@ -49,9 +52,10 @@ class SettingsScreen(Screen):
             self.load_all_settings()
             self.check_sensor_availability()
             self.start_updates()
-            # Отложенная инициализация темы
+            # Отложенная инициализация темы и привязок
             Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
             Clock.schedule_once(lambda dt: self.refresh_text(), 0.1)
+            Clock.schedule_once(lambda dt: self._setup_spinner_bindings(), 0.2)  # НОВОЕ: Устанавливаем Python привязки
             self._initialized = True
         except Exception as e:
             logger.error(f"Error in SettingsScreen.on_pre_enter: {e}")
@@ -60,8 +64,83 @@ class SettingsScreen(Screen):
         """Вызывается при выходе с экрана"""
         try:
             self.stop_updates()
+            self._remove_spinner_bindings()  # НОВОЕ: Удаляем привязки при выходе
         except Exception as e:
             logger.error(f"Error in SettingsScreen.on_pre_leave: {e}")
+
+    def _setup_spinner_bindings(self):
+        """НОВОЕ: Настройка Python привязок для спиннеров с задержками"""
+        try:
+            if not hasattr(self, 'ids'):
+                return
+                
+            # Привязываем события спиннеров к нашим обработчикам
+            if 'theme_spinner' in self.ids:
+                self.ids.theme_spinner.bind(text=self._on_theme_spinner_delayed)
+                logger.debug("Theme spinner binding set up")
+                
+            if 'variant_spinner' in self.ids:
+                self.ids.variant_spinner.bind(text=self._on_variant_spinner_delayed)
+                logger.debug("Variant spinner binding set up")
+                
+            if 'language_spinner' in self.ids:
+                self.ids.language_spinner.bind(text=self._on_language_spinner_delayed)
+                logger.debug("Language spinner binding set up")
+                
+        except Exception as e:
+            logger.error(f"Error setting up spinner bindings: {e}")
+
+    def _remove_spinner_bindings(self):
+        """НОВОЕ: Удаление Python привязок спиннеров"""
+        try:
+            if not hasattr(self, 'ids'):
+                return
+                
+            if 'theme_spinner' in self.ids:
+                self.ids.theme_spinner.unbind(text=self._on_theme_spinner_delayed)
+                
+            if 'variant_spinner' in self.ids:
+                self.ids.variant_spinner.unbind(text=self._on_variant_spinner_delayed)
+                
+            if 'language_spinner' in self.ids:
+                self.ids.language_spinner.unbind(text=self._on_language_spinner_delayed)
+                
+            logger.debug("Spinner bindings removed")
+        except Exception as e:
+            logger.error(f"Error removing spinner bindings: {e}")
+
+    def _on_theme_spinner_delayed(self, spinner, text):
+        """НОВОЕ: Отложенный обработчик изменения темы"""
+        if self._setting_spinner_values:
+            return
+        Clock.schedule_once(lambda dt: self._handle_theme_change(text), 0.1)
+
+    def _on_variant_spinner_delayed(self, spinner, text):
+        """НОВОЕ: Отложенный обработчик изменения варианта темы"""
+        if self._setting_spinner_values:
+            return
+        Clock.schedule_once(lambda dt: self._handle_variant_change(text), 0.1)
+
+    def _on_language_spinner_delayed(self, spinner, text):
+        """НОВОЕ: Отложенный обработчик изменения языка"""
+        if self._setting_spinner_values:
+            return
+        Clock.schedule_once(lambda dt: self._handle_language_change(text), 0.1)
+
+    def _handle_theme_change(self, theme_name):
+        """НОВОЕ: Безопасная обработка изменения темы"""
+        if theme_name != self.current_theme:
+            self.on_theme_select(theme_name)
+
+    def _handle_variant_change(self, variant):
+        """НОВОЕ: Безопасная обработка изменения варианта"""
+        if variant != self.current_variant:
+            self.on_variant_select(variant)
+
+    def _handle_language_change(self, language):
+        """НОВОЕ: Безопасная обработка изменения языка"""
+        if language != self.current_language:
+            self.on_language_select(language)
 
     def get_theme_manager(self):
         """Безопасное получение theme_manager"""
@@ -115,6 +194,9 @@ class SettingsScreen(Screen):
                 else:
                     self.theme_list = ["minecraft"]  # Фиксированный список
             
+            # НОВОЕ: Блокируем обработчики при программном изменении
+            self._setting_spinner_values = True
+            
             # Загружаем основные настройки - KV автоматически обновит спиннеры
             self.current_theme = user_config.get("theme", "minecraft")
             self.current_variant = user_config.get("variant", "light")
@@ -142,6 +224,9 @@ class SettingsScreen(Screen):
             
             # Обновляем только TextInput поля
             Clock.schedule_once(lambda dt: self._update_input_fields(), 0.1)
+            
+            # НОВОЕ: Разблокируем обработчики после небольшой задержки
+            Clock.schedule_once(lambda dt: setattr(self, '_setting_spinner_values', False), 0.3)
             
             logger.info("Settings loaded successfully")
             
