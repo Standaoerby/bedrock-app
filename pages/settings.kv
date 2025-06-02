@@ -272,7 +272,7 @@
                     # Заполнитель
                     Widget:
             
-            # Автоматическая тема (ОБНОВЛЕННАЯ СЕКЦИЯ)
+            # ИЗМЕНЕНО: Автоматическая тема (убраны кнопки тестирования)
             OverlayCard:
                 size_hint_x: 0.4
                 padding: [dp(16), dp(12)]
@@ -359,50 +359,7 @@
                             halign: 'center'
                             valign: 'middle'
                     
-                    # ОБНОВЛЕНО: Кнопки тестирования
-                    BoxLayout:
-                        orientation: 'horizontal'
-                        spacing: dp(4)
-                        size_hint_y: None
-                        height: dp(24)
-                        
-                        Button:
-                            id: test_auto_theme_button
-                            text: "Test"
-                            font_size: '10sp'
-                            font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                            color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
-                            background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
-                            background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
-                            size_hint_x: 0.33
-                            disabled: not (root.light_sensor_available and root.auto_theme_enabled)
-                            opacity: 1.0 if (root.light_sensor_available and root.auto_theme_enabled) else 0.5
-                            on_release: root.test_auto_theme()
-                        
-                        Button:
-                            id: manual_switch_button
-                            text: "Switch"
-                            font_size: '10sp'
-                            font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                            color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
-                            background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
-                            background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
-                            size_hint_x: 0.33
-                            disabled: not root.light_sensor_available
-                            opacity: 1.0 if root.light_sensor_available else 0.5
-                            on_release: root.manual_theme_switch()
-                        
-                        Button:
-                            id: refresh_ui_button
-                            text: "Refresh"
-                            font_size: '10sp'
-                            font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                            color: app.theme_manager.get_rgba("text_secondary") if app.theme_manager else [0.7,0.7,0.7,1]
-                            background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
-                            background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
-                            size_hint_x: 0.34
-                            on_release: root.force_ui_refresh()
-                    
+                    # Статус датчика
                     Label:
                         id: sensor_status_label
                         text: root.current_light_status
@@ -414,6 +371,9 @@
                         halign: 'center'
                         valign: 'middle'
                         text_size: self.size
+                    
+                    # Заполнитель
+                    Widget:
 
         # Нижний ряд: Кнопки управления
         OverlayCard:

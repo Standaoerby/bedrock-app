@@ -73,36 +73,59 @@
                     spacing: dp(12)
                     padding: [dp(32),dp(8)]
                     
-                    # индикатор статуса датчиков
-                    # anchorlayout:
-                    #     anchor_x: 'right'
-                    #     anchor_y: 'top'
-                    #     size_hint_y: none
-                    #     height: dp(16)
-                        
-                    #     label:
-                    #         id: sensor_status_label
-                    #         text: root.sensor_status
-                    #         font_size: '10sp'
-                    #         font_name: app.theme_manager.get_font("main")
-                    #         color: app.theme_manager.get_rgba("text_accent") if not root.using_mock_sensors else app.theme_manager.get_rgba("text_secondary")
-                    #         size_hint: none, none
-                    #         size: self.texture_size
-                    #         halign: 'right'
-                    #         valign: 'top'
-                    
-                    # Температура и влажность в одной строке
-                    Label:
-                        id: sensor_temp_humidity_label
-                        text: root.sensor_temp_humidity
-                        font_size: '32sp'
-                        font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("text")
+                    # ИЗМЕНЕНО: Температура и влажность с раздельными цветами
+                    BoxLayout:
+                        orientation: 'horizontal'
                         size_hint_y: None
                         height: dp(64)
-                        halign: 'left'
-                        valign: 'middle'
-                        text_size: self.size
+                        
+                        # "Room:" - обычный цвет
+                        Label:
+                            id: sensor_room_label
+                            text: root.sensor_room_text
+                            font_size: '32sp'
+                            font_name: app.theme_manager.get_font("main")
+                            color: app.theme_manager.get_rgba("text")
+                            size_hint_x: None
+                            width: self.texture_size[0]
+                            halign: 'left'
+                            valign: 'middle'
+                        
+                        # Значение температуры - цвет по условию
+                        Label:
+                            id: sensor_temp_label
+                            text: root.sensor_temp_text
+                            font_size: '32sp'
+                            font_name: app.theme_manager.get_font("main")
+                            color: app.theme_manager.get_rgba("primary")
+                            size_hint_x: None
+                            width: self.texture_size[0]
+                            halign: 'left'
+                            valign: 'middle'
+                        
+                        # ", Humidity: " - обычный цвет
+                        Label:
+                            id: sensor_comma_label
+                            text: root.sensor_comma_text
+                            font_size: '32sp'
+                            font_name: app.theme_manager.get_font("main")
+                            color: app.theme_manager.get_rgba("text")
+                            size_hint_x: None
+                            width: self.texture_size[0]
+                            halign: 'left'
+                            valign: 'middle'
+                        
+                        # Процент влажности - цвет по условию
+                        Label:
+                            id: sensor_humidity_label
+                            text: root.sensor_humidity_text
+                            font_size: '32sp'
+                            font_name: app.theme_manager.get_font("main")
+                            color: app.theme_manager.get_rgba("text")
+                            size_hint_x: None
+                            width: self.texture_size[0]
+                            halign: 'left'
+                            valign: 'middle'
                     
                     # CO2 и TVOC в одной строке
                     Label:

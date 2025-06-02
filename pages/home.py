@@ -162,31 +162,37 @@ class HomeScreen(Screen):
             self.weather_trend_arrow = "→"
 
     def update_alarm_status(self, *args):
-        """Обновление статуса будильника"""
+        """Обновление статуса будильника - ИСПРАВЛЕНО"""
         try:
             app = App.get_running_app()
             
             if hasattr(app, 'alarm_service') and app.alarm_service:
                 alarm = app.alarm_service.get_alarm()
-                if alarm and alarm.get("enabled", False):
-                    self.current_alarm_time = alarm.get("time", "--:--")
-                    if hasattr(app, 'localizer') and app.localizer:
-                        self.alarm_status_text = app.localizer.tr("alarm_on", "ON")
+                if alarm:
+                    # ИСПРАВЛЕНИЕ: Время будильника всегда показываем, независимо от статуса
+                    self.current_alarm_time = alarm.get("time", "07:30")
+                    
+                    # Статус зависит от enabled
+                    if alarm.get("enabled", False):
+                        if hasattr(app, 'localizer') and app.localizer:
+                            self.alarm_status_text = app.localizer.tr("alarm_on", "ON")
+                        else:
+                            self.alarm_status_text = "ON"
                     else:
-                        self.alarm_status_text = "ON"
+                        if hasattr(app, 'localizer') and app.localizer:
+                            self.alarm_status_text = app.localizer.tr("alarm_off", "OFF")
+                        else:
+                            self.alarm_status_text = "OFF"
                 else:
-                    self.current_alarm_time = "--:--"
-                    if hasattr(app, 'localizer') and app.localizer:
-                        self.alarm_status_text = app.localizer.tr("alarm_off", "OFF")
-                    else:
-                        self.alarm_status_text = "OFF"
+                    self.current_alarm_time = "07:30"  # Значение по умолчанию
+                    self.alarm_status_text = "OFF"
             else:
-                self.current_alarm_time = "--:--"
+                self.current_alarm_time = "07:30"
                 self.alarm_status_text = "SERVICE OFFLINE"
                 
         except Exception as e:
             logger.error(f"Error updating alarm status: {e}")
-            self.current_alarm_time = "--:--"
+            self.current_alarm_time = "07:30"
             self.alarm_status_text = "ERROR"
 
     def update_notifications(self, *args):
@@ -297,7 +303,7 @@ class HomeScreen(Screen):
             "date_label", "alarm_time_label", "alarm_toggle_btn", 
             "clock_label", "clock_shadow1", "clock_shadow2", "clock_shadow3",
             "weather_now_label", "weather_trend_label", "weather_5h_label",
-            "notification_text_label"  # Добавлен notification_text_label
+            "notification_text_label"
         ]
         
         # Получаем путь к шрифту один раз
@@ -326,6 +332,11 @@ class HomeScreen(Screen):
                         widget.color = tm.get_rgba("primary")
                     elif widget_id in ["date_label", "weather_5h_label", "notification_text_label"]:
                         widget.color = tm.get_rgba("text")
+                    # ИСПРАВЛЕНИЕ: Цвет кнопки будильника зависит от состояния
+                    elif widget_id == "alarm_toggle_btn":
+                        # Если будильник включен - зеленый, если выключен - обычный цвет
+                        is_alarm_on = self.alarm_status_text == "ON"
+                        widget.color = tm.get_rgba("primary") if is_alarm_on else tm.get_rgba("text_secondary")
                 
                 # Обновляем фон кнопок
                 if hasattr(widget, 'background_normal'):

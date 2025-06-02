@@ -20,7 +20,7 @@
                 
                 Label:
                     id: title_label
-                    text: "School Schedule"
+                    text: root.user_header
                     font_size: '20sp'
                     font_name: app.theme_manager.get_font("title")
                     color: app.theme_manager.get_rgba("primary")
@@ -48,77 +48,16 @@
                 orientation: 'vertical'
                 spacing: dp(8)
                 
-                # Заголовки дней недели
-                BoxLayout:
-                    orientation: 'horizontal'
-                    spacing: dp(8)
-                    size_hint_y: None
-                    height: dp(40)
-                    
-                    Label:
-                        text: "Monday"
-                        font_size: '16sp'
-                        font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("primary") if root.today_day == "Mon" else app.theme_manager.get_rgba("text")
-                        halign: 'center'
-                        valign: 'middle'
-                        bold: root.today_day == "Mon"
-                        
-                    Label:
-                        text: "Tuesday"
-                        font_size: '16sp'
-                        font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("primary") if root.today_day == "Tue" else app.theme_manager.get_rgba("text")
-                        halign: 'center'
-                        valign: 'middle'
-                        bold: root.today_day == "Tue"
-                        
-                    Label:
-                        text: "Wednesday"
-                        font_size: '16sp'
-                        font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("primary") if root.today_day == "Wed" else app.theme_manager.get_rgba("text")
-                        halign: 'center'
-                        valign: 'middle'
-                        bold: root.today_day == "Wed"
-                        
-                    Label:
-                        text: "Thursday"
-                        font_size: '16sp'
-                        font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("primary") if root.today_day == "Thu" else app.theme_manager.get_rgba("text")
-                        halign: 'center'
-                        valign: 'middle'
-                        bold: root.today_day == "Thu"
-                        
-                    Label:
-                        text: "Friday"
-                        font_size: '16sp'
-                        font_name: app.theme_manager.get_font("main")
-                        color: app.theme_manager.get_rgba("primary") if root.today_day == "Fri" else app.theme_manager.get_rgba("text")
-                        halign: 'center'
-                        valign: 'middle'
-                        bold: root.today_day == "Fri"
+                # УБРАНО: Заголовки дней недели больше не отображаются
 
-                # Разделитель
-                Widget:
-                    size_hint_y: None
-                    height: dp(1)
-                    canvas.before:
-                        Color:
-                            rgba: app.theme_manager.get_rgba("text_secondary")
-                        Rectangle:
-                            pos: self.pos
-                            size: self.size
-
-                # ИСПРАВЛЕНИЕ: Контейнер для расписания с правильными настройками прокрутки
+                # Контейнер для расписания с правильными настройками прокрутки
                 ScrollView:
                     do_scroll_x: False
                     do_scroll_y: True
                     bar_width: dp(8)
                     bar_color: app.theme_manager.get_rgba("primary")
                     bar_inactive_color: app.theme_manager.get_rgba("text_secondary")
-                    # ИСПРАВЛЕНИЕ: Устанавливаем скролл в начало
+                    # Устанавливаем скролл в начало
                     scroll_y: 1
                     effect_cls: "DampedScrollEffect"
                     
@@ -127,7 +66,7 @@
                         orientation: 'horizontal'
                         spacing: dp(8)
                         size_hint_y: None
-                        # ИСПРАВЛЕНИЕ: Правильный расчёт высоты контента
+                        # Правильный расчёт высоты контента
                         height: max(self.minimum_height, self.parent.height - dp(16))
                         padding: [0, dp(8), 0, dp(8)]
 

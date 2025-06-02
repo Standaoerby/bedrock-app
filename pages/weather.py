@@ -10,7 +10,7 @@ from app.logger import app_logger as logger
 
 
 class DayForecastItem(BoxLayout):
-    """Виджет для отображения прогноза на один день"""
+    """Виджет для отображения прогноза на один день - ОБНОВЛЕНО"""
     
     def __init__(self, day_data, **kwargs):
         super().__init__(**kwargs)
@@ -54,13 +54,18 @@ class DayForecastItem(BoxLayout):
         )
         temp_label.bind(size=temp_label.setter('text_size'))
         
-        # Условие погоды
+        # ИЗМЕНЕНО: Условие погоды с Min/Max температурами
         condition = day_data.get("condition", "")
-        if len(condition) > 40:
-            condition = condition[:35] + "..."
+        temp_min = day_data.get("temp_min", 0)
+        temp_max = day_data.get("temp_max", 0)
+        
+        # Формируем строку с Min/Max перед условием
+        condition_text = f"Min: {temp_min:.1f}°, Max: {temp_max:.1f}° - {condition}"
+        if len(condition_text) > 50:
+            condition_text = condition_text[:45] + "..."
         
         condition_label = Label(
-            text=condition,
+            text=condition_text,
             font_name=tm.get_font("main") if tm else "",
             font_size="16sp",
             halign="left",
@@ -100,8 +105,8 @@ class WeatherScreen(Screen):
     current_condition = StringProperty("Loading...")
     current_precipitation = StringProperty("Rain: --%")
     
-    # Показания датчиков
-    sensor_temp_humidity = StringProperty("--°C H: --%")
+    # Показания датчиков - ИЗМЕНЕНО
+    sensor_temp_humidity = StringProperty("Room: --°C, Humidity: --%")
     sensor_co2_tvoc = StringProperty("CO2: -- ppm, TVOC: -- ppb")
     sensor_air_quality = StringProperty("Air Quality: Unknown")
     
@@ -219,7 +224,7 @@ class WeatherScreen(Screen):
                 self.current_condition = "Weather service error"
                 self.current_precipitation = "Rain: --%"
         
-        # Обновляем датчики
+        # ИЗМЕНЕНО: Обновляем датчики с новой логикой форматирования
         if hasattr(app, 'sensor_service') and app.sensor_service:
             try:
                 sensors = app.sensor_service.get_readings()
@@ -230,16 +235,16 @@ class WeatherScreen(Screen):
                 tvoc_value = sensors.get('tvoc', 0)
                 air_quality = sensors.get('air_quality', 'Unknown')
                 
-                # Форматируем объединенные строки
+                # ИЗМЕНЕНО: Новый формат строки без объединения цветов
                 self.sensor_temp_humidity = f"Room: {temp_value:.1f}°C, Humidity: {humidity_value:.0f}%"
                 self.sensor_co2_tvoc = f"CO2: {co2_value} ppm, TVOC: {tvoc_value} ppb"
                 self.sensor_air_quality = f"Air Quality: {air_quality}"
                 
             except Exception as e:
                 logger.error(f"Error updating sensor display: {e}")
-                self.sensor_temp_humidity = "Sensor error"
-                self.sensor_co2_tvoc = "Sensor error"
-                self.sensor_air_quality = "Sensor error"
+                self.sensor_temp_humidity = "Room: --°C, Humidity: --%"
+                self.sensor_co2_tvoc = "CO2: -- ppm, TVOC: -- ppb"
+                self.sensor_air_quality = "Air Quality: Unknown"
         else:
             # Если сервис датчиков недоступен
             self.sensor_temp_humidity = "Room: --°C, Humidity: --%"
@@ -302,6 +307,15 @@ class WeatherScreen(Screen):
         else:
             return tm.get_rgba("primary") if tm else [1, 1, 1, 1]
 
+    def get_humidity_color(self, humidity_value):
+        """Получить цвет для влажности - ДОБАВЛЕНО"""
+        if humidity_value < 30:
+            return [1, 0.2, 0.2, 1]  # Красный если меньше 30%
+        elif humidity_value <= 40:
+            return [1, 1, 1, 1]      # Белый от 30% до 40%
+        else:
+            return [0.2, 0.8, 0.2, 1]  # Зеленый если больше 40%
+
     def set_temp_color(self, widget, temp_str):
         """Установка цвета температуры в зависимости от значения"""
         try:
@@ -314,7 +328,7 @@ class WeatherScreen(Screen):
             widget.color = tm.get_rgba("text") if tm else [1, 1, 1, 1]
 
     def refresh_theme(self, *args):
-        """Обновление темы для всех элементов"""
+        """Обновление темы для всех элементов - ОБНОВЛЕНО"""
         tm = self.get_theme_manager()
         if not tm or not tm.is_loaded():
             return
@@ -334,19 +348,14 @@ class WeatherScreen(Screen):
                 if hasattr(widget, 'font_name'):
                     widget.font_name = tm.get_font("main")
                     
-                # Обновляем цвет текста
+                # ИЗМЕНЕНО: Обновляем цвет текста с новой логикой для датчиков температуры и влажности
                 if hasattr(widget, 'color'):
                     if widget_id == "current_temp_label":
                         # Применяем цветовую логику для температуры погоды
                         self.set_temp_color(widget, self.current_temp)
                     elif widget_id == "sensor_temp_humidity_label":
-                        # Применяем цветовую логику для температуры датчиков
-                        try:
-                            temp_str = self.sensor_temp_humidity.split('°')[0].split()[-1]
-                            temp_value = float(temp_str)
-                            widget.color = self.get_temperature_color(temp_value)
-                        except (ValueError, IndexError):
-                            widget.color = tm.get_rgba("text")
+                        # НОВАЯ ЛОГИКА: Применяем обычный цвет, разбор по частям делается в KV
+                        widget.color = tm.get_rgba("text")
                     elif widget_id == "current_condition_label":
                         widget.color = tm.get_rgba("text")
                     elif widget_id == "current_precipitation_label":

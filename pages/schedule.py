@@ -4,6 +4,7 @@ from kivy.properties import StringProperty, ListProperty
 from kivy.clock import Clock
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
+from kivy.graphics import Color, RoundedRectangle
 from kivy.metrics import dp
 from app.event_bus import event_bus
 from datetime import datetime, timedelta
@@ -21,6 +22,7 @@ class ScheduleScreen(Screen):
     current_week_str = StringProperty("")
     today_day = StringProperty("")
     schedule_data = ListProperty([])
+    user_header = StringProperty("School Schedule")  # ДОБАВЛЕНО
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -76,6 +78,13 @@ class ScheduleScreen(Screen):
         week_start = today - timedelta(days=today.weekday())
         week_end = week_start + timedelta(days=6)
         self.current_week_str = f"{week_start.strftime('%d %b')} - {week_end.strftime('%d %b')}"
+        
+        # ДОБАВЛЕНО: Формируем заголовок с именем пользователя
+        if hasattr(app, 'user_config') and app.user_config:
+            username = app.user_config.get("username", "Student")
+            self.user_header = f"{username}, Devonshire House School, 5KW"
+        else:
+            self.user_header = "Student, Devonshire House School, 5KW"
         
         # Получаем расписание от сервиса
         schedule = {}
@@ -157,7 +166,7 @@ class ScheduleScreen(Screen):
             day_column = self.create_day_column(day_data, tm)
             container.add_widget(day_column)
         
-        # ИСПРАВЛЕНИЕ: Правильно устанавливаем высоту контейнера после добавления виджетов
+        # Правильно устанавливаем высоту контейнера после добавления виджетов
         Clock.schedule_once(self._fix_container_height, 0.1)
 
     def _fix_container_height(self, dt):
@@ -177,7 +186,7 @@ class ScheduleScreen(Screen):
                     container.height = max_column_height + dp(32)
                     logger.debug(f"Set schedule container height to {container.height}")
                 
-                # ИСПРАВЛЕНИЕ: Принудительно сбрасываем скролл наверх
+                # Принудительно сбрасываем скролл наверх
                 parent_scroll = container.parent
                 if hasattr(parent_scroll, 'scroll_y'):
                     parent_scroll.scroll_y = 1
@@ -187,7 +196,7 @@ class ScheduleScreen(Screen):
             logger.error(f"Error fixing container height: {e}")
 
     def create_day_column(self, day_data, theme_manager):
-        """Создание колонки для одного дня"""
+        """Создание колонки для одного дня - ОБНОВЛЕНО"""
         day = day_data["day"]
         is_today = day_data["is_today"]
         lessons = day_data["lessons"]
@@ -197,35 +206,32 @@ class ScheduleScreen(Screen):
             orientation="vertical",
             spacing=dp(8),
             size_hint_x=0.2,  # 5 колонок
-            size_hint_y=None
-        )
-        
-        # Заголовок дня
-        app = App.get_running_app()
-        if hasattr(app, 'localizer'):
-            # Получаем локализованное название дня
-            day_names = {
-                "Mon": app.localizer.tr("day_monday", "Mon"),
-                "Tue": app.localizer.tr("day_tuesday", "Tue"),
-                "Wed": app.localizer.tr("day_wednesday", "Wed"),
-                "Thu": app.localizer.tr("day_thursday", "Thu"),
-                "Fri": app.localizer.tr("day_friday", "Fri"),
-            }
-            day_text = day_names.get(day, day)
-        else:
-            day_text = day
-        
-        header = Label(
-            text=day_text,
-            font_size='18sp',
-            font_name=theme_manager.get_font("main") if theme_manager else "",
-            color=theme_manager.get_rgba("primary") if (theme_manager and is_today) else (theme_manager.get_rgba("text") if theme_manager else [1, 1, 1, 1]),
             size_hint_y=None,
-            height=dp(32),
-            halign='center',
-            bold=is_today
+            padding=[dp(4), dp(4)]  # Добавляем padding для фона
         )
-        column.add_widget(header)
+        
+        # ДОБАВЛЕНО: Фон для текущего дня
+        if is_today and theme_manager:
+            with column.canvas.before:
+                Color(*theme_manager.get_rgba("overlay_card"))
+                RoundedRectangle(
+                    pos=column.pos,
+                    size=column.size,
+                    radius=[dp(8)]
+                )
+            # Привязываем обновление фона к размеру и позиции
+            def update_bg(instance, value):
+                column.canvas.before.clear()
+                with column.canvas.before:
+                    Color(*theme_manager.get_rgba("overlay_card"))
+                    RoundedRectangle(
+                        pos=instance.pos,
+                        size=instance.size,
+                        radius=[dp(8)]
+                    )
+            column.bind(pos=update_bg, size=update_bg)
+        
+        # УБРАНО: Заголовок дня (больше не отображаем)
         
         # Контейнер для уроков
         lessons_container = BoxLayout(
@@ -237,6 +243,7 @@ class ScheduleScreen(Screen):
         
         if not lessons:
             # Свободный день
+            app = App.get_running_app()
             free_text = app.localizer.tr("free_day", "Free Day") if hasattr(app, 'localizer') else "Free Day"
             free_label = Label(
                 text=free_text,
@@ -258,27 +265,27 @@ class ScheduleScreen(Screen):
                 lessons_container.add_widget(lesson_widget)
                 total_height += lesson_widget.height
             
-            # ИСПРАВЛЕНИЕ: Устанавливаем правильную высоту контейнера уроков
+            # Устанавливаем правильную высоту контейнера уроков
             lessons_container.height = total_height + (len(lessons) - 1) * dp(4) + dp(16)  # spacing + padding
         
         column.add_widget(lessons_container)
         
-        # ИСПРАВЛЕНИЕ: Устанавливаем общую высоту колонки
-        column.height = header.height + lessons_container.height + dp(8)  # spacing между header и lessons
+        # Устанавливаем общую высоту колонки
+        column.height = lessons_container.height + dp(16)  # padding
         
         return column
 
     def create_lesson_widget(self, lesson, theme_manager, is_today):
-        """Создание виджета урока"""
+        """Создание виджета урока - ОБНОВЛЕНО"""
         container = BoxLayout(
             orientation="vertical",
             spacing=dp(2),
             size_hint_y=None,
-            height=dp(56),  # Кратно 8
+            height=dp(48),  # Уменьшили высоту так как убрали кабинет
             padding=[dp(4), dp(4)]
         )
         
-        # Время
+        # Время - выровнено по левому краю
         time_label = Label(
             text=lesson.get("time", ""),
             font_size='12sp',
@@ -286,11 +293,12 @@ class ScheduleScreen(Screen):
             color=theme_manager.get_rgba("primary") if (theme_manager and is_today) else (theme_manager.get_rgba("text_secondary") if theme_manager else [0.7, 0.7, 0.7, 1]),
             size_hint_y=None,
             height=dp(16),
-            halign='center'
+            halign='left',  # ИЗМЕНЕНО: левое выравнивание
+            text_size=(dp(120), None)
         )
         container.add_widget(time_label)
         
-        # Предмет
+        # Предмет - выровнен по левому краю
         subject_label = Label(
             text=lesson.get("subject", ""),
             font_size='14sp',
@@ -298,26 +306,14 @@ class ScheduleScreen(Screen):
             color=theme_manager.get_rgba("text") if theme_manager else [1, 1, 1, 1],
             size_hint_y=None,
             height=dp(24),
-            halign='center',
+            halign='left',  # ИЗМЕНЕНО: левое выравнивание
             text_size=(dp(120), None),
             shorten=True,
             shorten_from='right'
         )
         container.add_widget(subject_label)
         
-        # Кабинет
-        room = lesson.get("room", "")
-        if room:
-            room_label = Label(
-                text=room,
-                font_size='10sp',
-                font_name=theme_manager.get_font("main") if theme_manager else "",
-                color=theme_manager.get_rgba("text_secondary") if theme_manager else [0.7, 0.7, 0.7, 1],
-                size_hint_y=None,
-                height=dp(16),
-                halign='center'
-            )
-            container.add_widget(room_label)
+        # УБРАНО: Кабинет больше не отображается
         
         return container
 
@@ -346,12 +342,10 @@ class ScheduleScreen(Screen):
     def refresh_text(self, *args):
         """Обновление локализованного текста"""
         app = App.get_running_app()
-        if not hasattr(app, 'localizer'):
-            return
-            
-        # Обновляем заголовок
+        
+        # ИЗМЕНЕНО: Обновляем заголовок с именем пользователя
         if hasattr(self, 'ids') and 'title_label' in self.ids:
-            self.ids.title_label.text = app.localizer.tr("schedule_title", "School Schedule")
+            self.ids.title_label.text = self.user_header
             
         # Пересоздаем виджеты с новой локализацией
         self.create_schedule_widgets()

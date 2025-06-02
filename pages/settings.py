@@ -76,7 +76,7 @@ class SettingsScreen(Screen):
                 theme_button.values = self.theme_list
                 theme_button.selected_value = self.current_theme
                 
-            # ИСПРАВЛЕНИЕ: Настройка кнопки варианта темы
+            # Настройка кнопки варианта темы
             if 'variant_button' in self.ids:
                 variant_button = self.ids.variant_button
                 variant_button.values = self.variant_list
@@ -201,7 +201,7 @@ class SettingsScreen(Screen):
         """Проверка доступности датчика освещения"""
         app = App.get_running_app()
         try:
-            # ОБНОВЛЕНО: Проверяем через AutoThemeService
+            # Проверяем через AutoThemeService
             if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
                 auto_status = app.auto_theme_service.get_status()
                 self.light_sensor_available = auto_status.get('sensor_available', False)
@@ -234,7 +234,7 @@ class SettingsScreen(Screen):
         sound_name = "confirm" if self.auto_theme_enabled else "click"
         self._play_sound(sound_name)
         
-        # ДОБАВЛЕНО: Интеграция с AutoThemeService
+        # Интеграция с AutoThemeService
         if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
             try:
                 if self.auto_theme_enabled:
@@ -263,7 +263,7 @@ class SettingsScreen(Screen):
                 
                 app = App.get_running_app()
                 
-                # ДОБАВЛЕНО: Обновляем AutoThemeService
+                # Обновляем AutoThemeService
                 if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
                     app.auto_theme_service.calibrate_sensor(new_threshold)
                     logger.info(f"Auto-theme threshold updated to {new_threshold}s")
@@ -276,104 +276,12 @@ class SettingsScreen(Screen):
                 
         except Exception as e:
             logger.error(f"Error changing threshold: {e}")
-    # ОБНОВЛЕННЫЙ: Метод для тестирования автотемы
-    def test_auto_theme(self):
-        """Тестирование автоматической темы с полным обновлением UI"""
-        try:
-            app = App.get_running_app()
-            
-            if not self.auto_theme_enabled:
-                logger.info("Auto-theme is disabled, cannot test")
-                self._play_sound("error")
-                return
-                
-            if not self.light_sensor_available:
-                logger.info("Light sensor not available, cannot test")
-                self._play_sound("error")
-                return
-            
-            if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
-                logger.info("🧪 Testing auto-theme with force check...")
-                
-                # Принудительно обновляем показания датчика
-                if hasattr(app, 'sensor_service') and app.sensor_service:
-                    app.sensor_service.update_readings()
-                
-                # Выполняем проверку
-                success = app.auto_theme_service.force_check()
-                
-                if success:
-                    self._play_sound("confirm")
-                    logger.info("✅ Auto-theme test - theme switched")
-                else:
-                    self._play_sound("notify")  
-                    logger.info("ℹ️ Auto-theme test - no switch needed")
-                
-                # Принудительно обновляем статус датчика через 500мс
-                Clock.schedule_once(lambda dt: self.update_sensor_status(), 0.5)
-                
-            else:
-                logger.error("AutoThemeService not available")
-                self._play_sound("error")
-                
-        except Exception as e:
-            logger.error(f"Error testing auto-theme: {e}")
-            self._play_sound("error")
-        # ДОБАВЛЕНО: Метод для ручного переключения темы (для тестирования)
-    def manual_theme_switch(self):
-        """Ручное переключение темы для тестирования"""
-        try:
-            app = App.get_running_app()
-            
-            if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
-                logger.info("🔄 Manual theme switch test...")
-                success = app.auto_theme_service.manual_theme_switch()
-                
-                if success:
-                    self._play_sound("confirm")
-                    logger.info("✅ Manual theme switch completed")
-                    
-                    # Обновляем UI через 500мс
-                    Clock.schedule_once(lambda dt: self.refresh_theme(), 0.5)
-                else:
-                    self._play_sound("error")
-                    logger.error("❌ Manual theme switch failed")
-            else:
-                logger.error("AutoThemeService not available")
-                self._play_sound("error")
-                
-        except Exception as e:
-            logger.error(f"Error in manual theme switch: {e}")
-            self._play_sound("error")
-
-    # ДОБАВЛЕНО: Метод для принудительного обновления всего UI
-    def force_ui_refresh(self):
-        """Принудительное обновление всего интерфейса"""
-        try:
-            app = App.get_running_app()
-            
-            logger.info("🔄 Force refreshing entire UI...")
-            self._play_sound("click")
-            
-            # Обновляем через AutoThemeService если доступен
-            if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
-                app.auto_theme_service._force_ui_refresh()
-            
-            # Дополнительно обновляем текущий экран
-            Clock.schedule_once(lambda dt: self.refresh_theme(), 0.2)
-            Clock.schedule_once(lambda dt: self.update_sensor_status(), 0.4)
-            
-            logger.info("✅ UI refresh triggered")
-                
-        except Exception as e:
-            logger.error(f"Error in force UI refresh: {e}")
-            self._play_sound("error")
 
     def update_sensor_status(self):
         """Обновление статуса датчика освещения"""
         app = App.get_running_app()
         try:
-            # ОБНОВЛЕНО: Получаем более детальный статус
+            # Получаем более детальный статус
             if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
                 auto_status = app.auto_theme_service.get_status()
                 
@@ -512,7 +420,6 @@ class SettingsScreen(Screen):
             logger.error(f"Error in on_birth_year_change: {e}")
             self.birth_year = "2000"
             instance.text = self.birth_year
-
 
     def save_all_settings(self):
         """Сохранение всех настроек"""
