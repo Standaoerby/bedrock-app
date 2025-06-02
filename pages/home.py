@@ -21,6 +21,11 @@ class HomeScreen(Screen):
     weather_5h_str = StringProperty("")
     weather_trend_arrow = StringProperty("→")
     
+    # ДОБАВЛЕНО: Температуры для цветовой логики
+    current_temp_value = NumericProperty(20)
+    forecast_temp_value = NumericProperty(20)
+    temp_trend = NumericProperty(0)  # -1, 0, 1 для падения, стабильно, рост
+    
     # Уведомления - бегущая строка
     notification_text = StringProperty("Welcome to Bedrock 2.0!")
     notification_scroll_x = NumericProperty(0)
@@ -85,24 +90,24 @@ class HomeScreen(Screen):
             now = datetime.now()
             self.clock_time = now.strftime("%H:%M")
             
-            # Локализованная дата
+            # ИСПРАВЛЕНО: Полный день недели вместо сокращенного
             app = App.get_running_app()
             if hasattr(app, 'localizer') and app.localizer:
                 day_names = {
-                    0: "day_monday", 1: "day_tuesday", 2: "day_wednesday", 
-                    3: "day_thursday", 4: "day_friday", 5: "day_saturday", 6: "day_sunday"
+                    0: "Monday", 1: "Tuesday", 2: "Wednesday", 
+                    3: "Thursday", 4: "Friday", 5: "Saturday", 6: "Sunday"
                 }
                 month_names = {
                     1: "January", 2: "February", 3: "March", 4: "April", 5: "May", 6: "June",
                     7: "July", 8: "August", 9: "September", 10: "October", 11: "November", 12: "December"
                 }
                 
-                day_key = day_names.get(now.weekday(), "day_monday")
-                day_name = app.localizer.tr(day_key, now.strftime("%A"))
+                day_name = day_names.get(now.weekday(), now.strftime("%A"))
                 month_name = month_names.get(now.month, now.strftime("%B"))
                 
                 self.current_date = f"{now.day} {month_name}, {day_name}"
             else:
+                # Fallback - полный день недели
                 self.current_date = now.strftime("%d %B, %A")
                 
         except Exception as e:
@@ -122,15 +127,18 @@ class HomeScreen(Screen):
                 current = weather.get("current", {})
                 if current:
                     temp_now = current.get('temperature', 0)
+                    self.current_temp_value = temp_now  # ДОБАВЛЕНО: Сохраняем для цветовой логики
                     condition_now = current.get('condition', 'Unknown')
                     self.weather_now_str = f"{temp_now:.1f}°C {condition_now}"
                 else:
                     self.weather_now_str = "No data"
+                    self.current_temp_value = 20
                 
                 # Прогноз на 5 часов
                 forecast_5h = weather.get("forecast_5h", {})
                 if forecast_5h and forecast_5h.get('temperature') is not None:
                     temp_5h = forecast_5h.get('temperature', 0)
+                    self.forecast_temp_value = temp_5h  # ДОБАВЛЕНО: Сохраняем для цветовой логики
                     
                     if hasattr(app, 'localizer') and app.localizer:
                         in_5h_text = app.localizer.tr("in_5h", "in 5h")
@@ -139,37 +147,51 @@ class HomeScreen(Screen):
                     
                     self.weather_5h_str = f"{temp_5h:.1f}°C {in_5h_text}"
                     
-                    # Тренд температуры
+                    # ИСПРАВЛЕНО: Тренд температуры с цветовой логикой
                     temp_diff = temp_5h - temp_now
                     if temp_diff > 1:
                         self.weather_trend_arrow = "↗"  # Растет
+                        self.temp_trend = 1
                     elif temp_diff < -1:
                         self.weather_trend_arrow = "↘"  # Падает
+                        self.temp_trend = -1
                     else:
                         self.weather_trend_arrow = "→"  # Стабильно
+                        self.temp_trend = 0
                 else:
                     self.weather_5h_str = "No forecast"
                     self.weather_trend_arrow = "→"
+                    self.forecast_temp_value = 20
+                    self.temp_trend = 0
             else:
                 self.weather_now_str = "Service offline"
                 self.weather_5h_str = "Service offline"
                 self.weather_trend_arrow = "→"
+                self.current_temp_value = 20
+                self.forecast_temp_value = 20
+                self.temp_trend = 0
+                
+            # ДОБАВЛЕНО: Обновляем цвета после изменения данных
+            Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
                 
         except Exception as e:
             logger.error(f"Error updating weather: {e}")
             self.weather_now_str = "Error"
             self.weather_5h_str = "Error"
             self.weather_trend_arrow = "→"
+            self.current_temp_value = 20
+            self.forecast_temp_value = 20
+            self.temp_trend = 0
 
     def update_alarm_status(self, *args):
-        """Обновление статуса будильника - ИСПРАВЛЕНО"""
+        """Обновление статуса будильника"""
         try:
             app = App.get_running_app()
             
             if hasattr(app, 'alarm_service') and app.alarm_service:
                 alarm = app.alarm_service.get_alarm()
                 if alarm:
-                    # ИСПРАВЛЕНИЕ: Время будильника всегда показываем, независимо от статуса
+                    # Время будильника всегда показываем
                     self.current_alarm_time = alarm.get("time", "07:30")
                     
                     # Статус зависит от enabled
@@ -184,11 +206,14 @@ class HomeScreen(Screen):
                         else:
                             self.alarm_status_text = "OFF"
                 else:
-                    self.current_alarm_time = "07:30"  # Значение по умолчанию
+                    self.current_alarm_time = "07:30"
                     self.alarm_status_text = "OFF"
             else:
                 self.current_alarm_time = "07:30"
                 self.alarm_status_text = "SERVICE OFFLINE"
+                
+            # ДОБАВЛЕНО: Обновляем цвета будильника после изменения статуса
+            Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
                 
         except Exception as e:
             logger.error(f"Error updating alarm status: {e}")
@@ -259,6 +284,30 @@ class HomeScreen(Screen):
         except Exception as e:
             logger.error(f"Error scrolling notification: {e}")
 
+    def get_temperature_color(self, temp_value):
+        """ДОБАВЛЕНО: Получить цвет для температуры в зависимости от значения"""
+        if temp_value > 23:
+            return [1, 0.6, 0, 1]  # Оранжевый для жаркой погоды
+        elif temp_value < 18:
+            return [0.2, 0.6, 1, 1]  # Синий для холодной погоды
+        else:
+            tm = self.get_theme_manager()
+            return tm.get_rgba("primary") if tm else [1, 1, 1, 1]
+
+    def get_trend_arrow_color(self):
+        """ДОБАВЛЕНО: Получить цвет стрелки тренда"""
+        if self.temp_trend > 0:
+            return [1, 0.6, 0, 1]  # Оранжевый для роста
+        elif self.temp_trend < 0:
+            return [0.2, 0.6, 1, 1]  # Синий для падения
+        else:
+            tm = self.get_theme_manager()
+            return tm.get_rgba("text") if tm else [1, 1, 1, 1]
+
+    def is_alarm_enabled(self):
+        """ДОБАВЛЕНО: Проверка включен ли будильник"""
+        return self.alarm_status_text == "ON"
+
     def toggle_alarm(self, *args):
         """Переключение состояния будильника"""
         try:
@@ -328,15 +377,29 @@ class HomeScreen(Screen):
                     elif widget_id in ["clock_shadow1", "clock_shadow2", "clock_shadow3"]:
                         # Тени остаются черными с разной прозрачностью
                         pass
-                    elif widget_id in ["alarm_time_label", "weather_now_label", "weather_trend_label"]:
-                        widget.color = tm.get_rgba("primary")
-                    elif widget_id in ["date_label", "weather_5h_label", "notification_text_label"]:
-                        widget.color = tm.get_rgba("text")
-                    # ИСПРАВЛЕНИЕ: Цвет кнопки будильника зависит от состояния
+                    elif widget_id == "alarm_time_label":
+                        # ИСПРАВЛЕНО: Цвет времени будильника зависит от статуса
+                        if self.is_alarm_enabled():
+                            widget.color = tm.get_rgba("primary")
+                        else:
+                            widget.color = tm.get_rgba("text_secondary")
                     elif widget_id == "alarm_toggle_btn":
-                        # Если будильник включен - зеленый, если выключен - обычный цвет
-                        is_alarm_on = self.alarm_status_text == "ON"
-                        widget.color = tm.get_rgba("primary") if is_alarm_on else tm.get_rgba("text_secondary")
+                        # ИСПРАВЛЕНО: Цвет кнопки будильника зависит от статуса
+                        if self.is_alarm_enabled():
+                            widget.color = tm.get_rgba("primary")
+                        else:
+                            widget.color = tm.get_rgba("text_secondary")
+                    elif widget_id == "weather_now_label":
+                        # ИСПРАВЛЕНО: Цвет текущей температуры по условию
+                        widget.color = self.get_temperature_color(self.current_temp_value)
+                    elif widget_id == "weather_5h_label":
+                        # ИСПРАВЛЕНО: Цвет прогнозной температуры по условию
+                        widget.color = self.get_temperature_color(self.forecast_temp_value)
+                    elif widget_id == "weather_trend_label":
+                        # ИСПРАВЛЕНО: Цвет стрелки тренда по динамике
+                        widget.color = self.get_trend_arrow_color()
+                    elif widget_id in ["date_label", "notification_text_label"]:
+                        widget.color = tm.get_rgba("text")
                 
                 # Обновляем фон кнопок
                 if hasattr(widget, 'background_normal'):

@@ -22,6 +22,7 @@ class CustomProgressBar(Widget):
         self.bind(size=self.update_canvas)
         self.bind(pos=self.update_canvas)
         self.bind(value=self.update_canvas)
+        self.bind(bar_color=self.update_canvas)  # ДОБАВЛЕНО: привязка к изменению цвета
         
         # Инициализация canvas
         with self.canvas:
@@ -90,6 +91,32 @@ class PigsScreen(Screen):
             return app.theme_manager
         logger.warning("ThemeManager not available in PigsScreen")
         return None
+
+    def get_current_theme_variant(self):
+        """ДОБАВЛЕНО: Получение текущего варианта темы"""
+        app = App.get_running_app()
+        if hasattr(app, 'user_config') and app.user_config:
+            return app.user_config.get("variant", "light")
+        return "light"
+
+    def get_progress_bar_colors(self):
+        """ДОБАВЛЕНО: Получение цветов прогресс-баров в зависимости от темы"""
+        variant = self.get_current_theme_variant()
+        
+        if variant == "dark":
+            # Темные цвета для темной темы
+            return {
+                "water": [0.1, 0.4, 0.7, 0.8],   # Темно-синий для воды
+                "food": [0.7, 0.4, 0.1, 0.8],    # Темно-оранжевый для еды
+                "clean": [0.1, 0.6, 0.1, 0.8]    # Темно-зеленый для уборки
+            }
+        else:
+            # Светлые цвета для светлой темы
+            return {
+                "water": [0.2, 0.6, 1, 0.8],     # Голубой для воды
+                "food": [1, 0.6, 0.2, 0.8],      # Оранжевый для еды
+                "clean": [0.2, 0.8, 0.2, 0.8]    # Зеленый для уборки
+            }
 
     def start_updates(self):
         """Запуск периодических обновлений"""
@@ -208,13 +235,19 @@ class PigsScreen(Screen):
         if not hasattr(self, 'ids'):
             return
             
-        # Обновляем значения прогресс баров
+        # ИСПРАВЛЕНО: Получаем цвета для текущей темы
+        colors = self.get_progress_bar_colors()
+        
+        # Обновляем значения и цвета прогресс баров
         if 'water_bar' in self.ids:
             self.ids.water_bar.value = self.water_value
+            self.ids.water_bar.bar_color = colors["water"]
         if 'food_bar' in self.ids:
             self.ids.food_bar.value = self.food_value
+            self.ids.food_bar.bar_color = colors["food"]
         if 'clean_bar' in self.ids:
             self.ids.clean_bar.value = self.clean_value
+            self.ids.clean_bar.bar_color = colors["clean"]
 
     def reset_bar(self, bar_type):
         """Сброс определённой полосы (кормление/поение/уборка)"""
@@ -297,14 +330,8 @@ class PigsScreen(Screen):
                     widget.background_normal = tm.get_image("button_bg")
                     widget.background_down = tm.get_image("button_bg_active")
 
-        # Обновляем прогресс бары с правильными цветами
-        if hasattr(self, 'ids'):
-            if 'water_bar' in self.ids:
-                self.ids.water_bar.bar_color = [0.2, 0.6, 1, 0.8]  # Голубой для воды
-            if 'food_bar' in self.ids:
-                self.ids.food_bar.bar_color = [1, 0.6, 0.2, 0.8]  # Оранжевый для еды
-            if 'clean_bar' in self.ids:
-                self.ids.clean_bar.bar_color = [0.2, 0.8, 0.2, 0.8]  # Зеленый для уборки
+        # ИСПРАВЛЕНО: Обновляем прогресс бары с цветами для текущей темы
+        self.update_progress_bars()
 
     def refresh_text(self, *args):
         """Обновление локализованного текста"""

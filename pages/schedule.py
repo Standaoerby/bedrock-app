@@ -22,7 +22,11 @@ class ScheduleScreen(Screen):
     current_week_str = StringProperty("")
     today_day = StringProperty("")
     schedule_data = ListProperty([])
-    user_header = StringProperty("School Schedule")  # ДОБАВЛЕНО
+    user_header = StringProperty("School Schedule")
+    
+    # ДОБАВЛЕНО: Свойства для нижнего блока
+    today_full_date = StringProperty("")
+    next_weekend_text = StringProperty("Next weekend soon!")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -79,12 +83,29 @@ class ScheduleScreen(Screen):
         week_end = week_start + timedelta(days=6)
         self.current_week_str = f"{week_start.strftime('%d %b')} - {week_end.strftime('%d %b')}"
         
-        # ДОБАВЛЕНО: Формируем заголовок с именем пользователя
+        # Формируем заголовок с именем пользователя
         if hasattr(app, 'user_config') and app.user_config:
             username = app.user_config.get("username", "Student")
             self.user_header = f"{username}, Devonshire House School, 5KW"
         else:
             self.user_header = "Student, Devonshire House School, 5KW"
+        
+        # ДОБАВЛЕНО: Формируем полную дату для нижнего блока
+        day_names_full = [
+            "Monday", "Tuesday", "Wednesday", "Thursday", 
+            "Friday", "Saturday", "Sunday"
+        ]
+        month_names = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ]
+        
+        day_name_full = day_names_full[today.weekday()]
+        month_name = month_names[today.month - 1]
+        self.today_full_date = f"{today.day} {month_name}, {day_name_full}"
+        
+        # ДОБАВЛЕНО: Вычисляем дни до выходных
+        self._calculate_next_weekend()
         
         # Получаем расписание от сервиса
         schedule = {}
@@ -108,6 +129,24 @@ class ScheduleScreen(Screen):
                 "is_today": day == current_day,
                 "lessons": day_schedule
             })
+
+    def _calculate_next_weekend(self):
+        """ДОБАВЛЕНО: Вычисление дней до следующих выходных"""
+        today = datetime.now()
+        current_weekday = today.weekday()  # 0 = понедельник, 6 = воскресенье
+        
+        if current_weekday < 5:  # Понедельник-пятница
+            days_until_weekend = 5 - current_weekday  # Дни до субботы
+            if days_until_weekend == 0:
+                self.next_weekend_text = "Weekend today!"
+            elif days_until_weekend == 1:
+                self.next_weekend_text = "Weekend tomorrow!"
+            else:
+                self.next_weekend_text = f"Next weekend in {days_until_weekend} days!"
+        elif current_weekday == 5:  # Суббота
+            self.next_weekend_text = "Weekend now!"
+        else:  # Воскресенье
+            self.next_weekend_text = "Last day of weekend!"
 
     def _get_default_schedule(self):
         """Получение расписания по умолчанию"""
@@ -196,7 +235,7 @@ class ScheduleScreen(Screen):
             logger.error(f"Error fixing container height: {e}")
 
     def create_day_column(self, day_data, theme_manager):
-        """Создание колонки для одного дня - ОБНОВЛЕНО"""
+        """Создание колонки для одного дня"""
         day = day_data["day"]
         is_today = day_data["is_today"]
         lessons = day_data["lessons"]
@@ -210,7 +249,7 @@ class ScheduleScreen(Screen):
             padding=[dp(4), dp(4)]  # Добавляем padding для фона
         )
         
-        # ДОБАВЛЕНО: Фон для текущего дня
+        # Фон для текущего дня
         if is_today and theme_manager:
             with column.canvas.before:
                 Color(*theme_manager.get_rgba("overlay_card"))
@@ -230,8 +269,6 @@ class ScheduleScreen(Screen):
                         radius=[dp(8)]
                     )
             column.bind(pos=update_bg, size=update_bg)
-        
-        # УБРАНО: Заголовок дня (больше не отображаем)
         
         # Контейнер для уроков
         lessons_container = BoxLayout(
@@ -276,7 +313,7 @@ class ScheduleScreen(Screen):
         return column
 
     def create_lesson_widget(self, lesson, theme_manager, is_today):
-        """Создание виджета урока - ОБНОВЛЕНО"""
+        """Создание виджета урока"""
         container = BoxLayout(
             orientation="vertical",
             spacing=dp(2),
@@ -293,7 +330,7 @@ class ScheduleScreen(Screen):
             color=theme_manager.get_rgba("primary") if (theme_manager and is_today) else (theme_manager.get_rgba("text_secondary") if theme_manager else [0.7, 0.7, 0.7, 1]),
             size_hint_y=None,
             height=dp(16),
-            halign='left',  # ИЗМЕНЕНО: левое выравнивание
+            halign='left',
             text_size=(dp(120), None)
         )
         container.add_widget(time_label)
@@ -306,14 +343,12 @@ class ScheduleScreen(Screen):
             color=theme_manager.get_rgba("text") if theme_manager else [1, 1, 1, 1],
             size_hint_y=None,
             height=dp(24),
-            halign='left',  # ИЗМЕНЕНО: левое выравнивание
+            halign='left',
             text_size=(dp(120), None),
             shorten=True,
             shorten_from='right'
         )
         container.add_widget(subject_label)
-        
-        # УБРАНО: Кабинет больше не отображается
         
         return container
 
@@ -334,6 +369,13 @@ class ScheduleScreen(Screen):
             if 'today_highlight_label' in self.ids:
                 self.ids.today_highlight_label.font_name = tm.get_font("main")
                 self.ids.today_highlight_label.color = tm.get_rgba("primary")
+            # ДОБАВЛЕНО: Обновляем стили для новых элементов нижнего блока
+            if 'today_date_label' in self.ids:
+                self.ids.today_date_label.font_name = tm.get_font("main")
+                self.ids.today_date_label.color = tm.get_rgba("text")
+            if 'weekend_info_label' in self.ids:
+                self.ids.weekend_info_label.font_name = tm.get_font("main")
+                self.ids.weekend_info_label.color = tm.get_rgba("text_secondary")
         
         # Пересоздаем виджеты с новой темой
         if hasattr(self, 'ids'):
@@ -343,7 +385,7 @@ class ScheduleScreen(Screen):
         """Обновление локализованного текста"""
         app = App.get_running_app()
         
-        # ИЗМЕНЕНО: Обновляем заголовок с именем пользователя
+        # Обновляем заголовок с именем пользователя
         if hasattr(self, 'ids') and 'title_label' in self.ids:
             self.ids.title_label.text = self.user_header
             
