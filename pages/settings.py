@@ -15,7 +15,7 @@ class SettingsScreen(Screen):
     current_variant = StringProperty("light")
     current_language = StringProperty("en")
     
-    # ListProperty для значений спиннеров (устанавливаются один раз)
+    # ListProperty для значений селекторов (устанавливаются один раз)
     theme_list = ListProperty(["minecraft"])
     variant_list = ListProperty(["light", "dark"])
     language_list = ListProperty(["en", "ru"])
@@ -38,12 +38,9 @@ class SettingsScreen(Screen):
         super().__init__(**kwargs)
         # Подписка на события
         event_bus.subscribe("language_changed", self.refresh_text)
-        event_bus.subscribe("theme_changed", self._on_theme_changed_delayed)  # Асинхронно!
+        event_bus.subscribe("theme_changed", self._on_theme_changed_delayed)
         self._update_events = []
         self._initialized = False
-        
-        # Флаги для предотвращения бесконечных циклов
-        self._setting_spinner_values = False
 
     def on_pre_enter(self, *args):
         """Вызывается при входе на экран"""
@@ -55,7 +52,7 @@ class SettingsScreen(Screen):
             # Отложенная инициализация темы и привязок
             Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
             Clock.schedule_once(lambda dt: self.refresh_text(), 0.1)
-            Clock.schedule_once(lambda dt: self._setup_spinner_bindings(), 0.2)  # НОВОЕ: Устанавливаем Python привязки
+            Clock.schedule_once(lambda dt: self._setup_select_buttons(), 0.2)
             self._initialized = True
         except Exception as e:
             logger.error(f"Error in SettingsScreen.on_pre_enter: {e}")
@@ -64,83 +61,37 @@ class SettingsScreen(Screen):
         """Вызывается при выходе с экрана"""
         try:
             self.stop_updates()
-            self._remove_spinner_bindings()  # НОВОЕ: Удаляем привязки при выходе
         except Exception as e:
             logger.error(f"Error in SettingsScreen.on_pre_leave: {e}")
 
-    def _setup_spinner_bindings(self):
-        """НОВОЕ: Настройка Python привязок для спиннеров с задержками"""
+    def _setup_select_buttons(self):
+        """Настройка кнопок выбора"""
         try:
             if not hasattr(self, 'ids'):
                 return
                 
-            # Привязываем события спиннеров к нашим обработчикам
-            if 'theme_spinner' in self.ids:
-                self.ids.theme_spinner.bind(text=self._on_theme_spinner_delayed)
-                logger.debug("Theme spinner binding set up")
+            # Настройка кнопки темы
+            if 'theme_button' in self.ids:
+                theme_button = self.ids.theme_button
+                theme_button.values = self.theme_list
+                theme_button.selected_value = self.current_theme
                 
-            if 'variant_spinner' in self.ids:
-                self.ids.variant_spinner.bind(text=self._on_variant_spinner_delayed)
-                logger.debug("Variant spinner binding set up")
+            # Настройка кнопки варианта темы
+            if 'variant_button' in self.ids:
+                variant_button = self.ids.variant_button
+                variant_button.values = self.variant_list
+                variant_button.selected_value = self.current_variant
                 
-            if 'language_spinner' in self.ids:
-                self.ids.language_spinner.bind(text=self._on_language_spinner_delayed)
-                logger.debug("Language spinner binding set up")
+            # Настройка кнопки языка
+            if 'language_button' in self.ids:
+                language_button = self.ids.language_button
+                language_button.values = self.language_list
+                language_button.selected_value = self.current_language
+                
+            logger.debug("Select buttons configured")
                 
         except Exception as e:
-            logger.error(f"Error setting up spinner bindings: {e}")
-
-    def _remove_spinner_bindings(self):
-        """НОВОЕ: Удаление Python привязок спиннеров"""
-        try:
-            if not hasattr(self, 'ids'):
-                return
-                
-            if 'theme_spinner' in self.ids:
-                self.ids.theme_spinner.unbind(text=self._on_theme_spinner_delayed)
-                
-            if 'variant_spinner' in self.ids:
-                self.ids.variant_spinner.unbind(text=self._on_variant_spinner_delayed)
-                
-            if 'language_spinner' in self.ids:
-                self.ids.language_spinner.unbind(text=self._on_language_spinner_delayed)
-                
-            logger.debug("Spinner bindings removed")
-        except Exception as e:
-            logger.error(f"Error removing spinner bindings: {e}")
-
-    def _on_theme_spinner_delayed(self, spinner, text):
-        """НОВОЕ: Отложенный обработчик изменения темы"""
-        if self._setting_spinner_values:
-            return
-        Clock.schedule_once(lambda dt: self._handle_theme_change(text), 0.1)
-
-    def _on_variant_spinner_delayed(self, spinner, text):
-        """НОВОЕ: Отложенный обработчик изменения варианта темы"""
-        if self._setting_spinner_values:
-            return
-        Clock.schedule_once(lambda dt: self._handle_variant_change(text), 0.1)
-
-    def _on_language_spinner_delayed(self, spinner, text):
-        """НОВОЕ: Отложенный обработчик изменения языка"""
-        if self._setting_spinner_values:
-            return
-        Clock.schedule_once(lambda dt: self._handle_language_change(text), 0.1)
-
-    def _handle_theme_change(self, theme_name):
-        """НОВОЕ: Безопасная обработка изменения темы"""
-        if theme_name != self.current_theme:
-            self.on_theme_select(theme_name)
-
-    def _handle_variant_change(self, variant):
-        """НОВОЕ: Безопасная обработка изменения варианта"""
-        if variant != self.current_variant:
-            self.on_variant_select(variant)
-
-    def _handle_language_change(self, language):
-        """НОВОЕ: Безопасная обработка изменения языка"""
-        if language != self.current_language:
-            self.on_language_select(language)
+            logger.error(f"Error setting up select buttons: {e}")
 
     def get_theme_manager(self):
         """Безопасное получение theme_manager"""
@@ -185,7 +136,7 @@ class SettingsScreen(Screen):
                 
             user_config = app.user_config
             
-            # Устанавливаем списки значений для спиннеров ОДИН РАЗ
+            # Устанавливаем списки значений для селекторов ОДИН РАЗ
             tm = self.get_theme_manager()
             if tm:
                 # Если есть метод получения списка тем
@@ -194,10 +145,7 @@ class SettingsScreen(Screen):
                 else:
                     self.theme_list = ["minecraft"]  # Фиксированный список
             
-            # НОВОЕ: Блокируем обработчики при программном изменении
-            self._setting_spinner_values = True
-            
-            # Загружаем основные настройки - KV автоматически обновит спиннеры
+            # Загружаем основные настройки
             self.current_theme = user_config.get("theme", "minecraft")
             self.current_variant = user_config.get("variant", "light")
             self.current_language = user_config.get("language", "en")
@@ -225,21 +173,18 @@ class SettingsScreen(Screen):
             # Обновляем только TextInput поля
             Clock.schedule_once(lambda dt: self._update_input_fields(), 0.1)
             
-            # НОВОЕ: Разблокируем обработчики после небольшой задержки
-            Clock.schedule_once(lambda dt: setattr(self, '_setting_spinner_values', False), 0.3)
-            
             logger.info("Settings loaded successfully")
             
         except Exception as e:
             logger.error(f"Error loading settings: {e}")
 
     def _update_input_fields(self):
-        """Обновление ТОЛЬКО текстовых полей ввода (НЕ спиннеров)"""
+        """Обновление ТОЛЬКО текстовых полей ввода (НЕ селекторов)"""
         try:
             if not hasattr(self, 'ids'):
                 return
                 
-            # Обновляем ТОЛЬКО текстовые поля - спиннеры обновятся автоматически через KV привязки
+            # Обновляем ТОЛЬКО текстовые поля - селекторы обновятся через setup
             if 'username_input' in self.ids:
                 self.ids.username_input.text = self.username
             if 'birth_day_input' in self.ids:
@@ -286,10 +231,10 @@ class SettingsScreen(Screen):
             logger.error(f"Error updating sensor status: {e}")
             self.current_light_status = "Error"
 
-    # МЕТОДЫ ОБРАБОТКИ СОБЫТИЙ UI
+    # МЕТОДЫ ОБРАБОТКИ СОБЫТИЙ UI - вызываются из SelectButton
     
     def on_theme_select(self, theme_name):
-        """Выбор темы"""
+        """Выбор темы - вызывается из ThemeSelectButton"""
         if theme_name != self.current_theme:
             app = App.get_running_app()
             
@@ -301,13 +246,12 @@ class SettingsScreen(Screen):
             # Применяем тему
             if hasattr(app, 'theme_manager'):
                 app.theme_manager.load(theme_name, self.current_variant)
-                # НЕ вызываем refresh_theme синхронно! Событие придет асинхронно
                 event_bus.publish("theme_changed", {"theme": theme_name, "variant": self.current_variant})
             
             logger.info(f"Theme changed to: {theme_name}")
 
     def on_variant_select(self, variant):
-        """Выбор варианта темы (light/dark)"""
+        """Выбор варианта темы (light/dark) - вызывается из ThemeSelectButton"""
         if variant != self.current_variant:
             app = App.get_running_app()
             
@@ -319,13 +263,12 @@ class SettingsScreen(Screen):
             # Применяем вариант темы
             if hasattr(app, 'theme_manager'):
                 app.theme_manager.load(self.current_theme, variant)
-                # НЕ вызываем refresh_theme синхронно! Событие придет асинхронно
                 event_bus.publish("theme_changed", {"theme": self.current_theme, "variant": variant})
             
             logger.info(f"Theme variant changed to: {variant}")
 
     def on_language_select(self, language):
-        """Выбор языка"""
+        """Выбор языка - вызывается из LanguageSelectButton"""
         if language != self.current_language:
             app = App.get_running_app()
             
@@ -343,7 +286,7 @@ class SettingsScreen(Screen):
 
     def _on_theme_changed_delayed(self, *args):
         """Асинхронная обработка смены темы"""
-        # Отложенное обновление темы, чтобы не конфликтовать со спиннерами
+        # Отложенное обновление темы, чтобы не конфликтовать с селекторами
         Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
 
     def on_username_change(self, instance, value):
@@ -474,7 +417,7 @@ class SettingsScreen(Screen):
             self._play_sound("error")
 
     def refresh_theme(self, *args):
-        """Обновление темы для всех элементов (БЕЗ изменения спиннеров!)"""
+        """Обновление темы для всех элементов"""
         if not self._initialized:
             return
             
@@ -483,20 +426,21 @@ class SettingsScreen(Screen):
             return
 
         try:
-            # Список виджетов для обновления темы (БЕЗ спиннеров!)
+            # Список виджетов для обновления темы (включая кнопки выбора)
             widgets_to_update = [
                 "theme_label", "variant_label", "language_label", "username_label",
                 "birthday_label", "auto_theme_label", "threshold_label", "sensor_status_label",
                 "username_input", "birth_day_input", "birth_month_input", "birth_year_input",
                 "auto_theme_button", "save_button",
-                "theme_section_label", "language_section_label", "user_section_label", "auto_theme_section_label"
+                "theme_section_label", "language_section_label", "user_section_label", "auto_theme_section_label",
+                "theme_button", "variant_button", "language_button"
             ]
             
             for widget_id in widgets_to_update:
                 if hasattr(self, 'ids') and widget_id in self.ids:
                     widget = self.ids[widget_id]
                     
-                    # Обновляем ТОЛЬКО шрифт и цвет, НЕ трогаем text и values спиннеров!
+                    # Обновляем шрифт и цвет
                     if hasattr(widget, 'font_name'):
                         if "section" in widget_id:
                             widget.font_name = tm.get_font("title")

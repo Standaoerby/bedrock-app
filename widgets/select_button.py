@@ -17,7 +17,6 @@ class SelectButton(Button):
     
     values = ListProperty([])
     selected_value = StringProperty("")
-    on_select = ObjectProperty(allownone=True)
     popup_title = StringProperty("Select Option")
     
     def __init__(self, **kwargs):
@@ -28,7 +27,12 @@ class SelectButton(Button):
         
     def _update_text(self, instance, value):
         """Обновление текста кнопки при изменении выбранного значения"""
-        self.text = value if value else "Select..."
+        # Показываем имя файла без расширения для мелодий
+        if value and '.' in value:
+            display_text = value.rsplit('.', 1)[0]  # Убираем расширение
+        else:
+            display_text = value if value else "Select..."
+        self.text = display_text
         
     def open_selection(self, *args):
         """Открытие popup с выбором"""
@@ -78,8 +82,14 @@ class SelectButton(Button):
         
         # Создаем кнопки для каждого значения
         for value in self.values:
+            # Показываем имя файла без расширения для мелодий
+            if value and '.' in value:
+                display_text = value.rsplit('.', 1)[0]
+            else:
+                display_text = value
+                
             btn = Button(
-                text=value,
+                text=display_text,
                 size_hint_y=None,
                 height=dp(44),
                 font_size='16sp'
@@ -129,9 +139,8 @@ class SelectButton(Button):
                 old_value = self.selected_value
                 self.selected_value = value
                 
-                # Вызываем callback если установлен
-                if self.on_select:
-                    self.on_select(self, value, old_value)
+                # Вызываем callback если установлен - ИСПРАВЛЕНО: вызываем событие on_select
+                self.dispatch('on_select', value, old_value)
                 
                 logger.debug(f"Selected value: {value}")
             
@@ -150,6 +159,10 @@ class SelectButton(Button):
     def _on_popup_dismiss(self, *args):
         """Обработка закрытия popup"""
         self._popup = None
+    
+    def on_select(self, value, old_value):
+        """Событие выбора - переопределяется в подклассах"""
+        pass
     
     def set_values(self, values):
         """Установка новых значений"""
@@ -173,6 +186,24 @@ class ThemeSelectButton(SelectButton):
     def __init__(self, **kwargs):
         kwargs.setdefault('popup_title', 'Select Theme')
         super().__init__(**kwargs)
+    
+    def on_select(self, value, old_value):
+        """Обработка выбора темы"""
+        # Получаем parent screen для вызова метода обработки
+        from pages.settings import SettingsScreen
+        screen = self._find_parent_screen()
+        if isinstance(screen, SettingsScreen):
+            screen.on_theme_select(value)
+
+    def _find_parent_screen(self):
+        """Поиск родительского экрана"""
+        parent = self.parent
+        while parent:
+            if hasattr(parent, '__class__') and hasattr(parent.__class__, '__name__'):
+                if 'Screen' in parent.__class__.__name__:
+                    return parent
+            parent = getattr(parent, 'parent', None)
+        return None
 
 
 class LanguageSelectButton(SelectButton):
@@ -181,6 +212,23 @@ class LanguageSelectButton(SelectButton):
     def __init__(self, **kwargs):
         kwargs.setdefault('popup_title', 'Select Language')
         super().__init__(**kwargs)
+    
+    def on_select(self, value, old_value):
+        """Обработка выбора языка"""
+        from pages.settings import SettingsScreen
+        screen = self._find_parent_screen()
+        if isinstance(screen, SettingsScreen):
+            screen.on_language_select(value)
+
+    def _find_parent_screen(self):
+        """Поиск родительского экрана"""
+        parent = self.parent
+        while parent:
+            if hasattr(parent, '__class__') and hasattr(parent.__class__, '__name__'):
+                if 'Screen' in parent.__class__.__name__:
+                    return parent
+            parent = getattr(parent, 'parent', None)
+        return None
 
 
 class RingtoneSelectButton(SelectButton):
@@ -189,3 +237,20 @@ class RingtoneSelectButton(SelectButton):
     def __init__(self, **kwargs):
         kwargs.setdefault('popup_title', 'Select Ringtone')
         super().__init__(**kwargs)
+    
+    def on_select(self, value, old_value):
+        """Обработка выбора мелодии"""
+        from pages.alarm import AlarmScreen
+        screen = self._find_parent_screen()
+        if isinstance(screen, AlarmScreen):
+            screen.select_ringtone(value)
+
+    def _find_parent_screen(self):
+        """Поиск родительского экрана"""
+        parent = self.parent
+        while parent:
+            if hasattr(parent, '__class__') and hasattr(parent.__class__, '__name__'):
+                if 'Screen' in parent.__class__.__name__:
+                    return parent
+            parent = getattr(parent, 'parent', None)
+        return None

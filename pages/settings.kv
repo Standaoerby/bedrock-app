@@ -1,3 +1,4 @@
+#:kivy 2.1.0
 #:import dp kivy.metrics.dp
 #:import ThemeSelectButton widgets.select_button.ThemeSelectButton
 #:import LanguageSelectButton widgets.select_button.LanguageSelectButton
@@ -57,8 +58,6 @@
                         
                         ThemeSelectButton:
                             id: theme_button
-                            selected_value: root.current_theme
-                            values: root.theme_list
                             font_size: '16sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
@@ -85,8 +84,6 @@
                         
                         ThemeSelectButton:
                             id: variant_button
-                            selected_value: root.current_variant
-                            values: root.variant_list
                             popup_title: "Select Mode"
                             font_size: '16sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
@@ -135,8 +132,6 @@
                         
                         LanguageSelectButton:
                             id: language_button
-                            selected_value: root.current_language
-                            values: root.language_list
                             font_size: '14sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]

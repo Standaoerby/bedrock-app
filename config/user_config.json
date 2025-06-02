@@ -17,6 +17,6 @@
     "latitude": 51.5566,
     "longitude": -0.178
   },
-  "auto_theme_enabled": false,
+  "auto_theme_enabled": true,
   "light_sensor_threshold": 3
 }

@@ -1,3 +1,4 @@
+#:kivy 2.1.0
 #:import dp kivy.metrics.dp
 #:import RingtoneSelectButton widgets.select_button.RingtoneSelectButton
 
@@ -293,9 +294,7 @@
 
                         RingtoneSelectButton:
                             id: ringtone_button
-                            selected_value: root.selected_ringtone
-                            values: root.ringtone_list
-                            font_size: "24sp"
+                            font_size: "16sp"
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
