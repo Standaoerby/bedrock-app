@@ -16,9 +16,17 @@ class HomeScreen(Screen):
     current_alarm_time = StringProperty("--:--")
     alarm_status_text = StringProperty("OFF")
     
-    # Погода
-    weather_now_str = StringProperty("Loading...")
-    weather_5h_str = StringProperty("")
+    # ИСПРАВЛЕНО: Разделенная погода для правильного окрашивания
+    # Текущая погода
+    weather_now_temp = StringProperty("--°C")
+    weather_now_condition = StringProperty("Loading...")
+    
+    # Прогноз на 5 часов
+    weather_5h_temp = StringProperty("--°C")
+    weather_5h_condition = StringProperty("Unknown")
+    weather_5h_in_text = StringProperty("in 5h")
+    
+    # Стрелка тренда
     weather_trend_arrow = StringProperty("→")
     
     # Температуры для цветовой логики
@@ -41,9 +49,15 @@ class HomeScreen(Screen):
         self.current_date = ""
         self.current_alarm_time = "--:--"
         self.alarm_status_text = "OFF"
-        self.weather_now_str = "Loading..."
-        self.weather_5h_str = ""
+        
+        # ИСПРАВЛЕНО: Инициализация разделенных полей погоды
+        self.weather_now_temp = "--°C"
+        self.weather_now_condition = "Loading..."
+        self.weather_5h_temp = "--°C"
+        self.weather_5h_condition = "Unknown"
+        self.weather_5h_in_text = "in 5h"
         self.weather_trend_arrow = "→"
+        
         self.current_temp_value = 20
         self.forecast_temp_value = 20
         self.temp_trend = 0
@@ -138,32 +152,37 @@ class HomeScreen(Screen):
             if hasattr(app, 'weather_service') and app.weather_service:
                 weather = app.weather_service.get_weather()
                 
-                # Текущая погода
+                # ИСПРАВЛЕНО: Обработка текущей погоды
                 current = weather.get("current", {})
                 if current:
                     temp_now = current.get('temperature', 0)
                     self.current_temp_value = temp_now
                     condition_now = current.get('condition', 'Unknown')
-                    # Температура и условие в одной строке через запятую
-                    self.weather_now_str = f"{temp_now:.1f}°C, {condition_now}"
+                    
+                    # Разделяем температуру и условие
+                    self.weather_now_temp = f"{temp_now:.1f}°C"
+                    self.weather_now_condition = condition_now
                 else:
-                    self.weather_now_str = "No data"
+                    self.weather_now_temp = "--°C"
+                    self.weather_now_condition = "No data"
                     self.current_temp_value = 20
                 
-                # Прогноз на 5 часов
+                # ИСПРАВЛЕНО: Обработка прогноза на 5 часов
                 forecast_5h = weather.get("forecast_5h", {})
                 if forecast_5h and forecast_5h.get('temperature') is not None:
                     temp_5h = forecast_5h.get('temperature', 0)
                     condition_5h = forecast_5h.get('condition', 'Unknown')
                     self.forecast_temp_value = temp_5h
                     
-                    if hasattr(app, 'localizer') and app.localizer:
-                        in_5h_text = app.localizer.tr("in_5h", "in 5h")
-                    else:
-                        in_5h_text = "in 5h"
+                    # Разделяем температуру, условие и текст "in 5h"
+                    self.weather_5h_temp = f"{temp_5h:.1f}°C"
+                    self.weather_5h_condition = condition_5h
                     
-                    # Температура, условие и "in 5h" в одной строке
-                    self.weather_5h_str = f"{temp_5h:.1f}°C, {condition_5h} {in_5h_text}"
+                    # Получаем локализованный текст "in 5h"
+                    if hasattr(app, 'localizer') and app.localizer:
+                        self.weather_5h_in_text = app.localizer.tr("in_5h", "in 5h")
+                    else:
+                        self.weather_5h_in_text = "in 5h"
                     
                     # Тренд температуры
                     temp_diff = temp_5h - temp_now
@@ -177,13 +196,19 @@ class HomeScreen(Screen):
                         self.weather_trend_arrow = "→"  # Стабильно
                         self.temp_trend = 0
                 else:
-                    self.weather_5h_str = "No forecast"
+                    self.weather_5h_temp = "--°C"
+                    self.weather_5h_condition = "No forecast"
+                    self.weather_5h_in_text = ""
                     self.weather_trend_arrow = "→"
                     self.forecast_temp_value = 20
                     self.temp_trend = 0
             else:
-                self.weather_now_str = "Service offline"
-                self.weather_5h_str = "Service offline"
+                # Сервис недоступен
+                self.weather_now_temp = "--°C"
+                self.weather_now_condition = "Service offline"
+                self.weather_5h_temp = "--°C"
+                self.weather_5h_condition = "Service offline"
+                self.weather_5h_in_text = ""
                 self.weather_trend_arrow = "→"
                 self.current_temp_value = 20
                 self.forecast_temp_value = 20
@@ -194,8 +219,11 @@ class HomeScreen(Screen):
                 
         except Exception as e:
             logger.error(f"Error updating weather: {e}")
-            self.weather_now_str = "Error"
-            self.weather_5h_str = "Error"
+            self.weather_now_temp = "--°C"
+            self.weather_now_condition = "Error"
+            self.weather_5h_temp = "--°C"
+            self.weather_5h_condition = "Error"
+            self.weather_5h_in_text = ""
             self.weather_trend_arrow = "→"
             self.current_temp_value = 20
             self.forecast_temp_value = 20
@@ -365,11 +393,14 @@ class HomeScreen(Screen):
             logger.warning("ThemeManager not loaded in HomeScreen.refresh_theme")
             return
 
-        # Список виджетов для обновления темы
+        # ИСПРАВЛЕНО: Обновленный список виджетов с разделенными элементами погоды
         widgets_to_update = [
             "date_label", "alarm_time_label", "alarm_toggle_btn", 
             "clock_label", "clock_shadow1", "clock_shadow2", "clock_shadow3",
-            "weather_now_label", "weather_trend_label", "weather_5h_label",
+            # Разделенные элементы погоды
+            "weather_now_temp_label", "weather_now_condition_label",
+            "weather_5h_temp_label", "weather_5h_condition_label", "weather_5h_in_label",
+            "weather_trend_label",
             "notification_text_label"
         ]
         
@@ -387,7 +418,7 @@ class HomeScreen(Screen):
                     except Exception as e:
                         logger.warning(f"Failed to set font for {widget_id}: {e}")
                     
-                # Обновляем цвет текста
+                # ИСПРАВЛЕНО: Правильная логика цветов
                 if hasattr(widget, 'color'):
                     if widget_id == "clock_label":
                         # Часы меняют цвет по теме
@@ -407,12 +438,22 @@ class HomeScreen(Screen):
                             widget.color = tm.get_rgba("primary")
                         else:
                             widget.color = tm.get_rgba("text_secondary")
-                    elif widget_id == "weather_now_label":
-                        # Цвет текущей температуры по условию
+                    # ИСПРАВЛЕНО: Правильные цвета для элементов погоды
+                    elif widget_id == "weather_now_temp_label":
+                        # Температура сейчас - цвет по условию
                         widget.color = self.get_temperature_color(self.current_temp_value)
-                    elif widget_id == "weather_5h_label":
-                        # Цвет прогнозной температуры по условию
+                    elif widget_id == "weather_now_condition_label":
+                        # Условие сейчас - основной цвет темы
+                        widget.color = tm.get_rgba("primary")
+                    elif widget_id == "weather_5h_temp_label":
+                        # Температура прогноза - цвет по условию
                         widget.color = self.get_temperature_color(self.forecast_temp_value)
+                    elif widget_id == "weather_5h_condition_label":
+                        # Условие прогноза - основной цвет темы
+                        widget.color = tm.get_rgba("primary")
+                    elif widget_id == "weather_5h_in_label":
+                        # Текст "in 5h" - вторичный цвет
+                        widget.color = tm.get_rgba("text_secondary")
                     elif widget_id == "weather_trend_label":
                         # Цвет стрелки тренда по динамике
                         widget.color = self.get_trend_arrow_color()
@@ -436,6 +477,8 @@ class HomeScreen(Screen):
         self.update_time()
         self.update_alarm_status() 
         self.update_notifications()
+        # Также обновляем текст "in 5h" при смене языка
+        self.update_weather()
 
     def on_kv_post(self, base_widget):
         """Вызывается после загрузки KV файла"""
