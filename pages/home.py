@@ -390,8 +390,8 @@ class HomeScreen(Screen):
                 # Обновляем цвет текста
                 if hasattr(widget, 'color'):
                     if widget_id == "clock_label":
-                        # Часы всегда белые
-                        widget.color = [1, 1, 1, 1]
+                        # Часы меняют цвет по теме
+                        widget.color = tm.get_rgba("clock_main")
                     elif widget_id in ["clock_shadow1", "clock_shadow2", "clock_shadow3"]:
                         # Тени остаются черными с разной прозрачностью
                         pass
