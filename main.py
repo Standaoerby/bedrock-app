@@ -1,4 +1,4 @@
-# main.py — версия с автотемой по датчику освещенности
+# main.py — версия с автотемой по датчику освещенности и управлением громкости
 
 from kivy.config import Config
 import sys
@@ -46,6 +46,7 @@ from services.sensor_service import SensorService
 from services.pigs_service import PigsService
 from services.schedule_service import ScheduleService
 from services.auto_theme_service import AutoThemeService  # ДОБАВЛЕНО
+from services.volume_service import VolumeControlService  # ДОБАВЛЕНО
 
 # AlarmClock может отсутствовать — защищаем импорт
 try:
@@ -94,6 +95,7 @@ class BedrockApp(App):
         self.schedule_service = None
         self.alarm_clock = None
         self.auto_theme_service = None  # ДОБАВЛЕНО
+        self.volume_service = None  # ДОБАВЛЕНО
         
         self._services_stopped = False
         self._startup_complete = False
@@ -156,6 +158,7 @@ class BedrockApp(App):
                 ('pigs_service', PigsService, {}),
                 ('schedule_service', ScheduleService, {}),
                 ('auto_theme_service', AutoThemeService, {}),  # ДОБАВЛЕНО
+                ('volume_service', VolumeControlService, {}),  # ДОБАВЛЕНО
             ]
             
             for service_name, service_class, kwargs in services_config:
@@ -186,6 +189,9 @@ class BedrockApp(App):
             # ДОБАВЛЕНО: Дополнительная настройка автотемы
             self._setup_auto_theme()
             
+            # ДОБАВЛЕНО: Настройка volume service
+            self._setup_volume_service()
+            
         except Exception as e:
             logger.error(f"Error initializing services: {e}")
 
@@ -210,6 +216,30 @@ class BedrockApp(App):
                     
         except Exception as e:
             logger.error(f"Error setting up auto-theme: {e}")
+
+    def _setup_volume_service(self):
+        """ДОБАВЛЕНО: Настройка сервиса управления громкостью"""
+        try:
+            if hasattr(self, 'volume_service') and self.volume_service:
+                # Устанавливаем callback для отслеживания изменений громкости
+                def volume_change_callback(volume, action):
+                    logger.info(f"Volume changed: {volume}% (action: {action})")
+                    # Здесь можно добавить дополнительную логику при изменении громкости
+                    # например, показ уведомления или обновление UI
+                
+                self.volume_service.set_volume_change_callback(volume_change_callback)
+                
+                # Получаем статус сервиса для диагностики
+                status = self.volume_service.get_status()
+                logger.info(f"Volume service status: {status}")
+                
+                if status.get('gpio_available', False):
+                    logger.info(f"Hardware volume buttons available on pins {status['button_pins']['volume_up']}/{status['button_pins']['volume_down']}")
+                else:
+                    logger.warning("Hardware volume buttons not available - GPIO/amixer not working")
+                    
+        except Exception as e:
+            logger.error(f"Error setting up volume service: {e}")
 
     def _initial_auto_theme_check(self):
         """Первичная проверка автотемы при запуске"""
@@ -265,7 +295,8 @@ class BedrockApp(App):
         services = [
             'alarm_service', 'notification_service', 'weather_service',
             'sensor_service', 'pigs_service', 'schedule_service', 
-            'auto_theme_service'  # ДОБАВЛЕНО
+            'auto_theme_service',  # ДОБАВЛЕНО
+            'volume_service'  # ДОБАВЛЕНО
         ]
         
         for service_name in services:

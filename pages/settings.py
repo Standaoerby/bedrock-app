@@ -34,6 +34,10 @@ class SettingsScreen(Screen):
     light_sensor_available = BooleanProperty(False)
     light_sensor_threshold = NumericProperty(3)
     
+    # ДОБАВЛЕНО: Volume control properties
+    current_volume = NumericProperty(50)
+    volume_service_available = BooleanProperty(False)
+    
     # Status properties
     current_light_status = StringProperty("Unknown")
 
@@ -51,6 +55,7 @@ class SettingsScreen(Screen):
         try:
             self.load_all_settings()
             self.check_sensor_availability()
+            self.check_volume_service()  # ДОБАВЛЕНО
             self.start_updates()
             # Отложенная инициализация темы и привязок
             Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
@@ -109,6 +114,8 @@ class SettingsScreen(Screen):
         self._update_events = [
             # Обновляем статус датчика освещения каждые 5 секунд
             Clock.schedule_interval(lambda dt: self.update_sensor_status(), 5),
+            # ДОБАВЛЕНО: Обновляем громкость каждые 2 секунды
+            Clock.schedule_interval(lambda dt: self.update_volume_status(), 2),
         ]
 
     def stop_updates(self):
@@ -243,6 +250,66 @@ class SettingsScreen(Screen):
         except Exception as e:
             logger.error(f"Error checking sensor availability: {e}")
             self.light_sensor_available = False
+
+    # ДОБАВЛЕНО: Проверка доступности сервиса громкости
+    def check_volume_service(self):
+        """Проверка доступности сервиса управления громкостью"""
+        app = App.get_running_app()
+        try:
+            if hasattr(app, 'volume_service') and app.volume_service:
+                self.volume_service_available = True
+                self.current_volume = app.volume_service.get_volume()
+                logger.info(f"Volume service available - Current volume: {self.current_volume}%")
+            else:
+                self.volume_service_available = False
+                self.current_volume = 50
+                logger.info("Volume service not available")
+        except Exception as e:
+            logger.error(f"Error checking volume service: {e}")
+            self.volume_service_available = False
+            self.current_volume = 50
+
+    # ДОБАВЛЕНО: Обновление статуса громкости
+    def update_volume_status(self):
+        """Обновление статуса громкости"""
+        app = App.get_running_app()
+        try:
+            if hasattr(app, 'volume_service') and app.volume_service:
+                new_volume = app.volume_service.get_volume()
+                if new_volume != self.current_volume:
+                    self.current_volume = new_volume
+                    logger.debug(f"Volume updated: {self.current_volume}%")
+        except Exception as e:
+            logger.error(f"Error updating volume status: {e}")
+
+    # ДОБАВЛЕНО: Управление громкостью через UI
+    def volume_up(self):
+        """Увеличение громкости через UI"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'volume_service') and app.volume_service:
+                app.volume_service.volume_up_manual()
+                logger.info("Volume up triggered via UI")
+            else:
+                logger.warning("Volume service not available")
+                self._play_sound("error")
+        except Exception as e:
+            logger.error(f"Error in volume up: {e}")
+            self._play_sound("error")
+
+    def volume_down(self):
+        """Уменьшение громкости через UI"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'volume_service') and app.volume_service:
+                app.volume_service.volume_down_manual()
+                logger.info("Volume down triggered via UI")
+            else:
+                logger.warning("Volume service not available")
+                self._play_sound("error")
+        except Exception as e:
+            logger.error(f"Error in volume down: {e}")
+            self._play_sound("error")
 
     def toggle_auto_theme(self):
         """Переключение автоматической смены темы"""
@@ -522,7 +589,10 @@ class SettingsScreen(Screen):
                 "username_input", "birth_day_input", "birth_month_input", "birth_year_input",
                 "auto_theme_button", "save_button",
                 "theme_section_label", "language_section_label", "user_section_label", "auto_theme_section_label",
-                "theme_button", "variant_button", "language_button"
+                "theme_button", "variant_button", "language_button",
+                # ДОБАВЛЕНО: Виджеты управления громкостью
+                "volume_section_label", "volume_label", "volume_value_label", 
+                "volume_up_button", "volume_down_button"
             ]
             
             for widget_id in widgets_to_update:
@@ -543,9 +613,11 @@ class SettingsScreen(Screen):
                         elif "label" in widget_id:
                             if widget_id == "sensor_status_label":
                                 widget.color = tm.get_rgba("text_secondary")
+                            elif widget_id == "volume_value_label":  # ДОБАВЛЕНО
+                                widget.color = tm.get_rgba("primary")
                             else:
                                 widget.color = tm.get_rgba("text")
-                        elif widget_id == "save_button":
+                        elif widget_id in ["save_button", "volume_up_button", "volume_down_button"]:  # ДОБАВЛЕНО
                             widget.color = tm.get_rgba("primary")
                         else:
                             widget.color = tm.get_rgba("text")
@@ -560,6 +632,10 @@ class SettingsScreen(Screen):
                 self.ids.auto_theme_button.text = "ON" if self.auto_theme_enabled else "OFF"
                 if hasattr(self.ids.auto_theme_button, 'color'):
                     self.ids.auto_theme_button.color = tm.get_rgba("primary") if self.auto_theme_enabled else tm.get_rgba("text_secondary")
+                    
+            # ДОБАВЛЕНО: Обновляем отображение текущей громкости
+            if hasattr(self, 'ids') and 'volume_value_label' in self.ids:
+                self.ids.volume_value_label.text = f"{self.current_volume}%"
                     
         except Exception as e:
             logger.error(f"Error refreshing theme: {e}")
@@ -580,7 +656,11 @@ class SettingsScreen(Screen):
                 labels_map = {
                     'theme_label': ('settings_theme', 'Theme'),
                     'language_label': ('settings_language', 'Language'),
-                    'save_button': ('save', 'Save Settings')
+                    'save_button': ('save', 'Save Settings'),
+                    # ДОБАВЛЕНО: Локализация для громкости
+                    'volume_label': ('volume', 'Volume'),
+                    'volume_up_button': ('+', '+'),
+                    'volume_down_button': ('-', '-')
                 }
                 
                 for widget_id, (key, default) in labels_map.items():
