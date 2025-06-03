@@ -1,63 +1,63 @@
 {
   "current": {
-    "time": "2025-06-03T09:00",
-    "temperature": 13.6,
-    "condition": "Slight Rain",
+    "time": "2025-06-03T14:00",
+    "temperature": 14.9,
+    "condition": "Cloudy",
     "precipitation_probability": 0
   },
   "forecast_5h": {
-    "temperature": 13.7,
-    "condition": "Slight Rain Showers",
-    "precipitation_probability": 58
+    "temperature": 15.7,
+    "condition": "Cloudy",
+    "precipitation_probability": 33
   },
   "weekly_forecast": [
     {
       "day": "Tue",
       "date": "2025-06-03",
-      "temp_max": 17.1,
+      "temp_max": 17.4,
       "temp_min": 11.6,
       "condition": "Slight Rain Showers",
-      "precipitation_probability": 68
+      "precipitation_probability": 73
     },
     {
       "day": "Wed",
       "date": "2025-06-04",
-      "temp_max": 18.8,
-      "temp_min": 9.7,
-      "condition": "Cloudy",
+      "temp_max": 18.2,
+      "temp_min": 9.9,
+      "condition": "Slight Rain Showers",
       "precipitation_probability": 18
     },
     {
       "day": "Thu",
       "date": "2025-06-05",
-      "temp_max": 17.0,
-      "temp_min": 12.6,
+      "temp_max": 15.6,
+      "temp_min": 12.4,
       "condition": "Slight Rain Showers",
-      "precipitation_probability": 73
+      "precipitation_probability": 83
     },
     {
       "day": "Fri",
       "date": "2025-06-06",
-      "temp_max": 17.7,
-      "temp_min": 12.3,
+      "temp_max": 18.2,
+      "temp_min": 11.9,
       "condition": "Slight Rain",
-      "precipitation_probability": 40
+      "precipitation_probability": 43
     },
     {
       "day": "Sat",
       "date": "2025-06-07",
-      "temp_max": 17.3,
-      "temp_min": 12.3,
+      "temp_max": 16.9,
+      "temp_min": 11.9,
       "condition": "Slight Rain Showers",
-      "precipitation_probability": 89
+      "precipitation_probability": 96
     },
     {
       "day": "Sun",
       "date": "2025-06-08",
       "temp_max": 18.3,
-      "temp_min": 10.6,
+      "temp_min": 9.4,
       "condition": "Cloudy",
-      "precipitation_probability": 21
+      "precipitation_probability": 24
     },
     {
       "day": "Mon",
@@ -68,5 +68,5 @@
       "precipitation_probability": 23
     }
   ],
-  "updated": "2025-06-03T09:04:12.623183"
+  "updated": "2025-06-03T14:05:11.095408"
 }

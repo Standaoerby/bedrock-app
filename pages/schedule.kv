@@ -40,26 +40,25 @@
                     valign: 'middle'
                     text_size: self.size
 
-         
-        # Основное расписание с встроенными заголовками
+        # ИСПРАВЛЕНО: Компактный блок расписания
         OverlayCard:
-            padding: [dp(16), dp(16)]
+            padding: [dp(8), dp(8)]  # Уменьшили общие отступы карточки
             
             BoxLayout:
                 orientation: 'vertical'
-                spacing: dp(8)
+                spacing: dp(4)  # Уменьшили spacing
                 
-                # Заголовки дней недели (зафиксированы сверху)
+                # ИСПРАВЛЕНО: Компактные заголовки дней недели
                 BoxLayout:
                     orientation: 'horizontal'
-                    spacing: dp(8)
+                    spacing: dp(4)  # Уменьшили spacing между заголовками
                     size_hint_y: None
-                    height: dp(32)
-                    padding: [0, dp(4)]
+                    height: dp(20)  # ИСПРАВЛЕНО: Уменьшили с dp(32) до dp(20)
+                    padding: [dp(2), 0]  # Минимальный padding
                     
                     Label:
                         text: "MON"
-                        font_size: '14sp'
+                        font_size: '12sp'  # Уменьшили шрифт
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("text_secondary")
                         size_hint_x: 0.2
@@ -69,7 +68,7 @@
                     
                     Label:
                         text: "TUE"
-                        font_size: '14sp'
+                        font_size: '12sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("text_secondary")
                         size_hint_x: 0.2
@@ -79,7 +78,7 @@
                     
                     Label:
                         text: "WED"
-                        font_size: '14sp'
+                        font_size: '12sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("text_secondary")
                         size_hint_x: 0.2
@@ -89,7 +88,7 @@
                     
                     Label:
                         text: "THU"
-                        font_size: '14sp'
+                        font_size: '12sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("text_secondary")
                         size_hint_x: 0.2
@@ -99,7 +98,7 @@
                     
                     Label:
                         text: "FRI"
-                        font_size: '14sp'
+                        font_size: '12sp'
                         font_name: app.theme_manager.get_font("main")
                         color: app.theme_manager.get_rgba("text_secondary")
                         size_hint_x: 0.2
@@ -107,27 +106,25 @@
                         valign: 'middle'
                         bold: True
                 
-                # Контейнер для расписания с правильными настройками прокрутки
+                # ИСПРАВЛЕНО: Компактный контейнер для расписания
                 ScrollView:
                     do_scroll_x: False
                     do_scroll_y: True
-                    bar_width: dp(8)
+                    bar_width: dp(6)  # Уменьшили ширину скроллбара
                     bar_color: app.theme_manager.get_rgba("primary")
                     bar_inactive_color: app.theme_manager.get_rgba("text_secondary")
-                    # Устанавливаем скролл в начало
                     scroll_y: 1
                     effect_cls: "DampedScrollEffect"
                     
                     BoxLayout:
                         id: schedule_container
                         orientation: 'horizontal'
-                        spacing: dp(0)
+                        spacing: dp(2)  # ИСПРАВЛЕНО: Уменьшили spacing между колонками
                         size_hint_y: None
-                        # Правильный расчёт высоты контента
-                        height: max(self.minimum_height, self.parent.height - dp(16))
-                        padding: [0, dp(0), 0, dp(0)]
+                        height: max(self.minimum_height, self.parent.height - dp(8))
+                        padding: [dp(2), dp(2)]  # ИСПРАВЛЕНО: Минимальный padding
 
-        # ИСПРАВЛЕНО: Нижняя панель с полной датой и информацией о выходных
+        # Нижняя панель
         OverlayCard:
             size_hint_y: None
             height: dp(48)
@@ -147,7 +144,6 @@
                     halign: 'left'
                     valign: 'middle'
                 
-                # ИСПРАВЛЕНО: Полная дата вместо только дня недели
                 Label:
                     id: today_date_label
                     text: root.today_full_date if root.today_full_date else "Unknown date"
@@ -161,10 +157,8 @@
                     text_size: self.size
                     
                 Widget:
-                    # Spacer
                     size_hint_x: 0.1
                     
-                # ИСПРАВЛЕНО: Информация о выходных вместо следующего урока
                 Label:
                     id: weekend_info_label
                     text: root.next_weekend_text
