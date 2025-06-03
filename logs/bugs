@@ -1,43 +1,14 @@
-ntering HomeScreen
-[ERROR  ] [Critical error in build()] Parser: File "/home/standa/bedrock-app/pages/weather.kv", line 109:
-...
-    107:                        Label:
-    108:                            id: sensor_comma_label
->>  109:                            text: root.sensor_comma_text
-    110:                            font_size: '32sp'
-    111:                            font_name: app.theme_manager.get_font("main")
-...
-BuilderException: Parser: File "/home/standa/bedrock-app/pages/weather.kv", line 109:
-...
-    107:                        Label:
-    108:                            id: sensor_comma_label
->>  109:                            text: root.sensor_comma_text
-    110:                            font_size: '32sp'
-    111:                            font_name: app.theme_manager.get_font("main")
-...
-AttributeError: 'WeatherScreen' object has no attribute 'sensor_comma_text'
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 245, in create_handler
-    return eval(value, idmap), bound_list
-           ^^^^^^^^^^^^^^^^^^
-  File "/home/standa/bedrock-app/pages/weather.kv", line 109, in <module>
-    text: root.sensor_comma_text
-    ^^^^^^^^^^^^^^^^^^^^^^
-  File "kivy/weakproxy.pyx", line 32, in kivy.weakproxy.WeakProxy.__getattr__
-
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 699, in _apply_rule
-    value, bound = create_handler(
-                   ^^^^^^^^^^^^^^^
-  File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 248, in create_handler
+_handler
     raise BuilderException(rule.ctx, rule.line,
 Traceback (most recent call last):
   File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 245, in create_handler
     return eval(value, idmap), bound_list
            ^^^^^^^^^^^^^^^^^^
-  File "/home/standa/bedrock-app/pages/weather.kv", line 109, in <module>
-    text: root.sensor_comma_text
-    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/standa/bedrock-app/pages/home.kv", line 167, in <module>
+    text: root.weather_5h_str
+    ^^^^^^^^^^^^^^^^^^^
   File "kivy/weakproxy.pyx", line 32, in kivy.weakproxy.WeakProxy.__getattr__
-AttributeError: 'WeatherScreen' object has no attribute 'sensor_comma_text'
+AttributeError: 'HomeScreen' object has no attribute 'weather_5h_str'
 
 During handling of the above exception, another exception occurred:
 
@@ -47,21 +18,21 @@ Traceback (most recent call last):
                    ^^^^^^^^^^^^^^^
   File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 248, in create_handler
     raise BuilderException(rule.ctx, rule.line,
-kivy.lang.builder.BuilderException: Parser: File "/home/standa/bedrock-app/pages/weather.kv", line 109:
+kivy.lang.builder.BuilderException: Parser: File "/home/standa/bedrock-app/pages/home.kv", line 167:
 ...
-    107:                        Label:
-    108:                            id: sensor_comma_label
->>  109:                            text: root.sensor_comma_text
-    110:                            font_size: '32sp'
-    111:                            font_name: app.theme_manager.get_font("main")
+    165:                Label:
+    166:                    id: weather_5h_label
+>>  167:                    text: root.weather_5h_str
+    168:                    font_size: '24sp'
+    169:                    color: [1, 1, 1, 1]
 ...
-AttributeError: 'WeatherScreen' object has no attribute 'sensor_comma_text'
+AttributeError: 'HomeScreen' object has no attribute 'weather_5h_str'
   File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 245, in create_handler
     return eval(value, idmap), bound_list
            ^^^^^^^^^^^^^^^^^^
-  File "/home/standa/bedrock-app/pages/weather.kv", line 109, in <module>
-    text: root.sensor_comma_text
-    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/standa/bedrock-app/pages/home.kv", line 167, in <module>
+    text: root.weather_5h_str
+    ^^^^^^^^^^^^^^^^^^^
   File "kivy/weakproxy.pyx", line 32, in kivy.weakproxy.WeakProxy.__getattr__
 
 
@@ -97,33 +68,32 @@ Traceback (most recent call last):
     self._apply_rule(
   File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 714, in _apply_rule
     raise BuilderException(rule.ctx, rule.line,
-kivy.lang.builder.BuilderException: Parser: File "/home/standa/bedrock-app/pages/weather.kv", line 109:
+kivy.lang.builder.BuilderException: Parser: File "/home/standa/bedrock-app/pages/home.kv", line 167:
 ...
-    107:                        Label:
-    108:                            id: sensor_comma_label
->>  109:                            text: root.sensor_comma_text
-    110:                            font_size: '32sp'
-    111:                            font_name: app.theme_manager.get_font("main")
+    165:                Label:
+    166:                    id: weather_5h_label
+>>  167:                    text: root.weather_5h_str
+    168:                    font_size: '24sp'
+    169:                    color: [1, 1, 1, 1]
 ...
-BuilderException: Parser: File "/home/standa/bedrock-app/pages/weather.kv", line 109:
+BuilderException: Parser: File "/home/standa/bedrock-app/pages/home.kv", line 167:
 ...
-    107:                        Label:
-    108:                            id: sensor_comma_label
->>  109:                            text: root.sensor_comma_text
-    110:                            font_size: '32sp'
-    111:                            font_name: app.theme_manager.get_font("main")
+    165:                Label:
+    166:                    id: weather_5h_label
+>>  167:                    text: root.weather_5h_str
+    168:                    font_size: '24sp'
+    169:                    color: [1, 1, 1, 1]
 ...
-AttributeError: 'WeatherScreen' object has no attribute 'sensor_comma_text'
+AttributeError: 'HomeScreen' object has no attribute 'weather_5h_str'
   File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 245, in create_handler
     return eval(value, idmap), bound_list
            ^^^^^^^^^^^^^^^^^^
-  File "/home/standa/bedrock-app/pages/weather.kv", line 109, in <module>
-    text: root.sensor_comma_text
-    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/standa/bedrock-app/pages/home.kv", line 167, in <module>
+    text: root.weather_5h_str
+    ^^^^^^^^^^^^^^^^^^^
   File "kivy/weakproxy.pyx", line 32, in kivy.weakproxy.WeakProxy.__getattr__
 
   File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 699, in _apply_rule
     value, bound = create_handler(
                    ^^^^^^^^^^^^^^^
   File "/home/standa/bedrock-app/.venv/lib/python3.11/site-packages/kivy/lang/builder.py", line 248, in create_handler
-    raise BuilderException(rule.ctx, rule.li

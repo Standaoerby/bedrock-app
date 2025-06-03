@@ -40,6 +40,66 @@
                     valign: 'middle'
                     text_size: self.size
 
+        # ДОБАВЛЕНО: Заголовки дней недели
+        OverlayCard:
+            size_hint_y: None
+            height: dp(32)
+            padding: [dp(16), dp(4)]
+            
+            BoxLayout:
+                orientation: 'horizontal'
+                spacing: dp(8)
+                
+                Label:
+                    text: "MON"
+                    font_size: '14sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("text_secondary")
+                    size_hint_x: 0.2
+                    halign: 'center'
+                    valign: 'middle'
+                    bold: True
+                
+                Label:
+                    text: "TUE"
+                    font_size: '14sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("text_secondary")
+                    size_hint_x: 0.2
+                    halign: 'center'
+                    valign: 'middle'
+                    bold: True
+                
+                Label:
+                    text: "WED"
+                    font_size: '14sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("text_secondary")
+                    size_hint_x: 0.2
+                    halign: 'center'
+                    valign: 'middle'
+                    bold: True
+                
+                Label:
+                    text: "THU"
+                    font_size: '14sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("text_secondary")
+                    size_hint_x: 0.2
+                    halign: 'center'
+                    valign: 'middle'
+                    bold: True
+                
+                Label:
+                    text: "FRI"
+                    font_size: '14sp'
+                    font_name: app.theme_manager.get_font("main")
+                    color: app.theme_manager.get_rgba("text_secondary")
+                    size_hint_x: 0.2
+                    halign: 'center'
+                    valign: 'middle'
+                    bold: True
+
         # Основное расписание
         OverlayCard:
             padding: [dp(16), dp(16)]

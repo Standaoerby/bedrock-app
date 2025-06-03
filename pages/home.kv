@@ -22,7 +22,7 @@
                 Label:
                     id: date_label
                     text: root.current_date
-                    font_size: '32sp'
+                    font_size: '24sp'
                     padding: [dp(32), dp(0), dp(8), dp(0)]
                     color: [1, 1, 1, 1]
                     halign: 'left'
@@ -127,7 +127,7 @@
                     halign: 'center'
                     valign: 'middle'
 
-        # ИСПРАВЛЕНО: Блок погоды с разделенными лейблами
+        # Блок погоды
         OverlayCard:
             size_hint_y: None
             height: dp(64)
@@ -136,36 +136,19 @@
             pos_hint: {"center_x": 0.5}
             BoxLayout:
                 orientation: 'horizontal'
-                spacing: dp(8)
+                spacing: dp(16)
                 padding: [0]
 
-                # ИСПРАВЛЕНО: Текущая погода - температура отдельно
-                BoxLayout:
-                    orientation: 'vertical'
-                    spacing: dp(2)
-                    size_hint_x: 0.45
-                    
-                    # Только температура - цветная
-                    Label:
-                        id: weather_now_temp_label
-                        text: root.weather_now_temp
-                        font_size: '28sp'
-                        color: [1, 1, 1, 1]
-                        halign: 'center'
-                        valign: 'middle'
-                        text_size: self.size
-                        size_hint_y: 0.6
-                    
-                    # Только условие - обычный цвет
-                    Label:
-                        id: weather_now_condition_label
-                        text: root.weather_now_condition
-                        font_size: '16sp'
-                        color: [1, 1, 1, 1]
-                        halign: 'center'
-                        valign: 'middle'
-                        text_size: self.size
-                        size_hint_y: 0.4
+                # Сейчас
+                Label:
+                    id: weather_now_label
+                    text: root.weather_now_str
+                    font_size: '24sp'
+                    color: [1, 1, 1, 1]
+                    size_hint_x: 0.455
+                    halign: 'center'
+                    valign: 'middle'
+                    text_size: self.size
 
                 # Стрелка тренда
                 Label:
@@ -178,33 +161,16 @@
                     valign: 'middle'
                     text_size: self.size
 
-                # ИСПРАВЛЕНО: Прогноз на 5 часов - температура отдельно
-                BoxLayout:
-                    orientation: 'vertical'
-                    spacing: dp(2)
+                # Через 5 часов
+                Label:
+                    id: weather_5h_label
+                    text: root.weather_5h_str
+                    font_size: '24sp'
+                    color: [1, 1, 1, 1]
                     size_hint_x: 0.45
-                    
-                    # Только температура - цветная
-                    Label:
-                        id: weather_5h_temp_label
-                        text: root.weather_5h_temp
-                        font_size: '28sp'
-                        color: [1, 1, 1, 1]
-                        halign: 'center'
-                        valign: 'middle'
-                        text_size: self.size
-                        size_hint_y: 0.6
-                    
-                    # Только "in 5h" - обычный цвет
-                    Label:
-                        id: weather_5h_text_label
-                        text: root.weather_5h_text
-                        font_size: '16sp'
-                        color: [1, 1, 1, 1]
-                        halign: 'center'
-                        valign: 'middle'
-                        text_size: self.size
-                        size_hint_y: 0.4
+                    halign: 'center'
+                    valign: 'middle'
+                    text_size: self.size
 
         # Нижний блок с уведомлениями - бегущая строка
         OverlayCard:
