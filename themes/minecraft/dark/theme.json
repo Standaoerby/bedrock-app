@@ -1,19 +1,21 @@
 {
   "colors": {
-    "background": "#1e1e1e",
-    "overlay_card": "#25252550",
-    "primary": "#3CB371",
-    "text": "#F9F6F2",
+    "background": "#1B222C",
+    "overlay_card": "#282B2350",
+    "primary": "#AAAAAA",
+    "text": "#AAAAAA",
     "text_secondary": "#aaaaaa",
-    "clock_main": "#F9F6F2",
-    "menu_color": "#25252580"
+    "text_inactive": "#AAAAAA",
+    "text_accent": "#3CB371",
+    "clock_main": "#AAAAAA",
+    "menu_color": "#25252580",
+    "menu_button_text": "#AAAAAA",
+    "menu_button_text_active": "#3CB371"
   },
   "menu": {
     "menu_button_height": 48,
-    "menu_button_width": 152,
-    "menu_height": 64,
-    "menu_button_text": "#eeeeee",
-    "menu_button_text_active": "#242424"
+    "menu_button_width": 160,
+    "menu_height": 64  
   },
   "fonts": {
     "main": "Minecraftia-Regular.ttf",

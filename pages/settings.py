@@ -4,7 +4,7 @@ from kivy.properties import StringProperty, BooleanProperty, NumericProperty, Li
 from kivy.clock import Clock
 from app.event_bus import event_bus
 from app.logger import app_logger as logger
-from datetime import datetime
+import os
 
 
 class SettingsScreen(Screen):
@@ -20,7 +20,7 @@ class SettingsScreen(Screen):
     variant_list = ListProperty(["light", "dark"])
     language_list = ListProperty(["en", "ru"])
     
-    # ДОБАВЛЕНО: Свойства для активности селекторов
+    # ИСПРАВЛЕНО: Свойства для активности селекторов
     theme_selector_enabled = BooleanProperty(True)
     
     # User properties
@@ -79,10 +79,6 @@ class SettingsScreen(Screen):
                 theme_button.values = self.theme_list
                 theme_button.selected_value = self.current_theme
                 
-                # ДОБАВЛЕНО: Деактивируем если доступна только одна тема
-                theme_button.disabled = not self.theme_selector_enabled
-                theme_button.opacity = 1.0 if self.theme_selector_enabled else 0.5
-                
             # Настройка кнопки варианта темы
             if 'variant_button' in self.ids:
                 variant_button = self.ids.variant_button
@@ -134,30 +130,24 @@ class SettingsScreen(Screen):
             logger.error(f"Error playing sound {sound_name}: {e}")
 
     def _check_available_themes(self):
-        """ДОБАВЛЕНО: Проверка количества доступных тем"""
+        """ИСПРАВЛЕНО: Упрощенная проверка количества доступных тем"""
         try:
             tm = self.get_theme_manager()
+            available_themes = ["minecraft"]  # По умолчанию только minecraft
             
-            # Пытаемся получить список тем из различных источников
-            available_themes = []
-            
-            # Метод 1: Проверяем наличие метода в ThemeManager
-            if tm and hasattr(tm, 'get_available_themes'):
-                available_themes = tm.get_available_themes()
-            
-            # Метод 2: Проверяем папки тем
-            if not available_themes:
-                import os
-                themes_dir = getattr(tm, 'themes_dir', 'themes') if tm else 'themes'
+            # Проверяем папки тем
+            if tm:
+                themes_dir = getattr(tm, 'themes_dir', 'themes')
                 if os.path.exists(themes_dir):
-                    available_themes = [
-                        name for name in os.listdir(themes_dir)
-                        if os.path.isdir(os.path.join(themes_dir, name))
-                    ]
-            
-            # Метод 3: Фиксированный список (fallback)
-            if not available_themes:
-                available_themes = ["minecraft"]
+                    try:
+                        themes_found = [
+                            name for name in os.listdir(themes_dir)
+                            if os.path.isdir(os.path.join(themes_dir, name))
+                        ]
+                        if themes_found:
+                            available_themes = themes_found
+                    except Exception as e:
+                        logger.warning(f"Error reading themes directory: {e}")
             
             self.theme_list = available_themes
             self.theme_selector_enabled = len(available_themes) > 1
@@ -179,7 +169,7 @@ class SettingsScreen(Screen):
                 
             user_config = app.user_config
             
-            # ДОБАВЛЕНО: Проверяем доступные темы
+            # ИСПРАВЛЕНО: Проверяем доступные темы первым делом
             self._check_available_themes()
             
             # Загружаем основные настройки
@@ -363,7 +353,7 @@ class SettingsScreen(Screen):
     
     def on_theme_select(self, theme_name):
         """Выбор темы - вызывается из ThemeSelectButton"""
-        # ДОБАВЛЕНО: Проверяем активность селектора темы
+        # ИСПРАВЛЕНО: Проверяем активность селектора темы
         if not self.theme_selector_enabled:
             logger.warning("Theme selector is disabled")
             self._play_sound("error")
@@ -564,11 +554,6 @@ class SettingsScreen(Screen):
                     if hasattr(widget, 'background_normal'):
                         widget.background_normal = tm.get_image("button_bg")
                         widget.background_down = tm.get_image("button_bg_active")
-                    
-                    # ДОБАВЛЕНО: Обновляем состояние кнопки темы
-                    if widget_id == "theme_button":
-                        widget.disabled = not self.theme_selector_enabled
-                        widget.opacity = 1.0 if self.theme_selector_enabled else 0.5
 
             # Обновляем состояние кнопки автотемы
             if hasattr(self, 'ids') and 'auto_theme_button' in self.ids:

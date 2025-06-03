@@ -16,12 +16,14 @@ class HomeScreen(Screen):
     current_alarm_time = StringProperty("--:--")
     alarm_status_text = StringProperty("OFF")
     
-    # Погода
-    weather_now_str = StringProperty("Loading...")
-    weather_5h_str = StringProperty("")
+    # ИСПРАВЛЕНО: Разделенные свойства погоды
+    weather_now_temp = StringProperty("--°C")
+    weather_now_condition = StringProperty("Loading...")
+    weather_5h_temp = StringProperty("--°C")
+    weather_5h_text = StringProperty("in 5h")
     weather_trend_arrow = StringProperty("→")
     
-    # ДОБАВЛЕНО: Температуры для цветовой логики
+    # Температуры для цветовой логики
     current_temp_value = NumericProperty(20)
     forecast_temp_value = NumericProperty(20)
     temp_trend = NumericProperty(0)  # -1, 0, 1 для падения, стабильно, рост
@@ -90,25 +92,20 @@ class HomeScreen(Screen):
             now = datetime.now()
             self.clock_time = now.strftime("%H:%M")
             
-            # ИСПРАВЛЕНО: Полный день недели вместо сокращенного
-            app = App.get_running_app()
-            if hasattr(app, 'localizer') and app.localizer:
-                day_names = {
-                    0: "Monday", 1: "Tuesday", 2: "Wednesday", 
-                    3: "Thursday", 4: "Friday", 5: "Saturday", 6: "Sunday"
-                }
-                month_names = {
-                    1: "January", 2: "February", 3: "March", 4: "April", 5: "May", 6: "June",
-                    7: "July", 8: "August", 9: "September", 10: "October", 11: "November", 12: "December"
-                }
-                
-                day_name = day_names.get(now.weekday(), now.strftime("%A"))
-                month_name = month_names.get(now.month, now.strftime("%B"))
-                
-                self.current_date = f"{now.day} {month_name}, {day_name}"
-            else:
-                # Fallback - полный день недели
-                self.current_date = now.strftime("%d %B, %A")
+            # ИСПРАВЛЕНО: Полные названия дней и месяцев
+            day_names_full = [
+                "Monday", "Tuesday", "Wednesday", "Thursday", 
+                "Friday", "Saturday", "Sunday"
+            ]
+            month_names_full = [
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            ]
+            
+            day_name = day_names_full[now.weekday()]
+            month_name = month_names_full[now.month - 1]
+            
+            self.current_date = f"{now.day} {month_name}, {day_name}"
                 
         except Exception as e:
             logger.error(f"Error updating time: {e}")
@@ -127,25 +124,31 @@ class HomeScreen(Screen):
                 current = weather.get("current", {})
                 if current:
                     temp_now = current.get('temperature', 0)
-                    self.current_temp_value = temp_now  # ДОБАВЛЕНО: Сохраняем для цветовой логики
+                    self.current_temp_value = temp_now
                     condition_now = current.get('condition', 'Unknown')
-                    self.weather_now_str = f"{temp_now:.1f}°C {condition_now}"
+                    
+                    # ИСПРАВЛЕНО: Разделяем температуру и условие
+                    self.weather_now_temp = f"{temp_now:.1f}°C"
+                    self.weather_now_condition = condition_now
                 else:
-                    self.weather_now_str = "No data"
+                    self.weather_now_temp = "--°C"
+                    self.weather_now_condition = "No data"
                     self.current_temp_value = 20
                 
                 # Прогноз на 5 часов
                 forecast_5h = weather.get("forecast_5h", {})
                 if forecast_5h and forecast_5h.get('temperature') is not None:
                     temp_5h = forecast_5h.get('temperature', 0)
-                    self.forecast_temp_value = temp_5h  # ДОБАВЛЕНО: Сохраняем для цветовой логики
+                    self.forecast_temp_value = temp_5h
                     
+                    # ИСПРАВЛЕНО: Разделяем температуру и описание
+                    self.weather_5h_temp = f"{temp_5h:.1f}°C"
+                    
+                    app = App.get_running_app()
                     if hasattr(app, 'localizer') and app.localizer:
-                        in_5h_text = app.localizer.tr("in_5h", "in 5h")
+                        self.weather_5h_text = app.localizer.tr("in_5h", "in 5h")
                     else:
-                        in_5h_text = "in 5h"
-                    
-                    self.weather_5h_str = f"{temp_5h:.1f}°C {in_5h_text}"
+                        self.weather_5h_text = "in 5h"
                     
                     # ИСПРАВЛЕНО: Тренд температуры с цветовой логикой
                     temp_diff = temp_5h - temp_now
@@ -159,25 +162,30 @@ class HomeScreen(Screen):
                         self.weather_trend_arrow = "→"  # Стабильно
                         self.temp_trend = 0
                 else:
-                    self.weather_5h_str = "No forecast"
+                    self.weather_5h_temp = "--°C"
+                    self.weather_5h_text = "No forecast"
                     self.weather_trend_arrow = "→"
                     self.forecast_temp_value = 20
                     self.temp_trend = 0
             else:
-                self.weather_now_str = "Service offline"
-                self.weather_5h_str = "Service offline"
+                self.weather_now_temp = "--°C"
+                self.weather_now_condition = "Service offline"
+                self.weather_5h_temp = "--°C"
+                self.weather_5h_text = "Service offline"
                 self.weather_trend_arrow = "→"
                 self.current_temp_value = 20
                 self.forecast_temp_value = 20
                 self.temp_trend = 0
                 
-            # ДОБАВЛЕНО: Обновляем цвета после изменения данных
+            # Обновляем цвета после изменения данных
             Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
                 
         except Exception as e:
             logger.error(f"Error updating weather: {e}")
-            self.weather_now_str = "Error"
-            self.weather_5h_str = "Error"
+            self.weather_now_temp = "--°C"
+            self.weather_now_condition = "Error"
+            self.weather_5h_temp = "--°C"
+            self.weather_5h_text = "Error"
             self.weather_trend_arrow = "→"
             self.current_temp_value = 20
             self.forecast_temp_value = 20
@@ -212,7 +220,7 @@ class HomeScreen(Screen):
                 self.current_alarm_time = "07:30"
                 self.alarm_status_text = "SERVICE OFFLINE"
                 
-            # ДОБАВЛЕНО: Обновляем цвета будильника после изменения статуса
+            # Обновляем цвета будильника после изменения статуса
             Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
                 
         except Exception as e:
@@ -285,7 +293,7 @@ class HomeScreen(Screen):
             logger.error(f"Error scrolling notification: {e}")
 
     def get_temperature_color(self, temp_value):
-        """ДОБАВЛЕНО: Получить цвет для температуры в зависимости от значения"""
+        """Получить цвет для температуры в зависимости от значения"""
         if temp_value > 23:
             return [1, 0.6, 0, 1]  # Оранжевый для жаркой погоды
         elif temp_value < 18:
@@ -295,17 +303,17 @@ class HomeScreen(Screen):
             return tm.get_rgba("primary") if tm else [1, 1, 1, 1]
 
     def get_trend_arrow_color(self):
-        """ДОБАВЛЕНО: Получить цвет стрелки тренда"""
+        """Получить цвет стрелки тренда в зависимости от динамики"""
         if self.temp_trend > 0:
-            return [1, 0.6, 0, 1]  # Оранжевый для роста
+            return [1, 0.6, 0, 1]  # Оранжевый для роста температуры
         elif self.temp_trend < 0:
-            return [0.2, 0.6, 1, 1]  # Синий для падения
+            return [0.2, 0.6, 1, 1]  # Синий для падения температуры
         else:
             tm = self.get_theme_manager()
-            return tm.get_rgba("text") if tm else [1, 1, 1, 1]
+            return tm.get_rgba("text") if tm else [1, 1, 1, 1]  # Обычный цвет для стабильной
 
     def is_alarm_enabled(self):
-        """ДОБАВЛЕНО: Проверка включен ли будильник"""
+        """Проверка включен ли будильник"""
         return self.alarm_status_text == "ON"
 
     def toggle_alarm(self, *args):
@@ -347,11 +355,12 @@ class HomeScreen(Screen):
             logger.warning("ThemeManager not loaded in HomeScreen.refresh_theme")
             return
 
-        # Список виджетов для обновления темы
+        # ИСПРАВЛЕНО: Обновленный список виджетов с разделенной погодой
         widgets_to_update = [
             "date_label", "alarm_time_label", "alarm_toggle_btn", 
             "clock_label", "clock_shadow1", "clock_shadow2", "clock_shadow3",
-            "weather_now_label", "weather_trend_label", "weather_5h_label",
+            "weather_now_temp_label", "weather_now_condition_label",
+            "weather_5h_temp_label", "weather_5h_text_label", "weather_trend_label",
             "notification_text_label"
         ]
         
@@ -369,35 +378,37 @@ class HomeScreen(Screen):
                     except Exception as e:
                         logger.warning(f"Failed to set font for {widget_id}: {e}")
                     
-                # Обновляем цвет текста
+                # ИСПРАВЛЕНО: Обновляем цвет текста с новой логикой
                 if hasattr(widget, 'color'):
-                    if widget_id == "clock_label":
-                        # Часы всегда белые
-                        widget.color = [1, 1, 1, 1]
+                    if widget_id == "clock_label":                         
+                        widget.color = tm.get_rgba("clock_main")
                     elif widget_id in ["clock_shadow1", "clock_shadow2", "clock_shadow3"]:
                         # Тени остаются черными с разной прозрачностью
                         pass
                     elif widget_id == "alarm_time_label":
-                        # ИСПРАВЛЕНО: Цвет времени будильника зависит от статуса
+                        # Цвет времени будильника зависит от статуса
                         if self.is_alarm_enabled():
                             widget.color = tm.get_rgba("primary")
                         else:
                             widget.color = tm.get_rgba("text_secondary")
                     elif widget_id == "alarm_toggle_btn":
-                        # ИСПРАВЛЕНО: Цвет кнопки будильника зависит от статуса
+                        # Цвет кнопки будильника зависит от статуса
                         if self.is_alarm_enabled():
                             widget.color = tm.get_rgba("primary")
                         else:
                             widget.color = tm.get_rgba("text_secondary")
-                    elif widget_id == "weather_now_label":
-                        # ИСПРАВЛЕНО: Цвет текущей температуры по условию
+                    elif widget_id == "weather_now_temp_label":
+                        # ИСПРАВЛЕНО: Цвет ТОЛЬКО температуры по условию
                         widget.color = self.get_temperature_color(self.current_temp_value)
-                    elif widget_id == "weather_5h_label":
-                        # ИСПРАВЛЕНО: Цвет прогнозной температуры по условию
+                    elif widget_id == "weather_5h_temp_label":
+                        # ИСПРАВЛЕНО: Цвет ТОЛЬКО прогнозной температуры по условию
                         widget.color = self.get_temperature_color(self.forecast_temp_value)
                     elif widget_id == "weather_trend_label":
                         # ИСПРАВЛЕНО: Цвет стрелки тренда по динамике
                         widget.color = self.get_trend_arrow_color()
+                    elif widget_id in ["weather_now_condition_label", "weather_5h_text_label"]:
+                        # ИСПРАВЛЕНО: Условие и "in 5h" остаются дефолтными
+                        widget.color = tm.get_rgba("text")
                     elif widget_id in ["date_label", "notification_text_label"]:
                         widget.color = tm.get_rgba("text")
                 
