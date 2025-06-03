@@ -157,9 +157,6 @@ class AudioService:
         except Exception as e:
             logger.error(f"AudioService set_volume error: {e}")
 
-    # ИСПРАВЛЕНИЕ для метода play() в services/audio_service.py
-    # Заменить существующий метод на эту версию:
-
     def play(self, filepath, fadein=0):
         """Воспроизведение файла"""
         if not filepath or not os.path.isfile(filepath):

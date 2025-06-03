@@ -251,7 +251,7 @@ class SettingsScreen(Screen):
             logger.error(f"Error checking sensor availability: {e}")
             self.light_sensor_available = False
 
-    # ДОБАВЛЕНО: Проверка доступности сервиса громкости
+
     def check_volume_service(self):
         """Проверка доступности сервиса управления громкостью"""
         app = App.get_running_app()
@@ -259,7 +259,17 @@ class SettingsScreen(Screen):
             if hasattr(app, 'volume_service') and app.volume_service:
                 self.volume_service_available = True
                 self.current_volume = app.volume_service.get_volume()
+                
+                # ИСПРАВЛЕНО: Проверяем статус миксеров
+                status = app.volume_service.get_status()
+                active_mixer = status.get('active_mixer', 'Unknown')
+                available_mixers = status.get('available_mixers', [])
+                
                 logger.info(f"Volume service available - Current volume: {self.current_volume}%")
+                logger.info(f"Active mixer: {active_mixer}, Available mixers: {available_mixers}")
+                
+                if not active_mixer:
+                    logger.warning("Volume service has no active mixer - volume control may not work")
             else:
                 self.volume_service_available = False
                 self.current_volume = 50
@@ -269,9 +279,8 @@ class SettingsScreen(Screen):
             self.volume_service_available = False
             self.current_volume = 50
 
-    # ДОБАВЛЕНО: Обновление статуса громкости
     def update_volume_status(self):
-        """Обновление статуса громкости"""
+        """ИСПРАВЛЕНО: Обновление статуса громкости с лучшей синхронизацией"""
         app = App.get_running_app()
         try:
             if hasattr(app, 'volume_service') and app.volume_service:
@@ -279,16 +288,35 @@ class SettingsScreen(Screen):
                 if new_volume != self.current_volume:
                     self.current_volume = new_volume
                     logger.debug(f"Volume updated: {self.current_volume}%")
+                    
+                    # ИСПРАВЛЕНО: Немедленно обновляем UI
+                    Clock.schedule_once(lambda dt: self._update_volume_display(), 0)
         except Exception as e:
             logger.error(f"Error updating volume status: {e}")
 
-    # ДОБАВЛЕНО: Управление громкостью через UI
+    def _update_volume_display(self):
+        """ИСПРАВЛЕНО: Принудительное обновление отображения громкости в UI"""
+        try:
+            if hasattr(self, 'ids') and 'volume_value_label' in self.ids:
+                self.ids.volume_value_label.text = f"{self.current_volume}%"
+                logger.debug(f"Updated volume display: {self.current_volume}%")
+        except Exception as e:
+            logger.error(f"Error updating volume display: {e}")
+
     def volume_up(self):
-        """Увеличение громкости через UI"""
+        """ИСПРАВЛЕНО: Увеличение громкости через UI с немедленным обновлением"""
         try:
             app = App.get_running_app()
             if hasattr(app, 'volume_service') and app.volume_service:
+                # Сохраняем старое значение для сравнения
+                old_volume = self.current_volume
+                
+                # Выполняем изменение громкости
                 app.volume_service.volume_up_manual()
+                
+                # ИСПРАВЛЕНО: Немедленно получаем новое значение
+                Clock.schedule_once(lambda dt: self._immediate_volume_update("up", old_volume), 0.1)
+                
                 logger.info("Volume up triggered via UI")
             else:
                 logger.warning("Volume service not available")
@@ -298,11 +326,19 @@ class SettingsScreen(Screen):
             self._play_sound("error")
 
     def volume_down(self):
-        """Уменьшение громкости через UI"""
+        """ИСПРАВЛЕНО: Уменьшение громкости через UI с немедленным обновлением"""
         try:
             app = App.get_running_app()
             if hasattr(app, 'volume_service') and app.volume_service:
+                # Сохраняем старое значение для сравнения
+                old_volume = self.current_volume
+                
+                # Выполняем изменение громкости
                 app.volume_service.volume_down_manual()
+                
+                # ИСПРАВЛЕНО: Немедленно получаем новое значение
+                Clock.schedule_once(lambda dt: self._immediate_volume_update("down", old_volume), 0.1)
+                
                 logger.info("Volume down triggered via UI")
             else:
                 logger.warning("Volume service not available")
@@ -311,6 +347,138 @@ class SettingsScreen(Screen):
             logger.error(f"Error in volume down: {e}")
             self._play_sound("error")
 
+    def _immediate_volume_update(self, action, old_volume):
+        """ИСПРАВЛЕНО: Немедленное обновление громкости после действия пользователя"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'volume_service') and app.volume_service:
+                # Получаем актуальное значение от сервиса
+                new_volume = app.volume_service.get_volume()
+                
+                # Проверяем что изменение действительно произошло
+                if new_volume != old_volume:
+                    self.current_volume = new_volume
+                    self._update_volume_display()
+                    logger.debug(f"Volume {action}: {old_volume}% → {new_volume}%")
+                else:
+                    logger.warning(f"Volume {action} did not change value (still {old_volume}%)")
+                    
+        except Exception as e:
+            logger.error(f"Error in immediate volume update: {e}")
+
+    def refresh_theme(self, *args):
+        """Обновление темы для всех элементов"""
+        if not self._initialized:
+            return
+            
+        tm = self.get_theme_manager()
+        if not tm or not tm.is_loaded():
+            return
+
+        try:
+            # Список виджетов для обновления темы (включая кнопки выбора)
+            widgets_to_update = [
+                "theme_label", "variant_label", "language_label", "username_label",
+                "birthday_label", "auto_theme_label", "threshold_label", "sensor_status_label",
+                "username_input", "birth_day_input", "birth_month_input", "birth_year_input",
+                "auto_theme_button", "save_button",
+                "theme_section_label", "language_section_label", "user_section_label", "auto_theme_section_label",
+                "theme_button", "variant_button", "language_button",
+                # ДОБАВЛЕНО: Виджеты управления громкостью
+                "volume_section_label", "volume_label", "volume_value_label", 
+                "volume_up_button", "volume_down_button"
+            ]
+            
+            for widget_id in widgets_to_update:
+                if hasattr(self, 'ids') and widget_id in self.ids:
+                    widget = self.ids[widget_id]
+                    
+                    # Обновляем шрифт и цвет
+                    if hasattr(widget, 'font_name'):
+                        if "section" in widget_id:
+                            widget.font_name = tm.get_font("title")
+                        else:
+                            widget.font_name = tm.get_font("main")
+                        
+                    # Обновляем цвет текста
+                    if hasattr(widget, 'color'):
+                        if "section" in widget_id:
+                            widget.color = tm.get_rgba("primary")
+                        elif "label" in widget_id:
+                            if widget_id == "sensor_status_label":
+                                widget.color = tm.get_rgba("text_secondary")
+                            elif widget_id == "volume_value_label":  # ДОБАВЛЕНО
+                                widget.color = tm.get_rgba("primary")
+                            else:
+                                widget.color = tm.get_rgba("text")
+                        elif widget_id in ["save_button", "volume_up_button", "volume_down_button"]:  # ДОБАВЛЕНО
+                            widget.color = tm.get_rgba("primary")
+                        else:
+                            widget.color = tm.get_rgba("text")
+                    
+                    # Обновляем фон кнопок и полей
+                    if hasattr(widget, 'background_normal'):
+                        widget.background_normal = tm.get_image("button_bg")
+                        widget.background_down = tm.get_image("button_bg_active")
+
+            # Обновляем состояние кнопки автотемы
+            if hasattr(self, 'ids') and 'auto_theme_button' in self.ids:
+                self.ids.auto_theme_button.text = "ON" if self.auto_theme_enabled else "OFF"
+                if hasattr(self.ids.auto_theme_button, 'color'):
+                    self.ids.auto_theme_button.color = tm.get_rgba("primary") if self.auto_theme_enabled else tm.get_rgba("text_secondary")
+                    
+            # ИСПРАВЛЕНО: Принудительно обновляем отображение текущей громкости
+            self._update_volume_display()
+                    
+        except Exception as e:
+            logger.error(f"Error refreshing theme: {e}")
+
+# ДОПОЛНИТЕЛЬНО: Улучшенная настройка callback для volume service в main.py
+# Добавить в метод _setup_volume_service() в main.py:
+
+    def _setup_volume_service(self):
+        """ИСПРАВЛЕНО: Настройка сервиса управления громкостью"""
+        try:
+            if hasattr(self, 'volume_service') and self.volume_service:
+                # ИСПРАВЛЕНО: Улучшенный callback с обновлением UI
+                def volume_change_callback(volume, action):
+                    logger.info(f"Volume changed: {volume}% (action: {action})")
+                    
+                    # Обновляем UI настроек если он открыт
+                    try:
+                        if hasattr(self, 'root') and self.root:
+                            if hasattr(self.root, 'ids') and 'sm' in self.root.ids:
+                                current_screen = self.root.ids.sm.current_screen
+                                if current_screen and hasattr(current_screen, 'current_volume'):
+                                    # Это Settings screen
+                                    current_screen.current_volume = volume
+                                    Clock.schedule_once(lambda dt: current_screen._update_volume_display(), 0)
+                    except Exception as ui_e:
+                        logger.debug(f"Could not update volume UI: {ui_e}")
+                
+                self.volume_service.set_volume_change_callback(volume_change_callback)
+                
+                # Получаем статус сервиса для диагностики
+                status = self.volume_service.get_status()
+                logger.info(f"Volume service status: {status}")
+                
+                # ИСПРАВЛЕНО: Дополнительная диагностика миксеров
+                active_mixer = status.get('active_mixer')
+                available_mixers = status.get('available_mixers', [])
+                
+                if active_mixer:
+                    logger.info(f"Volume service ready - Active mixer: {active_mixer}")
+                    if status.get('gpio_available', False):
+                        logger.info(f"Hardware volume buttons available on pins {status['button_pins']['volume_up']}/{status['button_pins']['volume_down']}")
+                else:
+                    logger.warning("Volume service has no working audio mixer!")
+                    logger.info("Attempting to refresh mixers...")
+                    if hasattr(self.volume_service, 'refresh_mixers'):
+                        self.volume_service.refresh_mixers()
+                        
+        except Exception as e:
+            logger.error(f"Error setting up volume service: {e}")
+ 
     def toggle_auto_theme(self):
         """Переключение автоматической смены темы"""
         app = App.get_running_app()

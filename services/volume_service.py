@@ -1,11 +1,12 @@
 """
 Volume Control Service for physical buttons
 Handles GPIO button presses for volume up/down control
-Интегрированная версия для Bedrock 2.0
+ИСПРАВЛЕНО: Автоопределение миксеров, fallback логика, улучшенная обработка ошибок
 """
 import time
 import subprocess
 import threading
+import re
 from threading import Thread, Lock
 from app.logger import app_logger as logger
 
@@ -18,6 +19,17 @@ MIN_VOLUME = 0
 MAX_VOLUME = 100
 VOLUME_STEP = 5
 DEBOUNCE_TIME = 0.2  # seconds
+
+# ИСПРАВЛЕНО: Приоритетный список миксеров для поиска
+MIXER_PRIORITIES = [
+    'Master',
+    'PCM', 
+    'Speaker',
+    'Headphone',
+    'Digital',
+    'Line Out',
+    'Playback'
+]
 
 # GPIO imports with error handling
 try:
@@ -49,8 +61,13 @@ class VolumeControlService:
         self.gpio_lib = None
         self.gpio_handle = None
         
+        # ИСПРАВЛЕНО: Миксер автоопределение
+        self._available_mixers = []
+        self._active_mixer = None
+        self._mixer_card = 0
+        
         # Volume state
-        self._current_volume = self._get_system_volume()
+        self._current_volume = 50  # Начальное значение по умолчанию
         self._volume_lock = Lock()
         
         # Button state tracking для дебаунсинга
@@ -60,8 +77,110 @@ class VolumeControlService:
         # Callback events
         self._volume_change_callback = None
         
-        logger.info(f"VolumeControlService initialized - Current volume: {self._current_volume}%")
+        # ИСПРАВЛЕНО: Инициализируем миксеры при создании
+        self._init_audio_mixers()
+        
+        logger.info(f"VolumeControlService initialized - Current volume: {self._current_volume}% (mixer: {self._active_mixer})")
     
+    def _init_audio_mixers(self):
+        """ИСПРАВЛЕНО: Инициализация и автоопределение доступных миксеров"""
+        try:
+            # Сначала находим доступные миксеры
+            self._discover_mixers()
+            
+            # Выбираем лучший миксер из доступных
+            self._select_best_mixer()
+            
+            # Получаем текущую громкость
+            self._current_volume = self._get_system_volume()
+            
+            logger.info(f"Audio mixers initialized - Active: {self._active_mixer}, Available: {self._available_mixers}")
+            
+        except Exception as e:
+            logger.error(f"Error initializing audio mixers: {e}")
+            self._active_mixer = None
+
+    def _discover_mixers(self):
+        """ИСПРАВЛЕНО: Обнаружение доступных миксеров через amixer"""
+        self._available_mixers = []
+        
+        try:
+            # Получаем список всех доступных миксеров
+            result = subprocess.run(
+                ['amixer', 'scontrols'], 
+                capture_output=True, 
+                text=True, 
+                timeout=5
+            )
+            
+            if result.returncode == 0:
+                # Парсим вывод amixer scontrols
+                for line in result.stdout.split('\n'):
+                    if "Simple mixer control" in line:
+                        # Извлекаем имя миксера между апострофами
+                        match = re.search(r"'([^']+)'", line)
+                        if match:
+                            mixer_name = match.group(1)
+                            self._available_mixers.append(mixer_name)
+                
+                logger.info(f"Discovered mixers: {self._available_mixers}")
+            else:
+                logger.warning(f"Failed to discover mixers: {result.stderr}")
+                
+        except subprocess.TimeoutExpired:
+            logger.error("Timeout discovering mixers")
+        except FileNotFoundError:
+            logger.warning("amixer not available - cannot discover mixers")
+        except Exception as e:
+            logger.error(f"Error discovering mixers: {e}")
+
+    def _select_best_mixer(self):
+        """ИСПРАВЛЕНО: Выбор лучшего миксера из доступных"""
+        self._active_mixer = None
+        
+        if not self._available_mixers:
+            logger.warning("No mixers discovered")
+            return
+        
+        # Ищем миксер по приоритету
+        for priority_mixer in MIXER_PRIORITIES:
+            for available_mixer in self._available_mixers:
+                if priority_mixer.lower() in available_mixer.lower():
+                    # Проверяем что этот миксер действительно работает
+                    if self._test_mixer(available_mixer):
+                        self._active_mixer = available_mixer
+                        logger.info(f"Selected mixer: {self._active_mixer}")
+                        return
+        
+        # Если ничего не подошло, пробуем первый доступный
+        for mixer in self._available_mixers:
+            if self._test_mixer(mixer):
+                self._active_mixer = mixer
+                logger.info(f"Selected fallback mixer: {self._active_mixer}")
+                return
+        
+        logger.error("No working mixer found")
+
+    def _test_mixer(self, mixer_name):
+        """ИСПРАВЛЕНО: Тестирование работоспособности миксера"""
+        try:
+            result = subprocess.run(
+                ['amixer', 'get', mixer_name], 
+                capture_output=True, 
+                text=True, 
+                timeout=3
+            )
+            
+            if result.returncode == 0:
+                # Проверяем что в выводе есть процент громкости
+                return '[' in result.stdout and '%' in result.stdout
+            
+            return False
+            
+        except Exception as e:
+            logger.debug(f"Mixer {mixer_name} test failed: {e}")
+            return False
+
     def start(self):
         """Start the volume control service"""
         if self.running:
@@ -74,11 +193,10 @@ class VolumeControlService:
             
             if not self.gpio_available:
                 logger.warning("GPIO not available - volume buttons will use mock mode")
-                # В mock режиме тоже можем запустить сервис для программного управления
             
-            # Get initial volume
-            self._current_volume = self._get_system_volume()
-            logger.info(f"Initial system volume: {self._current_volume}%")
+            # ИСПРАВЛЕНО: Проверяем что у нас есть рабочий миксер
+            if not self._active_mixer:
+                logger.warning("No working audio mixer found - volume control may not work properly")
             
             # Start monitoring thread
             self.running = True
@@ -215,15 +333,19 @@ class VolumeControlService:
                 new_volume = min(self._current_volume + VOLUME_STEP, MAX_VOLUME)
                 if new_volume != self._current_volume:
                     if self._set_system_volume(new_volume):
+                        old_volume = self._current_volume
                         self._current_volume = new_volume
-                        logger.info(f"Volume up: {self._current_volume}%")
+                        logger.info(f"Volume up: {old_volume}% → {self._current_volume}%")
                         
                         # Play feedback sound
                         self._play_feedback_sound("confirm")
                         
                         # Trigger callback
                         if self._volume_change_callback:
-                            self._volume_change_callback(self._current_volume, "up")
+                            try:
+                                self._volume_change_callback(self._current_volume, "up")
+                            except Exception as cb_e:
+                                logger.error(f"Error in volume change callback: {cb_e}")
                     else:
                         logger.error("Failed to set volume up")
                         self._play_feedback_sound("error")
@@ -241,15 +363,19 @@ class VolumeControlService:
                 new_volume = max(self._current_volume - VOLUME_STEP, MIN_VOLUME)
                 if new_volume != self._current_volume:
                     if self._set_system_volume(new_volume):
+                        old_volume = self._current_volume
                         self._current_volume = new_volume
-                        logger.info(f"Volume down: {self._current_volume}%")
+                        logger.info(f"Volume down: {old_volume}% → {self._current_volume}%")
                         
                         # Play feedback sound
                         self._play_feedback_sound("click")
                         
                         # Trigger callback
                         if self._volume_change_callback:
-                            self._volume_change_callback(self._current_volume, "down")
+                            try:
+                                self._volume_change_callback(self._current_volume, "down")
+                            except Exception as cb_e:
+                                logger.error(f"Error in volume change callback: {cb_e}")
                     else:
                         logger.error("Failed to set volume down")
                         self._play_feedback_sound("error")
@@ -261,11 +387,15 @@ class VolumeControlService:
             logger.error(f"Error in volume down: {e}")
     
     def _get_system_volume(self):
-        """Get current system volume level"""
+        """ИСПРАВЛЕНО: Получение громкости с использованием активного миксера"""
         try:
-            # Use amixer to get master volume
+            if not self._active_mixer:
+                logger.debug("No active mixer for getting volume")
+                return self._current_volume  # Возвращаем кешированное значение
+            
+            # Use amixer to get volume
             result = subprocess.run(
-                ['amixer', 'get', 'Master'], 
+                ['amixer', 'get', self._active_mixer], 
                 capture_output=True, 
                 text=True, 
                 timeout=5
@@ -280,46 +410,55 @@ class VolumeControlService:
                         end = line.find('%')
                         if start > 0 and end > start:
                             volume_str = line[start:end]
-                            return int(volume_str)
+                            volume = int(volume_str)
+                            logger.debug(f"Got volume from {self._active_mixer}: {volume}%")
+                            return volume
             
-            logger.warning("Could not parse volume from amixer output")
-            return 50  # Default volume
+            logger.warning(f"Could not parse volume from {self._active_mixer} output")
+            return self._current_volume  # Возвращаем кешированное значение
             
         except subprocess.TimeoutExpired:
             logger.error("Timeout getting system volume")
-            return 50
+            return self._current_volume
         except FileNotFoundError:
-            # amixer not available (probably not on Linux/Pi)
-            logger.warning("amixer not available - using default volume")
-            return 50
+            logger.warning("amixer not available - using cached volume")
+            return self._current_volume
         except Exception as e:
             logger.error(f"Error getting system volume: {e}")
-            return 50
+            return self._current_volume
     
     def _set_system_volume(self, volume):
-        """Set system volume level"""
+        """ИСПРАВЛЕНО: Установка громкости с использованием активного миксера"""
         try:
+            if not self._active_mixer:
+                logger.warning("No active mixer for setting volume")
+                return False
+            
             # Ensure volume is within bounds
             volume = max(MIN_VOLUME, min(volume, MAX_VOLUME))
             
-            # Use amixer to set master volume
+            # Use amixer to set volume
             result = subprocess.run(
-                ['amixer', 'set', 'Master', f'{volume}%'], 
+                ['amixer', 'set', self._active_mixer, f'{volume}%'], 
                 capture_output=True, 
                 text=True, 
                 timeout=5
             )
             
             if result.returncode != 0:
-                logger.error(f"Failed to set volume: {result.stderr}")
+                logger.error(f"Failed to set volume on {self._active_mixer}: {result.stderr}")
                 return False
+            
+            logger.debug(f"Set volume on {self._active_mixer}: {volume}%")
                 
-            # Also try to set volume through audio service if available
+            # ИСПРАВЛЕНО: Также пытаемся синхронизировать с audio service
             try:
                 from kivy.app import App
                 app = App.get_running_app()
                 if hasattr(app, 'audio_service') and app.audio_service:
-                    app.audio_service.set_volume(volume / 100.0)  # AudioService expects 0-1 range
+                    # AudioService expects 0-1 range
+                    app.audio_service.set_volume(volume / 100.0)
+                    logger.debug(f"Synced volume with AudioService: {volume/100.0}")
             except Exception as audio_e:
                 logger.debug(f"Could not sync with audio service: {audio_e}")
                 
@@ -329,7 +468,6 @@ class VolumeControlService:
             logger.error("Timeout setting system volume")
             return False
         except FileNotFoundError:
-            # amixer not available (probably not on Linux/Pi)
             logger.warning("amixer not available - cannot set system volume")
             return False
         except Exception as e:
@@ -379,6 +517,15 @@ class VolumeControlService:
     def get_volume(self):
         """Get current volume level"""
         with self._volume_lock:
+            # ИСПРАВЛЕНО: Периодически обновляем из системы для синхронизации
+            try:
+                system_volume = self._get_system_volume()
+                if abs(system_volume - self._current_volume) > 2:  # Если разница больше 2%
+                    logger.debug(f"Volume drift detected: cached={self._current_volume}%, system={system_volume}%")
+                    self._current_volume = system_volume
+            except Exception as e:
+                logger.debug(f"Could not sync volume from system: {e}")
+            
             return self._current_volume
     
     def set_volume(self, volume):
@@ -387,12 +534,16 @@ class VolumeControlService:
             with self._volume_lock:
                 volume = max(MIN_VOLUME, min(volume, MAX_VOLUME))
                 if self._set_system_volume(volume):
+                    old_volume = self._current_volume
                     self._current_volume = volume
-                    logger.info(f"Volume set to: {volume}%")
+                    logger.info(f"Volume set programmatically: {old_volume}% → {volume}%")
                     
                     # Trigger callback
                     if self._volume_change_callback:
-                        self._volume_change_callback(volume, "set")
+                        try:
+                            self._volume_change_callback(volume, "set")
+                        except Exception as cb_e:
+                            logger.error(f"Error in volume change callback: {cb_e}")
                     
                     return True
                 return False
@@ -420,6 +571,17 @@ class VolumeControlService:
         self._volume_change_callback = callback
         logger.info("Volume change callback set")
     
+    def refresh_mixers(self):
+        """ИСПРАВЛЕНО: Обновление списка доступных миксеров"""
+        logger.info("Refreshing audio mixers...")
+        try:
+            self._init_audio_mixers()
+            logger.info(f"Mixers refreshed - Active: {self._active_mixer}")
+            return True
+        except Exception as e:
+            logger.error(f"Error refreshing mixers: {e}")
+            return False
+    
     def get_status(self):
         """Get service status for debugging"""
         return {
@@ -429,6 +591,9 @@ class VolumeControlService:
             'current_volume': self._current_volume,
             'volume_step': VOLUME_STEP,
             'debounce_time': DEBOUNCE_TIME,
+            'active_mixer': self._active_mixer,
+            'available_mixers': self._available_mixers,
+            'mixer_card': self._mixer_card,
             'button_pins': {
                 'volume_up': VOLUME_UP_PIN,
                 'volume_down': VOLUME_DOWN_PIN

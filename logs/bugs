@@ -1,1 +1,22 @@
+nds/confirm.ogg
+[INFO   ] [Volume changed] 90% (action: up)
+[INFO   ] Volume up triggered via UI
+[INFO   ] Manual volume up triggered
 [WARNING] [Could not set ALSA volume] Unable to find mixer control Master,0 [hw:0]
+[INFO   ] [Volume up   ] 90% → 95%
+[INFO   ] [🎵 AudioService.play() called]
+[INFO   ] [  filepath  ] themes/minecraft/sounds/confirm.ogg
+[INFO   ] [  is_ringtone] False
+[INFO   ] [  is_theme_sound] True
+[INFO   ] [  fadein    ] 0
+[INFO   ] [  current state - is_playing] True, current_file: themes/minecraft/sounds/confirm.ogg
+[INFO   ] [  current state - is_long_audio] False
+[INFO   ] ❌ Skipping theme sound - too frequent
+[INFO   ] [Volume changed] 95% (action: up)
+[INFO   ] Volume up triggered via UI
+[INFO   ] Manual volume up triggered
+[WARNING] [Could not set ALSA volume] Unable to find mixer control Master,0 [hw:0]
+[INFO   ] [Volume up   ] 95% → 100%
+[INFO   ] [🎵 AudioService.play() called]
+[INFO   ] [  filepath  ] themes/minecraft/sounds/confirm.ogg
+[INFO   ] [  is_ringtone] False
