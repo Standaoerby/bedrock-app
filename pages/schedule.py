@@ -222,7 +222,7 @@ class ScheduleScreen(Screen):
                 
                 # Устанавливаем высоту контейнера с запасом
                 if max_column_height > 0:
-                    container.height = max_column_height + dp(32)
+                    container.height = max_column_height + dp(0)
                     logger.debug(f"Set schedule container height to {container.height}")
                 
                 # Принудительно сбрасываем скролл наверх
@@ -243,16 +243,16 @@ class ScheduleScreen(Screen):
         # Основной контейнер колонки
         column = BoxLayout(
             orientation="vertical",
-            spacing=dp(8),
+            spacing=dp(2),
             size_hint_x=0.2,  # 5 колонок
             size_hint_y=None,
-            padding=[dp(4), dp(4)]  # Добавляем padding для фона
+            padding=[dp(0), dp(0)]  # Добавляем padding для фона
         )
         
         # Фон для текущего дня
         if is_today and theme_manager:
             with column.canvas.before:
-                Color(*theme_manager.get_rgba("overlay_card"))
+                Color(*theme_manager.get_rgba("background"))
                 RoundedRectangle(
                     pos=column.pos,
                     size=column.size,
@@ -262,7 +262,7 @@ class ScheduleScreen(Screen):
             def update_bg(instance, value):
                 column.canvas.before.clear()
                 with column.canvas.before:
-                    Color(*theme_manager.get_rgba("overlay_card"))
+                    Color(*theme_manager.get_rgba("background"))
                     RoundedRectangle(
                         pos=instance.pos,
                         size=instance.size,
@@ -274,7 +274,7 @@ class ScheduleScreen(Screen):
         lessons_container = BoxLayout(
             orientation="vertical",
             spacing=dp(4),
-            padding=[dp(8), dp(8)],
+            padding=[dp(0), dp(0)],  # ИСПРАВЛЕНО: уменьшили верхний отступ
             size_hint_y=None
         )
         
@@ -308,7 +308,7 @@ class ScheduleScreen(Screen):
         column.add_widget(lessons_container)
         
         # Устанавливаем общую высоту колонки
-        column.height = lessons_container.height + dp(16)  # padding
+        column.height = lessons_container.height + dp(0)  # padding
         
         return column
 
@@ -319,7 +319,7 @@ class ScheduleScreen(Screen):
             spacing=dp(2),
             size_hint_y=None,
             height=dp(48),  # Уменьшили высоту так как убрали кабинет
-            padding=[dp(4), dp(4)]
+            padding=[dp(0), dp(4)]
         )
         
         # Время - выровнено по левому краю
@@ -327,11 +327,11 @@ class ScheduleScreen(Screen):
             text=lesson.get("time", ""),
             font_size='12sp',
             font_name=theme_manager.get_font("main") if theme_manager else "",
-            color=theme_manager.get_rgba("primary") if (theme_manager and is_today) else (theme_manager.get_rgba("text_secondary") if theme_manager else [0.7, 0.7, 0.7, 1]),
+            color=theme_manager.get_rgba("text_secondary") if (theme_manager and is_today) else (theme_manager.get_rgba("text_secondary") if theme_manager else [0.7, 0.7, 0.7, 1]),
             size_hint_y=None,
             height=dp(16),
             halign='left',
-            text_size=(dp(120), None)
+            text_size=(dp(130), None)
         )
         container.add_widget(time_label)
         
@@ -344,7 +344,7 @@ class ScheduleScreen(Screen):
             size_hint_y=None,
             height=dp(24),
             halign='left',
-            text_size=(dp(120), None),
+            text_size=(dp(130), None),
             shorten=True,
             shorten_from='right'
         )

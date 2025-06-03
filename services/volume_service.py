@@ -1,7 +1,7 @@
 """
 Volume Control Service for physical buttons
 Handles GPIO button presses for volume up/down control
-ИСПРАВЛЕНО: Автоопределение миксеров, fallback логика, улучшенная обработка ошибок
+ИСПРАВЛЕНО: Убрана циклическая зависимость с audio_service, улучшенная стабильность
 """
 import time
 import subprocess
@@ -61,31 +61,31 @@ class VolumeControlService:
         self.gpio_lib = None
         self.gpio_handle = None
         
-        # ИСПРАВЛЕНО: Миксер автоопределение
+        # Миксер автоопределение
         self._available_mixers = []
         self._active_mixer = None
         self._mixer_card = 0
         
         # Volume state
-        self._current_volume = 50  # Начальное значение по умолчанию
+        self._current_volume = 50
         self._volume_lock = Lock()
         
         # Button state tracking для дебаунсинга
         self._last_button_time = {VOLUME_UP_PIN: 0, VOLUME_DOWN_PIN: 0}
-        self._last_button_state = {VOLUME_UP_PIN: True, VOLUME_DOWN_PIN: True}  # True = not pressed (pull-up)
+        self._last_button_state = {VOLUME_UP_PIN: True, VOLUME_DOWN_PIN: True}
         
         # Callback events
         self._volume_change_callback = None
         
-        # ИСПРАВЛЕНО: Инициализируем миксеры при создании
+        # Инициализируем миксеры при создании
         self._init_audio_mixers()
         
         logger.info(f"VolumeControlService initialized - Current volume: {self._current_volume}% (mixer: {self._active_mixer})")
     
     def _init_audio_mixers(self):
-        """ИСПРАВЛЕНО: Инициализация и автоопределение доступных миксеров"""
+        """Инициализация и автоопределение доступных миксеров"""
         try:
-            # Сначала находим доступные миксеры
+            # Находим доступные миксеры
             self._discover_mixers()
             
             # Выбираем лучший миксер из доступных
@@ -101,7 +101,7 @@ class VolumeControlService:
             self._active_mixer = None
 
     def _discover_mixers(self):
-        """ИСПРАВЛЕНО: Обнаружение доступных миксеров через amixer"""
+        """Обнаружение доступных миксеров через amixer"""
         self._available_mixers = []
         
         try:
@@ -135,7 +135,7 @@ class VolumeControlService:
             logger.error(f"Error discovering mixers: {e}")
 
     def _select_best_mixer(self):
-        """ИСПРАВЛЕНО: Выбор лучшего миксера из доступных"""
+        """Выбор лучшего миксера из доступных"""
         self._active_mixer = None
         
         if not self._available_mixers:
@@ -162,7 +162,7 @@ class VolumeControlService:
         logger.error("No working mixer found")
 
     def _test_mixer(self, mixer_name):
-        """ИСПРАВЛЕНО: Тестирование работоспособности миксера"""
+        """Тестирование работоспособности миксера"""
         try:
             result = subprocess.run(
                 ['amixer', 'get', mixer_name], 
@@ -194,7 +194,7 @@ class VolumeControlService:
             if not self.gpio_available:
                 logger.warning("GPIO not available - volume buttons will use mock mode")
             
-            # ИСПРАВЛЕНО: Проверяем что у нас есть рабочий миксер
+            # Проверяем что у нас есть рабочий миксер
             if not self._active_mixer:
                 logger.warning("No working audio mixer found - volume control may not work properly")
             
@@ -387,11 +387,11 @@ class VolumeControlService:
             logger.error(f"Error in volume down: {e}")
     
     def _get_system_volume(self):
-        """ИСПРАВЛЕНО: Получение громкости с использованием активного миксера"""
+        """Получение громкости с использованием активного миксера"""
         try:
             if not self._active_mixer:
                 logger.debug("No active mixer for getting volume")
-                return self._current_volume  # Возвращаем кешированное значение
+                return self._current_volume
             
             # Use amixer to get volume
             result = subprocess.run(
@@ -415,7 +415,7 @@ class VolumeControlService:
                             return volume
             
             logger.warning(f"Could not parse volume from {self._active_mixer} output")
-            return self._current_volume  # Возвращаем кешированное значение
+            return self._current_volume
             
         except subprocess.TimeoutExpired:
             logger.error("Timeout getting system volume")
@@ -428,7 +428,7 @@ class VolumeControlService:
             return self._current_volume
     
     def _set_system_volume(self, volume):
-        """ИСПРАВЛЕНО: Установка громкости с использованием активного миксера"""
+        """Установка громкости с использованием активного миксера"""
         try:
             if not self._active_mixer:
                 logger.warning("No active mixer for setting volume")
@@ -450,17 +450,9 @@ class VolumeControlService:
                 return False
             
             logger.debug(f"Set volume on {self._active_mixer}: {volume}%")
-                
-            # ИСПРАВЛЕНО: Также пытаемся синхронизировать с audio service
-            try:
-                from kivy.app import App
-                app = App.get_running_app()
-                if hasattr(app, 'audio_service') and app.audio_service:
-                    # AudioService expects 0-1 range
-                    app.audio_service.set_volume(volume / 100.0)
-                    logger.debug(f"Synced volume with AudioService: {volume/100.0}")
-            except Exception as audio_e:
-                logger.debug(f"Could not sync with audio service: {audio_e}")
+            
+            # УБРАНО: Синхронизация с audio_service для предотвращения циклических вызовов
+            # AudioService теперь полностью отделен от системной громкости
                 
             return True
             
@@ -484,7 +476,9 @@ class VolumeControlService:
                 if app.audio_service and app.theme_manager:
                     sound_file = app.theme_manager.get_sound(sound_name)
                     if sound_file:
-                        app.audio_service.play(sound_file)
+                        # ИСПРАВЛЕНО: Используем отложенный вызов для предотвращения блокировок
+                        from kivy.clock import Clock
+                        Clock.schedule_once(lambda dt: app.audio_service.play(sound_file), 0.01)
                         
         except Exception as e:
             logger.debug(f"Could not play feedback sound '{sound_name}': {e}")
@@ -517,7 +511,7 @@ class VolumeControlService:
     def get_volume(self):
         """Get current volume level"""
         with self._volume_lock:
-            # ИСПРАВЛЕНО: Периодически обновляем из системы для синхронизации
+            # Периодически обновляем из системы для синхронизации
             try:
                 system_volume = self._get_system_volume()
                 if abs(system_volume - self._current_volume) > 2:  # Если разница больше 2%
@@ -572,7 +566,7 @@ class VolumeControlService:
         logger.info("Volume change callback set")
     
     def refresh_mixers(self):
-        """ИСПРАВЛЕНО: Обновление списка доступных миксеров"""
+        """Обновление списка доступных миксеров"""
         logger.info("Refreshing audio mixers...")
         try:
             self._init_audio_mixers()

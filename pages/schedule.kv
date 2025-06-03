@@ -40,73 +40,72 @@
                     valign: 'middle'
                     text_size: self.size
 
-        # ДОБАВЛЕНО: Заголовки дней недели
-        OverlayCard:
-            size_hint_y: None
-            height: dp(32)
-            padding: [dp(16), dp(4)]
-            
-            BoxLayout:
-                orientation: 'horizontal'
-                spacing: dp(8)
-                
-                Label:
-                    text: "MON"
-                    font_size: '14sp'
-                    font_name: app.theme_manager.get_font("main")
-                    color: app.theme_manager.get_rgba("text_secondary")
-                    size_hint_x: 0.2
-                    halign: 'center'
-                    valign: 'middle'
-                    bold: True
-                
-                Label:
-                    text: "TUE"
-                    font_size: '14sp'
-                    font_name: app.theme_manager.get_font("main")
-                    color: app.theme_manager.get_rgba("text_secondary")
-                    size_hint_x: 0.2
-                    halign: 'center'
-                    valign: 'middle'
-                    bold: True
-                
-                Label:
-                    text: "WED"
-                    font_size: '14sp'
-                    font_name: app.theme_manager.get_font("main")
-                    color: app.theme_manager.get_rgba("text_secondary")
-                    size_hint_x: 0.2
-                    halign: 'center'
-                    valign: 'middle'
-                    bold: True
-                
-                Label:
-                    text: "THU"
-                    font_size: '14sp'
-                    font_name: app.theme_manager.get_font("main")
-                    color: app.theme_manager.get_rgba("text_secondary")
-                    size_hint_x: 0.2
-                    halign: 'center'
-                    valign: 'middle'
-                    bold: True
-                
-                Label:
-                    text: "FRI"
-                    font_size: '14sp'
-                    font_name: app.theme_manager.get_font("main")
-                    color: app.theme_manager.get_rgba("text_secondary")
-                    size_hint_x: 0.2
-                    halign: 'center'
-                    valign: 'middle'
-                    bold: True
-
-        # Основное расписание
+         
+        # Основное расписание с встроенными заголовками
         OverlayCard:
             padding: [dp(16), dp(16)]
             
             BoxLayout:
                 orientation: 'vertical'
                 spacing: dp(8)
+                
+                # Заголовки дней недели (зафиксированы сверху)
+                BoxLayout:
+                    orientation: 'horizontal'
+                    spacing: dp(8)
+                    size_hint_y: None
+                    height: dp(32)
+                    padding: [0, dp(4)]
+                    
+                    Label:
+                        text: "MON"
+                        font_size: '14sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text_secondary")
+                        size_hint_x: 0.2
+                        halign: 'center'
+                        valign: 'middle'
+                        bold: True
+                    
+                    Label:
+                        text: "TUE"
+                        font_size: '14sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text_secondary")
+                        size_hint_x: 0.2
+                        halign: 'center'
+                        valign: 'middle'
+                        bold: True
+                    
+                    Label:
+                        text: "WED"
+                        font_size: '14sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text_secondary")
+                        size_hint_x: 0.2
+                        halign: 'center'
+                        valign: 'middle'
+                        bold: True
+                    
+                    Label:
+                        text: "THU"
+                        font_size: '14sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text_secondary")
+                        size_hint_x: 0.2
+                        halign: 'center'
+                        valign: 'middle'
+                        bold: True
+                    
+                    Label:
+                        text: "FRI"
+                        font_size: '14sp'
+                        font_name: app.theme_manager.get_font("main")
+                        color: app.theme_manager.get_rgba("text_secondary")
+                        size_hint_x: 0.2
+                        halign: 'center'
+                        valign: 'middle'
+                        bold: True
                 
                 # Контейнер для расписания с правильными настройками прокрутки
                 ScrollView:
@@ -122,11 +121,11 @@
                     BoxLayout:
                         id: schedule_container
                         orientation: 'horizontal'
-                        spacing: dp(8)
+                        spacing: dp(0)
                         size_hint_y: None
                         # Правильный расчёт высоты контента
                         height: max(self.minimum_height, self.parent.height - dp(16))
-                        padding: [0, dp(8), 0, dp(8)]
+                        padding: [0, dp(0), 0, dp(0)]
 
         # ИСПРАВЛЕНО: Нижняя панель с полной датой и информацией о выходных
         OverlayCard:

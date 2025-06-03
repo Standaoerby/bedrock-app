@@ -218,14 +218,16 @@ class BedrockApp(App):
             logger.error(f"Error setting up auto-theme: {e}")
 
     def _setup_volume_service(self):
-        """ДОБАВЛЕНО: Настройка сервиса управления громкостью"""
+        """ИСПРАВЛЕНО: Настройка сервиса управления громкостью без циклических зависимостей"""
         try:
             if hasattr(self, 'volume_service') and self.volume_service:
-                # Устанавливаем callback для отслеживания изменений громкости
+                # ИСПРАВЛЕНО: Упрощенный callback без попыток обновления UI
                 def volume_change_callback(volume, action):
                     logger.info(f"Volume changed: {volume}% (action: {action})")
-                    # Здесь можно добавить дополнительную логику при изменении громкости
-                    # например, показ уведомления или обновление UI
+                    
+                    # УБРАНО: Прямое обновление UI настроек
+                    # Теперь UI будет обновляться через свои собственные периодические обновления
+                    # Это предотвращает циклические зависимости и блокировки
                 
                 self.volume_service.set_volume_change_callback(volume_change_callback)
                 
@@ -233,11 +235,28 @@ class BedrockApp(App):
                 status = self.volume_service.get_status()
                 logger.info(f"Volume service status: {status}")
                 
-                if status.get('gpio_available', False):
-                    logger.info(f"Hardware volume buttons available on pins {status['button_pins']['volume_up']}/{status['button_pins']['volume_down']}")
+                # Диагностика миксеров
+                active_mixer = status.get('active_mixer')
+                available_mixers = status.get('available_mixers', [])
+                
+                if active_mixer:
+                    logger.info(f"Volume service ready - Active mixer: {active_mixer}")
+                    if status.get('gpio_available', False):
+                        logger.info(f"Hardware volume buttons available on pins {status['button_pins']['volume_up']}/{status['button_pins']['volume_down']}")
+                    else:
+                        logger.info("Volume service ready - Software control only (no GPIO)")
                 else:
-                    logger.warning("Hardware volume buttons not available - GPIO/amixer not working")
+                    logger.warning("Volume service has no working audio mixer!")
+                    logger.info("Available mixers: " + str(available_mixers))
                     
+                    if not available_mixers:
+                        logger.warning("No audio mixers found - audio system may not be properly configured")
+                        logger.info("Try running: 'amixer scontrols' to see available mixers")
+                    else:
+                        logger.info("Attempting to refresh mixers...")
+                        if hasattr(self.volume_service, 'refresh_mixers'):
+                            self.volume_service.refresh_mixers()
+                            
         except Exception as e:
             logger.error(f"Error setting up volume service: {e}")
 

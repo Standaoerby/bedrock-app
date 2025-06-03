@@ -1,5 +1,5 @@
 import os
-import time  # ИСПРАВЛЕНИЕ: Добавляем глобальный import time
+import time
 import logging
 from pygame import mixer
 from app.logger import app_logger as logger
@@ -57,7 +57,7 @@ class AudioService:
                     'audioinjector-pi-soundcard',
                     'AudioInjector',
                     'wm8731',
-                    'wm8960soundcard',  # Добавляем WM8960
+                    'wm8960soundcard',
                     'wm8960-soundcard',
                     'wm8960'
                 ]
@@ -138,21 +138,14 @@ class AudioService:
             return False
 
     def set_volume(self, value):
-        """Установка громкости"""
+        """ИСПРАВЛЕНО: Установка громкости только через pygame, без ALSA конфликтов"""
         try:
             volume = max(0.0, min(1.0, value))
             mixer.music.set_volume(volume)
+            logger.debug(f"Set pygame volume to {volume}")
             
-            # Дополнительно устанавливаем системную громкость если доступно ALSA
-            if ALSA_AVAILABLE and self.audio_device and 'hw:' in self.audio_device:
-                try:
-                    card_index = int(self.audio_device.split(':')[1].split(',')[0])
-                    mixer_control = alsaaudio.Mixer('Master', cardindex=card_index)
-                    alsa_volume = int(volume * 100)
-                    mixer_control.setvolume(alsa_volume)
-                    logger.debug(f"Set ALSA volume to {alsa_volume}%")
-                except Exception as e:
-                    logger.warning(f"Could not set ALSA volume: {e}")
+            # УБРАНО: Удаляем попытку управления ALSA громкостью из AudioService
+            # Теперь VolumeService полностью отвечает за системную громкость
                     
         except Exception as e:
             logger.error(f"AudioService set_volume error: {e}")
@@ -170,46 +163,41 @@ class AudioService:
             
             current_time = time.time()
             
-            # ИСПРАВЛЕНИЕ: Добавляем подробное логирование для диагностики
-            logger.info(f"🎵 AudioService.play() called:")
-            logger.info(f"  filepath: {filepath}")
-            logger.info(f"  is_ringtone: {is_ringtone}")
-            logger.info(f"  is_theme_sound: {is_theme_sound}")
-            logger.info(f"  fadein: {fadein}")
-            logger.info(f"  current state - is_playing: {self.is_playing}, current_file: {self.current_file}")
-            logger.info(f"  current state - is_long_audio: {self.is_long_audio}")
+            # ИСПРАВЛЕНО: Ослабляем защиту от частого воспроизведения
+            logger.debug(f"🎵 AudioService.play() called:")
+            logger.debug(f"  filepath: {filepath}")
+            logger.debug(f"  is_ringtone: {is_ringtone}")
+            logger.debug(f"  is_theme_sound: {is_theme_sound}")
+            logger.debug(f"  current state - is_playing: {self.is_playing}, current_file: {self.current_file}")
             
-            # ИСПРАВЛЕНИЕ: Проверки частоты применяются ТОЛЬКО к theme sounds
+            # ИСПРАВЛЕНО: Более разумные проверки частоты
             if is_theme_sound:
                 # Не прерываем рингтон коротким звуком
                 if (self.is_playing and self.is_long_audio):
-                    logger.info("❌ Skipping theme sound - ringtone is playing")
+                    logger.debug("❌ Skipping theme sound - ringtone is playing")
                     return
                 
-                # Не играем короткий звук слишком часто
+                # ИСПРАВЛЕНО: Уменьшаем интервал между звуками темы до 0.1 секунды
                 if (self.is_playing and not self.is_long_audio and 
-                    (current_time - self.last_play_time) < 0.2):
-                    logger.info("❌ Skipping theme sound - too frequent")
+                    (current_time - self.last_play_time) < 0.1):
+                    logger.debug("❌ Skipping theme sound - too frequent")
                     return
             
-            # ИСПРАВЛЕНИЕ: Для рингтонов ВСЕГДА останавливаем текущее воспроизведение
+            # Для рингтонов ВСЕГДА останавливаем текущее воспроизведение
             if is_ringtone:
                 logger.info("🎵 Ringtone requested - stopping any current audio")
                 if self.is_playing:
-                    logger.info("🛑 Stopping current audio for ringtone...")
                     self.stop()
-                    time.sleep(0.1)  # Даем время pygame mixer освободить ресурсы
+                    time.sleep(0.1)
             elif self.is_playing and is_theme_sound:
-                # Для звуков темы - стандартная логика замещения
-                if not self.is_long_audio:  # Заменяем только короткие звуки
-                    logger.info("🔊 Stopping current theme sound for new theme sound")
+                # Для звуков темы - заменяем только короткие звуки
+                if not self.is_long_audio:
                     self.stop()
             
-            # ИСПРАВЛЕНИЕ: Проверяем размер файла для рингтонов
+            # Проверяем размер файла для рингтонов
             if is_ringtone:
                 try:
                     file_size = os.path.getsize(filepath)
-                    logger.info(f"🎵 Ringtone file size: {file_size} bytes")
                     if file_size == 0:
                         logger.error(f"❌ Ringtone file is empty: {filepath}")
                         return
@@ -225,45 +213,28 @@ class AudioService:
             self.is_long_audio = is_ringtone
             self.last_play_time = current_time
             
-            logger.info(f"🎵 Loading audio file into pygame mixer...")
-            
-            # ИСПРАВЛЕНИЕ: Обрабатываем ошибки загрузки файла
+            # Загружаем и воспроизводим файл
             try:
                 mixer.music.load(filepath)
-                logger.info(f"✅ Audio file loaded successfully")
-            except Exception as load_error:
-                logger.error(f"❌ Error loading audio file: {load_error}")
-                # Сбрасываем состояние при ошибке
-                self.is_playing = False
-                self.current_file = None
-                self.is_long_audio = False
-                return
-            
-            # ИСПРАВЛЕНИЕ: Обрабатываем ошибки воспроизведения
-            try:
+                
                 if fadein > 0:
-                    logger.info(f"🎵 Starting playback with {fadein}s fadein...")
                     mixer.music.play(loops=0, fade_ms=int(fadein * 1000))
                 else:
-                    logger.info(f"🎵 Starting playback...")
                     mixer.music.play()
                 mixer.music.set_volume(1.0)
-                logger.info(f"✅ Playback started successfully")
+                
+                logger.debug(f"🎵 Playing audio: {os.path.basename(filepath)} on device: {self.audio_device}")
+                
             except Exception as play_error:
-                logger.error(f"❌ Error starting playback: {play_error}")
+                logger.error(f"❌ Error during playback: {play_error}")
                 # Сбрасываем состояние при ошибке
                 self.is_playing = False
                 self.current_file = None
                 self.is_long_audio = False
                 return
-            
-            logger.info(f"🎵 Playing audio: {os.path.basename(filepath)} on device: {self.audio_device}")
-            logger.info(f"🎵 Final state - is_playing: {self.is_playing}, current_file: {self.current_file}")
             
         except Exception as e:
             logger.error(f"❌ AudioService play error: {e}")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
             # Сбрасываем состояние при любой ошибке
             self.is_playing = False
             self.current_file = None
@@ -271,16 +242,11 @@ class AudioService:
 
     def stop(self):
         """Остановка воспроизведения"""
-        logger.info(f"🛑 AudioService.stop() called")
-        logger.info(f"  current state - is_playing: {self.is_playing}, current_file: {self.current_file}")
+        logger.debug(f"🛑 AudioService.stop() called")
         
         try:
             if self.is_playing or mixer.music.get_busy():
-                logger.info(f"🛑 Stopping pygame mixer...")
                 mixer.music.stop()
-                logger.info(f"✅ Pygame mixer stopped")
-            else:
-                logger.info(f"ℹ️ Nothing to stop")
         except Exception as e:
             logger.error(f"❌ AudioService stop error: {e}")
         finally:
@@ -288,13 +254,12 @@ class AudioService:
             self.is_playing = False
             self.current_file = None
             self.is_long_audio = False
-            logger.info(f"✅ AudioService state reset")
 
     def is_busy(self):
         """Проверка активности воспроизведения"""
         try:
             busy = mixer.music.get_busy()
-            # ИСПРАВЛЕНИЕ: Синхронизируем состояние с pygame
+            # Синхронизируем состояние с pygame
             if not busy and self.is_playing:
                 logger.debug(f"🔍 Pygame not busy but is_playing=True - syncing state")
                 self.is_playing = False
