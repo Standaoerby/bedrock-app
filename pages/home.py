@@ -160,10 +160,10 @@ class HomeScreen(Screen):
                     condition_now = current.get('condition', 'Unknown')
                     
                     # Разделяем температуру и условие
-                    self.weather_now_temp = f"{temp_now:.1f}°C"
+                    self.weather_now_temp = f"{temp_now:.1f}°"
                     self.weather_now_condition = condition_now
                 else:
-                    self.weather_now_temp = "--°C"
+                    self.weather_now_temp = "--°"
                     self.weather_now_condition = "No data"
                     self.current_temp_value = 20
                 
@@ -175,7 +175,7 @@ class HomeScreen(Screen):
                     self.forecast_temp_value = temp_5h
                     
                     # Разделяем температуру, условие и текст "in 5h"
-                    self.weather_5h_temp = f"{temp_5h:.1f}°C"
+                    self.weather_5h_temp = f"{temp_5h:.1f}°"
                     self.weather_5h_condition = condition_5h
                     
                     # Получаем локализованный текст "in 5h"
@@ -196,7 +196,7 @@ class HomeScreen(Screen):
                         self.weather_trend_arrow = "→"  # Стабильно
                         self.temp_trend = 0
                 else:
-                    self.weather_5h_temp = "--°C"
+                    self.weather_5h_temp = "--°"
                     self.weather_5h_condition = "No forecast"
                     self.weather_5h_in_text = ""
                     self.weather_trend_arrow = "→"
@@ -204,9 +204,9 @@ class HomeScreen(Screen):
                     self.temp_trend = 0
             else:
                 # Сервис недоступен
-                self.weather_now_temp = "--°C"
+                self.weather_now_temp = "--°"
                 self.weather_now_condition = "Service offline"
-                self.weather_5h_temp = "--°C"
+                self.weather_5h_temp = "--°"
                 self.weather_5h_condition = "Service offline"
                 self.weather_5h_in_text = ""
                 self.weather_trend_arrow = "→"
@@ -219,9 +219,9 @@ class HomeScreen(Screen):
                 
         except Exception as e:
             logger.error(f"Error updating weather: {e}")
-            self.weather_now_temp = "--°C"
+            self.weather_now_temp = "--°"
             self.weather_now_condition = "Error"
-            self.weather_5h_temp = "--°C"
+            self.weather_5h_temp = "--°"
             self.weather_5h_condition = "Error"
             self.weather_5h_in_text = ""
             self.weather_trend_arrow = "→"

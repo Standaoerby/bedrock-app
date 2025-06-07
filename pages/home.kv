@@ -127,65 +127,60 @@
                     halign: 'center'
                     valign: 'middle'
 
-        # ИСПРАВЛЕНО: Блок погоды с правильной структурой для раздельного окрашивания
         OverlayCard:
             size_hint_y: None
             height: dp(64)
-            padding: [0,dp(8),0,0]
-            size_hint_x: 0.9
+            padding: [0, dp(8), 0, 0]
+            size_hint_x: 0.92
             pos_hint: {"center_x": 0.5}
             BoxLayout:
                 orientation: 'horizontal'
-                spacing: dp(8)
-                padding: [dp(16), 0]
+                spacing: dp(12)  # чуть больше, чтобы не слипалось
+                padding: [dp(12), 0, dp(12), 0]  # слева и справа — симметричнее
 
-                # Текущая погода - разделенная структура (пошире)
+                # Левая колонка (текущая погода)
                 BoxLayout:
                     orientation: 'horizontal'
                     spacing: dp(4)
-                    size_hint_x: 0.46
-                    
-                    # Температура (цвет по условию, поменьше)
+                    size_hint_x: 0.375
+
                     Label:
                         id: weather_now_temp_label
                         text: root.weather_now_temp
-                        font_size: '20sp'
+                        font_size: '22sp'
                         color: [1, 1, 1, 1]
                         size_hint_x: None
                         width: self.texture_size[0] if self.texture_size[0] > 0 else dp(70)
                         halign: 'center'
                         valign: 'middle'
                         text_size: self.size
-                    
-                    # Запятая + условие (основной цвет темы)
+
                     Label:
                         id: weather_now_condition_label
-                        text: ", " + root.weather_now_condition
-                        font_size: '24sp'
+                        text: root.weather_now_condition
+                        font_size: '20sp'
                         color: [1, 1, 1, 1]
                         halign: 'left'
                         valign: 'middle'
                         text_size: self.size
 
-                # "in 5h" + стрелка тренда в одном контейнере
+                # Центр: "in 5h" + стрелка
                 BoxLayout:
                     orientation: 'horizontal'
                     spacing: dp(6)
-                    size_hint_x: 0.16
-                    
-                    # Текст "in 5h" (вторичный цвет)
+                    size_hint_x: 0.25
+
                     Label:
                         id: weather_5h_in_label
                         text: root.weather_5h_in_text
                         font_size: '18sp'
                         color: [1, 1, 1, 1]
                         size_hint_x: None
-                        width: self.texture_size[0] if self.texture_size[0] > 0 else dp(50)
+                        width: dp(50)
                         halign: 'right'
                         valign: 'middle'
                         text_size: self.size
-                    
-                    # Стрелка тренда
+
                     Label:
                         id: weather_trend_label
                         text: root.weather_trend_arrow
@@ -197,33 +192,32 @@
                         valign: 'middle'
                         text_size: self.size
 
-                # Прогноз на 5 часов - разделенная структура
+                # Правая колонка (прогноз)
                 BoxLayout:
                     orientation: 'horizontal'
                     spacing: dp(4)
-                    size_hint_x: 0.38
-                    
-                    # Температура прогноза (цвет по условию, поменьше)
+                    size_hint_x: 0.375
+
                     Label:
                         id: weather_5h_temp_label
                         text: root.weather_5h_temp
-                        font_size: '20sp'
+                        font_size: '22sp'
                         color: [1, 1, 1, 1]
                         size_hint_x: None
                         width: self.texture_size[0] if self.texture_size[0] > 0 else dp(70)
                         halign: 'center'
                         valign: 'middle'
                         text_size: self.size
-                    
-                    # Запятая + условие прогноза (основной цвет темы)
+
                     Label:
                         id: weather_5h_condition_label
-                        text: ", " + root.weather_5h_condition
-                        font_size: '24sp'
+                        text: root.weather_5h_condition
+                        font_size: '20sp'
                         color: [1, 1, 1, 1]
                         halign: 'left'
                         valign: 'middle'
                         text_size: self.size
+
 
         # Нижний блок с уведомлениями - бегущая строка
         OverlayCard:
