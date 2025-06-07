@@ -3,7 +3,7 @@
     "time": "2024-05-16T09:00",
     "text": "Gogogo!",
     "category": "extra",
-    "read": false
+    "read": true
   },
   {
     "time": "2024-05-16T11:00",
@@ -193,6 +193,18 @@
   },
   {
     "time": "2025-06-07T05:25",
+    "text": "Welcome back, Anna-Maria! Bedrock 2.0 is ready.",
+    "category": "system",
+    "read": false
+  },
+  {
+    "time": "2025-06-07T05:36",
+    "text": "Welcome back, Anna-Maria! Bedrock 2.0 is ready.",
+    "category": "system",
+    "read": false
+  },
+  {
+    "time": "2025-06-07T05:42",
     "text": "Welcome back, Anna-Maria! Bedrock 2.0 is ready.",
     "category": "system",
     "read": false
