@@ -281,6 +281,20 @@ class WeatherService:
             logger.info("Weather data needs update, fetching...")
             self.fetch_weather()
         return self.weather
+    def get_current_weather(self):
+        """Get current weather data only (compatibility method)"""
+        weather_data = self.get_weather()
+        return weather_data.get("current", {})
+
+    def get_forecast_5h(self):
+        """Get 5-hour forecast data only"""
+        weather_data = self.get_weather()
+        return weather_data.get("forecast_5h", {})
+
+    def get_weekly_forecast(self):
+        """Get weekly forecast data only"""
+        weather_data = self.get_weather()
+        return weather_data.get("weekly_forecast", [])
     
     def force_update(self):
         """Force an immediate update of weather data"""
