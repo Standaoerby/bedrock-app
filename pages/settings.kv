@@ -8,42 +8,44 @@
     
     BoxLayout:
         orientation: 'vertical'
-        padding: [dp(16), dp(16), dp(16), dp(16)]
-        spacing: dp(12)
+        padding: dp(16)
+        spacing: dp(16)
 
-        # Верхний ряд: Тема и Язык
+        # Верхний блок: Тема и Язык
         BoxLayout:
             orientation: 'horizontal'
             spacing: dp(16)
             size_hint_y: None
-            height: dp(248)
+            height: dp(240)
             
             # Настройки темы
             OverlayCard:
                 size_hint_x: 0.6
-                padding: [dp(16), dp(12)]
+                padding: dp(16)
                 
                 BoxLayout:
                     orientation: 'vertical'
                     spacing: dp(16)
                     
+                    # Заголовок темы
                     Label:
                         id: theme_section_label
                         text: "Theme Settings"
-                        font_size: '18sp'
+                        font_size: '20sp'
                         font_name: app.theme_manager.get_font("title") if app.theme_manager else ""
                         color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1,1,1,1]
                         size_hint_y: None
-                        height: dp(24)
+                        height: dp(32)
                         halign: 'center'
                         valign: 'middle'
                         text_size: self.size
                     
+                    # Выбор темы
                     BoxLayout:
                         orientation: 'horizontal'
-                        spacing: dp(8)
+                        spacing: dp(16)
                         size_hint_y: None
-                        height: dp(48)
+                        height: dp(56)
                         
                         Label:
                             id: theme_label
@@ -51,12 +53,11 @@
                             font_size: '16sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
-                            size_hint_x: 0.3
+                            size_hint_x: 0.35
                             halign: 'right'
                             valign: 'middle'
                             text_size: self.size
                         
-                        # ИСПРАВЛЕНО: Добавлены disabled и opacity для кнопки темы
                         ThemeSelectButton:
                             id: theme_button
                             font_size: '16sp'
@@ -64,15 +65,16 @@
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
-                            size_hint_x: 0.7
+                            size_hint_x: 0.65
                             disabled: not root.theme_selector_enabled
                             opacity: 1.0 if root.theme_selector_enabled else 0.5
                     
+                    # Выбор режима (light/dark)
                     BoxLayout:
                         orientation: 'horizontal'
-                        spacing: dp(8)
+                        spacing: dp(16)
                         size_hint_y: None
-                        height: dp(48)
+                        height: dp(56)
                         
                         Label:
                             id: variant_label
@@ -80,7 +82,7 @@
                             font_size: '16sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
-                            size_hint_x: 0.3
+                            size_hint_x: 0.35
                             halign: 'right'
                             valign: 'middle'
                             text_size: self.size
@@ -93,39 +95,44 @@
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
-                            size_hint_x: 0.7
+                            size_hint_x: 0.65
+                    
+                    # Заполнитель для выравнивания
+                    Widget:
             
             # Настройки языка
             OverlayCard:
                 size_hint_x: 0.4
-                padding: [dp(16), dp(12)]
+                padding: dp(16)
                 
                 BoxLayout:
                     orientation: 'vertical'
                     spacing: dp(16)
                     
+                    # Заголовок локализации
                     Label:
                         id: language_section_label
                         text: "Localization"
-                        font_size: '18sp'
+                        font_size: '20sp'
                         font_name: app.theme_manager.get_font("title") if app.theme_manager else ""
                         color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1,1,1,1]
                         size_hint_y: None
-                        height: dp(24)
+                        height: dp(32)
                         halign: 'center'
                         valign: 'middle'
                         text_size: self.size
                     
+                    # Выбор языка
                     BoxLayout:
                         orientation: 'horizontal'
-                        spacing: dp(8)
+                        spacing: dp(16)
                         size_hint_y: None
-                        height: dp(32)
+                        height: dp(56)
                         
                         Label:
                             id: language_label
                             text: "Language:"
-                            font_size: '14sp'
+                            font_size: '16sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
                             size_hint_x: 0.4
@@ -135,57 +142,58 @@
                         
                         LanguageSelectButton:
                             id: language_button
-                            font_size: '14sp'
+                            font_size: '16sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
                             size_hint_x: 0.6
                     
-                    # Заполнитель
+                    # Заполнитель для выравнивания
                     Widget:
 
-        # Средний ряд: Пользователь, Автотема и Громкость
+        # Средний блок: Пользователь, Автотема и Громкость
         BoxLayout:
             orientation: 'horizontal'
             spacing: dp(16)
             size_hint_y: None
-            height: dp(160)
+            height: dp(200)
             
             # Настройки пользователя
             OverlayCard:
-                size_hint_x: 0.4
-                padding: [dp(16), dp(12)]
+                size_hint_x: 0.33
+                padding: dp(16)
                 
                 BoxLayout:
                     orientation: 'vertical'
-                    spacing: dp(8)
+                    spacing: dp(16)
                     
+                    # Заголовок пользователя
                     Label:
                         id: user_section_label
-                        text: "User Settings"
+                        text: "User Profile"
                         font_size: '18sp'
                         font_name: app.theme_manager.get_font("title") if app.theme_manager else ""
                         color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1,1,1,1]
                         size_hint_y: None
-                        height: dp(24)
+                        height: dp(32)
                         halign: 'center'
                         valign: 'middle'
                         text_size: self.size
                     
+                    # Имя пользователя
                     BoxLayout:
                         orientation: 'horizontal'
                         spacing: dp(8)
                         size_hint_y: None
-                        height: dp(32)
+                        height: dp(40)
                         
                         Label:
-                            id: username_label
                             text: "Name:"
-                            font_size: '18sp'
+                            font_size: '14sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
-                            size_hint_x: 0.25
+                            size_hint_x: 0.4
                             halign: 'right'
                             valign: 'middle'
                             text_size: self.size
@@ -193,97 +201,88 @@
                         TextInput:
                             id: username_input
                             text: root.username
-                            font_size: '18sp'
+                            font_size: '14sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             foreground_color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
-                            background_color: app.theme_manager.get_rgba("overlay_card") if app.theme_manager else [0.2,0.2,0.2,1]
-                            size_hint_x: 0.75
+                            background_color: app.theme_manager.get_rgba("background") if app.theme_manager else [0.2,0.2,0.2,1]
+                            size_hint_x: 0.6
                             multiline: False
-                            height: dp(32)
-                            on_text: root.on_username_change(self, self.text)
+                            on_text: root.on_username_changed(self.text)
                     
+                    # День рождения
                     BoxLayout:
                         orientation: 'horizontal'
-                        spacing: dp(4)
+                        spacing: dp(8)
                         size_hint_y: None
-                        height: dp(32)
+                        height: dp(40)
                         
                         Label:
-                            id: birthday_label
                             text: "Birth:"
-                            font_size: '18sp'
+                            font_size: '14sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                             color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
-                            size_hint_x: 0.25
+                            size_hint_x: 0.4
                             halign: 'right'
                             valign: 'middle'
                             text_size: self.size
                         
-                        TextInput:
-                            id: birth_day_input
-                            text: root.birth_day
-                            font_size: '18sp'
-                            font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                            foreground_color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
-                            background_color: app.theme_manager.get_rgba("overlay_card") if app.theme_manager else [0.2,0.2,0.2,1]
-                            size_hint_x: 0.15
-                            multiline: False
-                            input_filter: "int"
-                            height: dp(32)
-                            on_text: root.on_birth_day_change(self, self.text)
-                        
-                        Label:
-                            text: "/"
-                            font_size: '18sp'
-                            color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
-                            size_hint_x: 0.05
-                            halign: 'center'
-                        
-                        TextInput:
-                            id: birth_month_input
-                            text: root.birth_month
-                            font_size: '18sp'
-                            font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                            foreground_color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
-                            background_color: app.theme_manager.get_rgba("overlay_card") if app.theme_manager else [0.2,0.2,0.2,1]
-                            size_hint_x: 0.15
-                            multiline: False
-                            input_filter: "int"
-                            height: dp(32)
-                            on_text: root.on_birth_month_change(self, self.text)
-                        
-                        Label:
-                            text: "/"
-                            font_size: '18sp'
-                            color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
-                            size_hint_x: 0.05
-                            halign: 'center'
-                        
-                        TextInput:
-                            id: birth_year_input
-                            text: root.birth_year
-                            font_size: '18sp'
-                            font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                            foreground_color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
-                            background_color: app.theme_manager.get_rgba("overlay_card") if app.theme_manager else [0.2,0.2,0.2,1]
-                            size_hint_x: 0.3
-                            multiline: False
-                            input_filter: "int"
-                            height: dp(32)
-                            on_text: root.on_birth_year_change(self, self.text)
+                        BoxLayout:
+                            orientation: 'horizontal'
+                            spacing: dp(4)
+                            size_hint_x: 0.6
+                            
+                            TextInput:
+                                id: birth_day_input
+                                text: root.birth_day
+                                font_size: '12sp'
+                                font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
+                                foreground_color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
+                                background_color: app.theme_manager.get_rgba("background") if app.theme_manager else [0.2,0.2,0.2,1]
+                                size_hint_x: 0.3
+                                multiline: False
+                                input_filter: 'int'
+                                hint_text: "DD"
+                                on_text: root.on_birth_day_changed(self.text)
+                            
+                            TextInput:
+                                id: birth_month_input
+                                text: root.birth_month
+                                font_size: '12sp'
+                                font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
+                                foreground_color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
+                                background_color: app.theme_manager.get_rgba("background") if app.theme_manager else [0.2,0.2,0.2,1]
+                                size_hint_x: 0.3
+                                multiline: False
+                                input_filter: 'int'
+                                hint_text: "MM"
+                                on_text: root.on_birth_month_changed(self.text)
+                            
+                            TextInput:
+                                id: birth_year_input
+                                text: root.birth_year
+                                font_size: '12sp'
+                                font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
+                                foreground_color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
+                                background_color: app.theme_manager.get_rgba("background") if app.theme_manager else [0.2,0.2,0.2,1]
+                                size_hint_x: 0.4
+                                multiline: False
+                                input_filter: 'int'
+                                hint_text: "YYYY"
+                                on_text: root.on_birth_year_changed(self.text)
                     
                     # Заполнитель
                     Widget:
             
-            # Автоматическая тема
+            # Настройки автотемы
             OverlayCard:
-                size_hint_x: 0.3
-                padding: [dp(16), dp(12)]
+                size_hint_x: 0.33
+                padding: dp(16)
                 
                 BoxLayout:
                     orientation: 'vertical'
-                    spacing: dp(8)
+                    spacing: dp(16)
                     
+                    # Заголовок автотемы
                     Label:
                         id: auto_theme_section_label
                         text: "Auto Theme"
@@ -291,19 +290,19 @@
                         font_name: app.theme_manager.get_font("title") if app.theme_manager else ""
                         color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1,1,1,1]
                         size_hint_y: None
-                        height: dp(24)
+                        height: dp(32)
                         halign: 'center'
                         valign: 'middle'
                         text_size: self.size
                     
+                    # Переключатель автотемы
                     BoxLayout:
                         orientation: 'horizontal'
                         spacing: dp(8)
                         size_hint_y: None
-                        height: dp(32)
+                        height: dp(40)
                         
                         Label:
-                            id: auto_theme_label
                             text: "Auto:"
                             font_size: '14sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
@@ -313,80 +312,69 @@
                             valign: 'middle'
                             text_size: self.size
                         
-                        Button:
+                        ToggleButton:
                             id: auto_theme_button
                             text: "ON" if root.auto_theme_enabled else "OFF"
                             font_size: '14sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                            color: app.theme_manager.get_rgba("primary") if (app.theme_manager and root.auto_theme_enabled) else (app.theme_manager.get_rgba("text_secondary") if app.theme_manager else [0.7,0.7,0.7,1])
+                            color: (app.theme_manager.get_rgba("primary") if root.auto_theme_enabled else app.theme_manager.get_rgba("text_secondary")) if app.theme_manager else ([1,1,1,1] if root.auto_theme_enabled else [0.7,0.7,0.7,1])
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
                             size_hint_x: 0.6
                             disabled: not root.light_sensor_available
-                            opacity: 1.0 if root.light_sensor_available else 0.5
-                            on_release: root.toggle_auto_theme()
+                            on_state: root.on_auto_theme_toggle(self.state)
                     
+                    # Порог датчика
                     BoxLayout:
                         orientation: 'horizontal'
-                        spacing: dp(4)
+                        spacing: dp(8)
                         size_hint_y: None
-                        height: dp(24)
+                        height: dp(40)
                         
                         Label:
-                            id: threshold_label
-                            text: "Delay:"
-                            font_size: '12sp'
+                            text: "Threshold:"
+                            font_size: '14sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                            color: app.theme_manager.get_rgba("text_secondary") if app.theme_manager else [0.7,0.7,0.7,1]
-                            size_hint_x: 0.3
+                            color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
+                            size_hint_x: 0.6
                             halign: 'right'
                             valign: 'middle'
                             text_size: self.size
                         
-                        Slider:
-                            id: threshold_slider
-                            min: 1
-                            max: 5
-                            value: root.light_sensor_threshold
-                            step: 1
-                            size_hint_x: 0.5
-                            disabled: not root.light_sensor_available
-                            on_value: root.on_threshold_change(self.value)
-                        
                         Label:
-                            text: f"{int(root.light_sensor_threshold)}s"
-                            font_size: '12sp'
+                            id: threshold_value_label
+                            text: f"{root.light_sensor_threshold}"
+                            font_size: '14sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                            color: app.theme_manager.get_rgba("text_secondary") if app.theme_manager else [0.7,0.7,0.7,1]
-                            size_hint_x: 0.2
+                            color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1,1,1,1]
+                            size_hint_x: 0.4
                             halign: 'center'
                             valign: 'middle'
+                            text_size: self.size
                     
                     # Статус датчика
                     Label:
                         id: sensor_status_label
-                        text: root.current_light_status
-                        font_size: '10sp'
+                        text: f"Status: {root.current_light_status}"
+                        font_size: '12sp'
                         font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
                         color: app.theme_manager.get_rgba("text_secondary") if app.theme_manager else [0.7,0.7,0.7,1]
                         size_hint_y: None
-                        height: dp(16)
+                        height: dp(24)
                         halign: 'center'
                         valign: 'middle'
                         text_size: self.size
-                    
-                    # Заполнитель
-                    Widget:
-
-            # ДОБАВЛЕНО: Управление громкостью
+            
+            # Управление громкостью
             OverlayCard:
-                size_hint_x: 0.3
-                padding: [dp(16), dp(12)]
+                size_hint_x: 0.34
+                padding: dp(16)
                 
                 BoxLayout:
                     orientation: 'vertical'
-                    spacing: dp(8)
+                    spacing: dp(16)
                     
+                    # Заголовок громкости
                     Label:
                         id: volume_section_label
                         text: "Volume Control"
@@ -394,113 +382,79 @@
                         font_name: app.theme_manager.get_font("title") if app.theme_manager else ""
                         color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1,1,1,1]
                         size_hint_y: None
-                        height: dp(24)
+                        height: dp(32)
                         halign: 'center'
                         valign: 'middle'
                         text_size: self.size
                     
-                    # Отображение текущей громкости
-                    BoxLayout:
-                        orientation: 'horizontal'
-                        spacing: dp(8)
+                    # Текущее значение громкости
+                    Label:
+                        id: volume_value_label
+                        text: f"{root.current_volume}%"
+                        font_size: '24sp'
+                        font_name: app.theme_manager.get_font("title") if app.theme_manager else ""
+                        color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1,1,1,1]
                         size_hint_y: None
-                        height: dp(32)
-                        
-                        Label:
-                            id: volume_label
-                            text: "Volume:"
-                            font_size: '14sp'
-                            font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                            color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
-                            size_hint_x: 0.5
-                            halign: 'right'
-                            valign: 'middle'
-                            text_size: self.size
-                        
-                        Label:
-                            id: volume_value_label
-                            text: f"{root.current_volume}%"
-                            font_size: '16sp'
-                            font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                            color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1,1,1,1]
-                            size_hint_x: 0.5
-                            halign: 'center'
-                            valign: 'middle'
-                            text_size: self.size
+                        height: dp(40)
+                        halign: 'center'
+                        valign: 'middle'
+                        text_size: self.size
                     
                     # Кнопки управления громкостью
                     BoxLayout:
                         orientation: 'horizontal'
-                        spacing: dp(8)
+                        spacing: dp(16)
                         size_hint_y: None
                         height: dp(48)
                         
                         Button:
                             id: volume_down_button
-                            text: "VOL-"
-                            font_size: '14sp'
+                            text: "−"
+                            font_size: '20sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                            color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1,1,1,1]
+                            color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
-                            size_hint_x: 0.5
                             disabled: not root.volume_service_available
-                            opacity: 1.0 if root.volume_service_available else 0.5
-                            on_release: root.volume_down()
+                            on_release: root.on_volume_change(-10)
                         
                         Button:
                             id: volume_up_button
-                            text: "VOL+"
-                            font_size: '14sp'
+                            text: "+"
+                            font_size: '20sp'
                             font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                            color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1,1,1,1]
+                            color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
-                            size_hint_x: 0.5
                             disabled: not root.volume_service_available
-                            opacity: 1.0 if root.volume_service_available else 0.5
-                            on_release: root.volume_up()
-                    
-                    # Статус сервиса громкости
-                    Label:
-                        text: "HW buttons: GPIO 23/24" if root.volume_service_available else "Volume service offline"
-                        font_size: '10sp'
-                        font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                        color: app.theme_manager.get_rgba("text_secondary") if app.theme_manager else [0.7,0.7,0.7,1]
-                        size_hint_y: None
-                        height: dp(16)
-                        halign: 'center'
-                        valign: 'middle'
-                        text_size: self.size
+                            on_release: root.on_volume_change(+10)
                     
                     # Заполнитель
                     Widget:
 
-        # Нижний ряд: Кнопки управления
-        OverlayCard:
+        # Нижний блок: Кнопка сохранения
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(16)
             size_hint_y: None
             height: dp(64)
-            padding: [dp(16), dp(8)]
             
-            BoxLayout:
-                orientation: 'horizontal'
-                spacing: dp(16)
-                
-                Widget:
-                    # Заполнитель для центрирования
-                    size_hint_x: 0.4
-                
-                Button:
-                    id: save_button
-                    text: "Save Settings"
-                    font_size: '16sp'
-                    font_name: app.theme_manager.get_font("main") if app.theme_manager else ""
-                    color: app.theme_manager.get_rgba("primary") if app.theme_manager else [1,1,1,1]
-                    background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
-                    background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
-                    size_hint_x: 0.3
-                    on_release: root.save_all_settings()
-                
-                Widget:
-                    # Заполнитель
-                    size_hint_x: 0.3
+            # Заполнитель слева
+            Widget:
+                size_hint_x: 0.3
+            
+            # Кнопка сохранения
+            Button:
+                id: save_button
+                text: "Save Settings"
+                font_size: '18sp'
+                font_name: app.theme_manager.get_font("title") if app.theme_manager else ""
+                color: app.theme_manager.get_rgba("text") if app.theme_manager else [1,1,1,1]
+                background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
+                background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
+                size_hint_x: 0.4
+                on_release: root.save_all_settings()
+            
+            # Заполнитель справа
+            Widget:
+                size_hint_x: 0.3
