@@ -32,6 +32,7 @@ from pages.settings import SettingsScreen
 from app.localizer import localizer
 from app.user_config import user_config
 from app.logger import app_logger as logger
+from app.volume_manager import VolumeManager  # ДОБАВЛЕНО
 
 # Импорты виджетов
 from widgets.root_widget import RootWidget
@@ -46,7 +47,7 @@ from services.sensor_service import SensorService
 from services.pigs_service import PigsService
 from services.schedule_service import ScheduleService
 from services.auto_theme_service import AutoThemeService  # ДОБАВЛЕНО
-from services.volume_service import VolumeControlService  # ДОБАВЛЕНО
+
 
 # AlarmClock может отсутствовать — защищаем импорт
 try:
@@ -78,7 +79,7 @@ class BedrockApp(App):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
-        # Инициализируем theme_manager как экземпляр класса
+        self.volume_manager = VolumeManager()
         self.theme_manager = ThemeManager()
         
         # Остальные менеджеры
@@ -95,7 +96,7 @@ class BedrockApp(App):
         self.schedule_service = None
         self.alarm_clock = None
         self.auto_theme_service = None  # ДОБАВЛЕНО
-        self.volume_service = None  # ДОБАВЛЕНО
+ 
         
         self._services_stopped = False
         self._startup_complete = False
@@ -158,7 +159,7 @@ class BedrockApp(App):
                 ('pigs_service', PigsService, {}),
                 ('schedule_service', ScheduleService, {}),
                 ('auto_theme_service', AutoThemeService, {}),  # ДОБАВЛЕНО
-                ('volume_service', VolumeControlService, {}),  # ДОБАВЛЕНО
+                ('volume_manager', VolumeManager, {}),  # ДОБАВЛЕНО
             ]
             
             for service_name, service_class, kwargs in services_config:
@@ -189,9 +190,6 @@ class BedrockApp(App):
             # ДОБАВЛЕНО: Дополнительная настройка автотемы
             self._setup_auto_theme()
             
-            # ДОБАВЛЕНО: Настройка volume service
-            self._setup_volume_service()
-            
         except Exception as e:
             logger.error(f"Error initializing services: {e}")
 
@@ -216,49 +214,6 @@ class BedrockApp(App):
                     
         except Exception as e:
             logger.error(f"Error setting up auto-theme: {e}")
-
-    def _setup_volume_service(self):
-        """ИСПРАВЛЕНО: Настройка сервиса управления громкостью без циклических зависимостей"""
-        try:
-            if hasattr(self, 'volume_service') and self.volume_service:
-                # ИСПРАВЛЕНО: Упрощенный callback без попыток обновления UI
-                def volume_change_callback(volume, action):
-                    logger.info(f"Volume changed: {volume}% (action: {action})")
-                    
-                    # УБРАНО: Прямое обновление UI настроек
-                    # Теперь UI будет обновляться через свои собственные периодические обновления
-                    # Это предотвращает циклические зависимости и блокировки
-                
-                self.volume_service.set_volume_change_callback(volume_change_callback)
-                
-                # Получаем статус сервиса для диагностики
-                status = self.volume_service.get_status()
-                logger.info(f"Volume service status: {status}")
-                
-                # Диагностика миксеров
-                active_mixer = status.get('active_mixer')
-                available_mixers = status.get('available_mixers', [])
-                
-                if active_mixer:
-                    logger.info(f"Volume service ready - Active mixer: {active_mixer}")
-                    if status.get('gpio_available', False):
-                        logger.info(f"Hardware volume buttons available on pins {status['button_pins']['volume_up']}/{status['button_pins']['volume_down']}")
-                    else:
-                        logger.info("Volume service ready - Software control only (no GPIO)")
-                else:
-                    logger.warning("Volume service has no working audio mixer!")
-                    logger.info("Available mixers: " + str(available_mixers))
-                    
-                    if not available_mixers:
-                        logger.warning("No audio mixers found - audio system may not be properly configured")
-                        logger.info("Try running: 'amixer scontrols' to see available mixers")
-                    else:
-                        logger.info("Attempting to refresh mixers...")
-                        if hasattr(self.volume_service, 'refresh_mixers'):
-                            self.volume_service.refresh_mixers()
-                            
-        except Exception as e:
-            logger.error(f"Error setting up volume service: {e}")
 
     def _initial_auto_theme_check(self):
         """Первичная проверка автотемы при запуске"""
@@ -315,7 +270,7 @@ class BedrockApp(App):
             'alarm_service', 'notification_service', 'weather_service',
             'sensor_service', 'pigs_service', 'schedule_service', 
             'auto_theme_service',  # ДОБАВЛЕНО
-            'volume_service'  # ДОБАВЛЕНО
+            'volume_manager'  # ДОБАВЛЕНО
         ]
         
         for service_name in services:

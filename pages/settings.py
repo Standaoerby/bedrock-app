@@ -253,43 +253,44 @@ class SettingsScreen(Screen):
 
 
     def check_volume_service(self):
-        """Проверка доступности сервиса управления громкостью"""
+        """ИСПРАВЛЕНО: Проверка доступности VolumeManager"""
         app = App.get_running_app()
         try:
-            if hasattr(app, 'volume_service') and app.volume_service:
+            # ЗАМЕНИТЬ: volume_service → volume_manager
+            if hasattr(app, 'volume_manager') and app.volume_manager:
+                status = app.volume_manager.get_status()
+                
+                logger.info("🔧 === ДИАГНОСТИКА VOLUME MANAGER ===")
+                logger.info(f"Backend: {status.get('backend', 'Unknown')}")
+                logger.info(f"Система: {status.get('system', 'Unknown')}")
+                logger.info(f"Текущая громкость: {status.get('volume', 'Unknown')}%")
+                logger.info(f"Звук отключен: {status.get('is_muted', False)}")
+                
                 self.volume_service_available = True
-                self.current_volume = app.volume_service.get_volume()
+                self.current_volume = app.volume_manager.get_volume()
                 
-                # ИСПРАВЛЕНО: Проверяем статус миксеров
-                status = app.volume_service.get_status()
-                active_mixer = status.get('active_mixer', 'Unknown')
-                available_mixers = status.get('available_mixers', [])
+                logger.info(f"✅ VolumeManager готов - громкость: {self.current_volume}%")
                 
-                logger.info(f"Volume service available - Current volume: {self.current_volume}%")
-                logger.info(f"Active mixer: {active_mixer}, Available mixers: {available_mixers}")
-                
-                if not active_mixer:
-                    logger.warning("Volume service has no active mixer - volume control may not work")
             else:
+                logger.error("❌ VolumeManager не найден")
                 self.volume_service_available = False
                 self.current_volume = 50
-                logger.info("Volume service not available")
+                
         except Exception as e:
-            logger.error(f"Error checking volume service: {e}")
+            logger.error(f"❌ Ошибка проверки VolumeManager: {e}")
             self.volume_service_available = False
             self.current_volume = 50
 
     def update_volume_status(self):
-        """ИСПРАВЛЕНО: Обновление статуса громкости с лучшей синхронизацией"""
+        """ИСПРАВЛЕНО: Обновление статуса громкости через VolumeManager"""
         app = App.get_running_app()
         try:
-            if hasattr(app, 'volume_service') and app.volume_service:
-                new_volume = app.volume_service.get_volume()
+            # ЗАМЕНИТЬ: volume_service → volume_manager
+            if hasattr(app, 'volume_manager') and app.volume_manager:
+                new_volume = app.volume_manager.get_volume()
                 if new_volume != self.current_volume:
                     self.current_volume = new_volume
-                    logger.debug(f"Volume updated: {self.current_volume}%")
-                    
-                    # ИСПРАВЛЕНО: Немедленно обновляем UI
+                    logger.debug(f"Volume updated via VolumeManager: {self.current_volume}%")
                     Clock.schedule_once(lambda dt: self._update_volume_display(), 0)
         except Exception as e:
             logger.error(f"Error updating volume status: {e}")
@@ -304,47 +305,73 @@ class SettingsScreen(Screen):
             logger.error(f"Error updating volume display: {e}")
 
     def volume_up(self):
-        """ИСПРАВЛЕНО: Увеличение громкости через UI с немедленным обновлением"""
+        """ИСПРАВЛЕНО: Увеличение громкости через VolumeManager"""
         try:
             app = App.get_running_app()
-            if hasattr(app, 'volume_service') and app.volume_service:
-                # Сохраняем старое значение для сравнения
-                old_volume = self.current_volume
-                
-                # Выполняем изменение громкости
-                app.volume_service.volume_up_manual()
-                
-                # ИСПРАВЛЕНО: Немедленно получаем новое значение
-                Clock.schedule_once(lambda dt: self._immediate_volume_update("up", old_volume), 0.1)
-                
-                logger.info("Volume up triggered via UI")
-            else:
-                logger.warning("Volume service not available")
+            
+            # ЗАМЕНИТЬ: volume_service → volume_manager
+            if not hasattr(app, 'volume_manager') or not app.volume_manager:
+                logger.error("VolumeManager недоступен")
                 self._play_sound("error")
+                return
+            
+            # Получаем текущую громкость
+            old_volume = app.volume_manager.get_volume()
+            logger.info(f"Громкость ДО изменения: {old_volume}%")
+            
+            # ИЗМЕНЯЕМ ВЫЗОВ: вместо volume_up_manual() используем volume_up()
+            success = app.volume_manager.volume_up(5)  # шаг 5%
+            
+            # Получаем новую громкость
+            new_volume = app.volume_manager.get_volume()
+            logger.info(f"Громкость ПОСЛЕ изменения: {new_volume}%")
+            
+            if success:
+                logger.info(f"✅ Громкость увеличена: {old_volume}% → {new_volume}%")
+                self._play_sound("confirm")
+                self.current_volume = new_volume
+                Clock.schedule_once(lambda dt: self._update_volume_display(), 0.05)
+            else:
+                logger.warning(f"❌ Не удалось увеличить громкость")
+                self._play_sound("error")
+                
         except Exception as e:
-            logger.error(f"Error in volume up: {e}")
+            logger.error(f"❌ Ошибка в volume_up: {e}")
             self._play_sound("error")
 
     def volume_down(self):
-        """ИСПРАВЛЕНО: Уменьшение громкости через UI с немедленным обновлением"""
+        """ИСПРАВЛЕНО: Уменьшение громкости через VolumeManager"""
         try:
             app = App.get_running_app()
-            if hasattr(app, 'volume_service') and app.volume_service:
-                # Сохраняем старое значение для сравнения
-                old_volume = self.current_volume
-                
-                # Выполняем изменение громкости
-                app.volume_service.volume_down_manual()
-                
-                # ИСПРАВЛЕНО: Немедленно получаем новое значение
-                Clock.schedule_once(lambda dt: self._immediate_volume_update("down", old_volume), 0.1)
-                
-                logger.info("Volume down triggered via UI")
-            else:
-                logger.warning("Volume service not available")
+            
+            # ЗАМЕНИТЬ: volume_service → volume_manager
+            if not hasattr(app, 'volume_manager') or not app.volume_manager:
+                logger.error("VolumeManager недоступен")
                 self._play_sound("error")
+                return
+            
+            # Получаем текущую громкость
+            old_volume = app.volume_manager.get_volume()
+            logger.info(f"Громкость ДО изменения: {old_volume}%")
+            
+            # ИЗМЕНЯЕМ ВЫЗОВ: вместо volume_down_manual() используем volume_down()
+            success = app.volume_manager.volume_down(5)  # шаг 5%
+            
+            # Получаем новую громкость
+            new_volume = app.volume_manager.get_volume()
+            logger.info(f"Громкость ПОСЛЕ изменения: {new_volume}%")
+            
+            if success:
+                logger.info(f"✅ Громкость уменьшена: {old_volume}% → {new_volume}%")
+                self._play_sound("click")
+                self.current_volume = new_volume
+                Clock.schedule_once(lambda dt: self._update_volume_display(), 0.05)
+            else:
+                logger.warning(f"❌ Не удалось уменьшить громкость")
+                self._play_sound("error")
+                
         except Exception as e:
-            logger.error(f"Error in volume down: {e}")
+            logger.error(f"❌ Ошибка в volume_down: {e}")
             self._play_sound("error")
 
     def _immediate_volume_update(self, action, old_volume):
