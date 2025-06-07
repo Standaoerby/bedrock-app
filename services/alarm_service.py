@@ -85,6 +85,37 @@ class AlarmService:
         except Exception as e:
             logger.error(f"Error setting alarm: {e}")
             return False
+    # Добавить этот метод в класс AlarmService в файле services/alarm_service.py
+    # После метода set_alarm():
+
+    def toggle(self):
+        """Переключение состояния будильника (включен/выключен)"""
+        if self._is_stopped:
+            logger.warning("AlarmService is stopped, cannot toggle alarm")
+            return False
+            
+        try:
+            alarm = self.get_alarm()
+            if alarm:
+                # Переключаем состояние
+                current_state = alarm.get("enabled", False)
+                new_state = not current_state
+                
+                # Обновляем настройки
+                alarm["enabled"] = new_state
+                success = self.set_alarm(alarm)
+                
+                if success:
+                    logger.info(f"Alarm toggled: {current_state} -> {new_state}")
+                
+                return success
+            else:
+                logger.error("Could not get alarm data for toggle")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error toggling alarm: {e}")
+            return False
     
     def test_alarm(self):
         if self._is_stopped:
