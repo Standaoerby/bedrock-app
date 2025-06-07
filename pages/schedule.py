@@ -325,11 +325,11 @@ class ScheduleScreen(Screen):
         # Время - выровнено по левому краю
         time_label = Label(
             text=lesson.get("time", ""),
-            font_size='16sp',
+            font_size='18sp',
             font_name=theme_manager.get_font("main") if theme_manager else "",
             color=theme_manager.get_rgba("text_secondary") if (theme_manager and is_today) else (theme_manager.get_rgba("text_secondary") if theme_manager else [0.7, 0.7, 0.7, 1]),
             size_hint_y=None,
-            height=dp(22),
+            height=dp(24),
             halign='left',
             text_size=(dp(140), None)
         )
@@ -338,14 +338,14 @@ class ScheduleScreen(Screen):
         # Предмет - выровнен по левому краю
         subject_label = Label(
             text=lesson.get("subject", ""),
-            font_size='18sp',
+            font_size='16sp',
             font_name=theme_manager.get_font("main") if theme_manager else "",
             color=theme_manager.get_rgba("text") if theme_manager else [1, 1, 1, 1],
             size_hint_y=None,
             height=dp(24),
             halign='left',
             text_size=(dp(140), None),
-            shorten=False,
+            shorten=True,
             shorten_from='right'
         )
         container.add_widget(subject_label)
