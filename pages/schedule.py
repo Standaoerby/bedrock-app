@@ -327,7 +327,7 @@ class ScheduleScreen(Screen):
             text=lesson.get("time", ""),
             font_size='18sp',
             font_name=theme_manager.get_font("main") if theme_manager else "",
-            color=theme_manager.get_rgba("text_secondary") if (theme_manager and is_today) else (theme_manager.get_rgba("text_secondary") if theme_manager else [0.7, 0.7, 0.7, 1]),
+            color=theme_manager.get_rgba("text_accent_2") if (theme_manager and is_today) else (theme_manager.get_rgba("text_accent_2") if theme_manager else [0.7, 0.7, 0.7, 1]),
             size_hint_y=None,
             height=dp(24),
             halign='left',
