@@ -1,6 +1,7 @@
 {
   "colors": {
     "background": "#1B222C",
+    "background_highlighted": "#666666",
     "overlay_card": "#282B2350",
     "primary": "#AAAAAA",
     "text": "#AAAAAA",

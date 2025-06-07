@@ -252,7 +252,7 @@ class ScheduleScreen(Screen):
         # Фон для текущего дня
         if is_today and theme_manager:
             with column.canvas.before:
-                Color(*theme_manager.get_rgba("background"))
+                Color(*theme_manager.get_rgba("background_highlighted"))
                 RoundedRectangle(
                     pos=column.pos,
                     size=column.size,
@@ -273,7 +273,7 @@ class ScheduleScreen(Screen):
         # Контейнер для уроков
         lessons_container = BoxLayout(
             orientation="vertical",
-            spacing=dp(4),
+            spacing=dp(5),
             padding=[dp(0), dp(0)],  # ИСПРАВЛЕНО: уменьшили верхний отступ
             size_hint_y=None
         )
@@ -316,36 +316,36 @@ class ScheduleScreen(Screen):
         """Создание виджета урока"""
         container = BoxLayout(
             orientation="vertical",
-            spacing=dp(2),
+            spacing=dp(0),
             size_hint_y=None,
-            height=dp(48),  # Уменьшили высоту так как убрали кабинет
-            padding=[dp(0), dp(4)]
+            height=dp(56),  # Уменьшили высоту так как убрали кабинет
+            padding=[dp(0), dp(2)]
         )
         
         # Время - выровнено по левому краю
         time_label = Label(
             text=lesson.get("time", ""),
-            font_size='12sp',
+            font_size='16sp',
             font_name=theme_manager.get_font("main") if theme_manager else "",
             color=theme_manager.get_rgba("text_secondary") if (theme_manager and is_today) else (theme_manager.get_rgba("text_secondary") if theme_manager else [0.7, 0.7, 0.7, 1]),
             size_hint_y=None,
-            height=dp(16),
+            height=dp(22),
             halign='left',
-            text_size=(dp(130), None)
+            text_size=(dp(140), None)
         )
         container.add_widget(time_label)
         
         # Предмет - выровнен по левому краю
         subject_label = Label(
             text=lesson.get("subject", ""),
-            font_size='14sp',
+            font_size='18sp',
             font_name=theme_manager.get_font("main") if theme_manager else "",
             color=theme_manager.get_rgba("text") if theme_manager else [1, 1, 1, 1],
             size_hint_y=None,
             height=dp(24),
             halign='left',
-            text_size=(dp(130), None),
-            shorten=True,
+            text_size=(dp(140), None),
+            shorten=False,
             shorten_from='right'
         )
         container.add_widget(subject_label)

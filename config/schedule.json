@@ -33,13 +33,14 @@
       {"time": "13:30", "subject": "Free Period", "room": "", "teacher": ""},
       {"time": "14:00", "subject": "Art", "room": "2001", "teacher": "RH"},
       {"time": "14:30", "subject": "Art", "room": "2001", "teacher": "RH"},
-      {"time": "15:00", "subject": "Math", "room": "402", "teacher": "MI"}
+      {"time": "15:00", "subject": "Math", "room": "402", "teacher": "MI"},
+      {"time": "15:30", "subject": "Math", "room": "402", "teacher": "MI"}
     ],
     "Wed": [
       {"time": "08:15", "subject": "Registration", "room": "224", "teacher": "KWe"},
       {"time": "08:30", "subject": "Assembly", "room": "211", "teacher": "KWe"},
       {"time": "09:00", "subject": "PSHE", "room": "224", "teacher": "MT"},
-      {"time": "09:30", "subject": "Religious Education", "room": "225", "teacher": "RC"},
+      {"time": "09:30", "subject": "Religious Ed", "room": "225", "teacher": "RC"},
       {"time": "10:00", "subject": "Technology", "room": "416", "teacher": "DZ"},
       {"time": "10:30", "subject": "Technology", "room": "416", "teacher": "DZ"},
       {"time": "11:00", "subject": "Free Period", "room": "", "teacher": ""},
@@ -60,7 +61,7 @@
 	    {"time": "09:30", "subject": "English", "room": "403", "teacher": "DC, SWa, AGH, CEA"},
       {"time": "10:00", "subject": "Music", "room": "404", "teacher": "TN"},
       {"time": "10:30", "subject": "Free Period", "room": "", "teacher": ""},
-      {"time": "11:00", "subject": "Religious Education", "room": "225", "teacher": "RC"},
+      {"time": "11:00", "subject": "Religious Ed", "room": "225", "teacher": "RC"},
       {"time": "11:30", "subject": "French", "room": "224", "teacher": "MT"},
       {"time": "12:00", "subject": "Math", "room": "423", "teacher": "JL"},
       {"time": "12:30", "subject": "Math", "room": "211", "teacher": "KWe"},
