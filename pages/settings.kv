@@ -207,7 +207,11 @@
                             background_color: app.theme_manager.get_rgba("background") if app.theme_manager else [0.2,0.2,0.2,1]
                             size_hint_x: 0.6
                             multiline: False
+<<<<<<< HEAD
                             on_text: root.on_username_changed(self.text)
+=======
+                            on_text: root.on_username_change(self, self.text)
+>>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
                     
                     # День рождения
                     BoxLayout:
@@ -242,7 +246,11 @@
                                 multiline: False
                                 input_filter: 'int'
                                 hint_text: "DD"
+<<<<<<< HEAD
                                 on_text: root.on_birth_day_changed(self.text)
+=======
+                                on_text: root.on_birth_day_change(self, self.text)
+>>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
                             
                             TextInput:
                                 id: birth_month_input
@@ -255,7 +263,11 @@
                                 multiline: False
                                 input_filter: 'int'
                                 hint_text: "MM"
+<<<<<<< HEAD
                                 on_text: root.on_birth_month_changed(self.text)
+=======
+                                on_text: root.on_birth_month_change(self, self.text)
+>>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
                             
                             TextInput:
                                 id: birth_year_input
@@ -268,7 +280,11 @@
                                 multiline: False
                                 input_filter: 'int'
                                 hint_text: "YYYY"
+<<<<<<< HEAD
                                 on_text: root.on_birth_year_changed(self.text)
+=======
+                                on_text: root.on_birth_year_change(self, self.text)
+>>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
                     
                     # Заполнитель
                     Widget:
@@ -322,7 +338,11 @@
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
                             size_hint_x: 0.6
                             disabled: not root.light_sensor_available
+<<<<<<< HEAD
                             on_state: root.on_auto_theme_toggle(self.state)
+=======
+                            on_release: root.toggle_auto_theme()
+>>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
                     
                     # Порог датчика
                     BoxLayout:
@@ -416,7 +436,11 @@
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
                             disabled: not root.volume_service_available
+<<<<<<< HEAD
                             on_release: root.on_volume_change(-10)
+=======
+                            on_release: root.volume_down()
+>>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
                         
                         Button:
                             id: volume_up_button
@@ -427,7 +451,11 @@
                             background_normal: app.theme_manager.get_image("button_bg") if app.theme_manager else ""
                             background_down: app.theme_manager.get_image("button_bg_active") if app.theme_manager else ""
                             disabled: not root.volume_service_available
+<<<<<<< HEAD
                             on_release: root.on_volume_change(+10)
+=======
+                            on_release: root.volume_up()
+>>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
                     
                     # Заполнитель
                     Widget:

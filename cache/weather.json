@@ -1,6 +1,7 @@
 {
   "current": {
 <<<<<<< HEAD
+<<<<<<< HEAD
     "time": "2025-06-07T02:00",
     "temperature": 12.1,
     "condition": "Slight Rain",
@@ -58,11 +59,21 @@
   },
   "forecast_5h": {
     "temperature": 11.7,
+=======
+    "time": "2025-06-07T05:00",
+    "temperature": 11.2,
+    "condition": "Slight Rain",
+    "precipitation_probability": 38
+  },
+  "forecast_5h": {
+    "temperature": 11.2,
+>>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
     "condition": "Slight Rain",
     "precipitation_probability": 88
   },
   "weekly_forecast": [
     {
+<<<<<<< HEAD
 <<<<<<< HEAD
       "day": "Sat",
       "date": "2025-06-07",
@@ -91,10 +102,19 @@
       "condition": "Slight Rain Showers",
       "precipitation_probability": 95
 >>>>>>> 0dbec61d5e4192612d1b965b73ce5375652b9e32
+=======
+      "day": "Sat",
+      "date": "2025-06-07",
+      "temp_max": 15.7,
+      "temp_min": 11.2,
+      "condition": "Slight Rain Showers",
+      "precipitation_probability": 100
+>>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
     },
     {
       "day": "Sun",
       "date": "2025-06-08",
+<<<<<<< HEAD
 <<<<<<< HEAD
       "temp_max": 17.2,
       "temp_min": 8.8,
@@ -127,20 +147,48 @@
       "date": "2025-06-10",
       "temp_max": 21.6,
       "temp_min": 11.9,
+=======
+      "temp_max": 17.3,
+      "temp_min": 8.7,
+>>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
       "condition": "Cloudy",
       "precipitation_probability": 3
     },
     {
-      "day": "Wed",
-      "date": "2025-06-11",
-      "temp_max": 26.8,
-      "temp_min": 13.9,
+      "day": "Mon",
+      "date": "2025-06-09",
+      "temp_max": 19.5,
+      "temp_min": 9.4,
+      "condition": "Cloudy",
+      "precipitation_probability": 8
+    },
+    {
+      "day": "Tue",
+      "date": "2025-06-10",
+      "temp_max": 20.1,
+      "temp_min": 12.7,
       "condition": "Cloudy",
       "precipitation_probability": 10
     },
     {
+      "day": "Wed",
+      "date": "2025-06-11",
+<<<<<<< HEAD
+      "temp_max": 26.8,
+      "temp_min": 13.9,
+      "condition": "Cloudy",
+      "precipitation_probability": 10
+=======
+      "temp_max": 25.9,
+      "temp_min": 13.5,
+      "condition": "Cloudy",
+      "precipitation_probability": 7
+>>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
+    },
+    {
       "day": "Thu",
       "date": "2025-06-12",
+<<<<<<< HEAD
       "temp_max": 23.0,
       "temp_min": 17.1,
       "condition": "Cloudy",
@@ -164,4 +212,21 @@
   "updated": "2025-06-06T09:28:21.360138"
 >>>>>>> 0dbec61d5e4192612d1b965b73ce5375652b9e32
 >>>>>>> refs/remotes/origin/main
+=======
+      "temp_max": 22.6,
+      "temp_min": 16.4,
+      "condition": "Thunderstorm",
+      "precipitation_probability": 50
+    },
+    {
+      "day": "Fri",
+      "date": "2025-06-13",
+      "temp_max": 23.6,
+      "temp_min": 13.4,
+      "condition": "Cloudy",
+      "precipitation_probability": 30
+    }
+  ],
+  "updated": "2025-06-07T05:06:01.938846"
+>>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
 }

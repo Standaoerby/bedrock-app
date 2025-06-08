@@ -1,12 +1,14 @@
 {
   "colors": {
     "background": "#1B222C",
+    "background_highlighted": "#AAAAAA",
     "overlay_card": "#282B2350",
     "primary": "#F9F6F2",
     "text": "#F9F6F2",
     "text_secondary": "#aaaaaa",
     "text_inactive": "#AAAAAA",
     "text_accent": "#3CB371",
+    "text_accent_2": "#FFD700",
     "clock_main": "#F9F6F2",
     "menu_color": "#25252580",
     "menu_button_text": "#F9F6F2",
