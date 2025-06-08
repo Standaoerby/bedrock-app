@@ -234,57 +234,11 @@ class ScheduleScreen(Screen):
         
         # Фон для текущего дня
         if is_today and theme_manager:
-<<<<<<< HEAD
             self._setup_today_background(column, theme_manager)
-        
+
         # Добавляем уроки или сообщение о свободном дне
         if lessons:
             total_height = self._add_lessons_to_column(column, lessons, theme_manager, is_today)
-=======
-            with column.canvas.before:
-                Color(*theme_manager.get_rgba("background_highlighted"))
-                RoundedRectangle(
-                    pos=column.pos,
-                    size=column.size,
-                    radius=[dp(8)]
-                )
-            # Привязываем обновление фона к размеру и позиции
-            def update_bg(instance, value):
-                column.canvas.before.clear()
-                with column.canvas.before:
-                    Color(*theme_manager.get_rgba("background"))
-                    RoundedRectangle(
-                        pos=instance.pos,
-                        size=instance.size,
-                        radius=[dp(8)]
-                    )
-            column.bind(pos=update_bg, size=update_bg)
-        
-        # Контейнер для уроков
-        lessons_container = BoxLayout(
-            orientation="vertical",
-            spacing=dp(5),
-            padding=[dp(0), dp(0)],  # ИСПРАВЛЕНО: уменьшили верхний отступ
-            size_hint_y=None
-        )
-        
-        if not lessons:
-            # Свободный день
-            app = App.get_running_app()
-            free_text = app.localizer.tr("free_day", "Free Day") if hasattr(app, 'localizer') else "Free Day"
-            free_label = Label(
-                text=free_text,
-                font_size='14sp',
-                font_name=theme_manager.get_font("main") if theme_manager else "",
-                color=theme_manager.get_rgba("text_secondary") if theme_manager else [0.7, 0.7, 0.7, 1],
-                size_hint_y=None,
-                height=dp(32),
-                halign='center',
-                italic=True
-            )
-            lessons_container.add_widget(free_label)
-            lessons_container.height = dp(48)  # Минимальная высота
->>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
         else:
             total_height = self._add_free_day_to_column(column, theme_manager)
         
@@ -341,23 +295,15 @@ class ScheduleScreen(Screen):
         """ИСПРАВЛЕНО: Упрощенный виджет урока без лишних контейнеров"""
         container = BoxLayout(
             orientation="vertical",
-<<<<<<< HEAD
             spacing=dp(1),
             size_hint_y=None,
             height=dp(36),
             padding=[dp(2), dp(1)]  # Минимальные отступы
-=======
-            spacing=dp(0),
-            size_hint_y=None,
-            height=dp(56),  # Уменьшили высоту так как убрали кабинет
-            padding=[dp(0), dp(2)]
->>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
         )
         
         # Время урока
         time_label = Label(
             text=lesson.get("time", ""),
-<<<<<<< HEAD
             font_size='11sp',
             font_name=theme_manager.get_font("main") if theme_manager else "",
             color=theme_manager.get_rgba("text_secondary") if theme_manager else [0.7, 0.7, 0.7, 1],
@@ -365,15 +311,6 @@ class ScheduleScreen(Screen):
             height=dp(12),
             halign='left',
             valign='middle'
-=======
-            font_size='18sp',
-            font_name=theme_manager.get_font("main") if theme_manager else "",
-            color=theme_manager.get_rgba("text_accent_2") if (theme_manager and is_today) else (theme_manager.get_rgba("text_accent_2") if theme_manager else [0.7, 0.7, 0.7, 1]),
-            size_hint_y=None,
-            height=dp(24),
-            halign='left',
-            text_size=(dp(140), None)
->>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
         )
         container.add_widget(time_label)
         
@@ -383,25 +320,14 @@ class ScheduleScreen(Screen):
             subject_text = subject_text[:14] + ".."
         
         subject_label = Label(
-<<<<<<< HEAD
             text=subject_text,
             font_size='14sp',
-=======
-            text=lesson.get("subject", ""),
-            font_size='16sp',
->>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
             font_name=theme_manager.get_font("main") if theme_manager else "",
             color=theme_manager.get_rgba("text") if theme_manager else [1, 1, 1, 1],
             size_hint_y=None,
             height=dp(22),
             halign='left',
-<<<<<<< HEAD
             valign='middle'
-=======
-            text_size=(dp(140), None),
-            shorten=True,
-            shorten_from='right'
->>>>>>> 01f083d0eac77d40f08275e5c655acfa13783107
         )
         container.add_widget(subject_label)
         
