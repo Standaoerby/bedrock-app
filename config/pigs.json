@@ -19,7 +19,7 @@
     "water": {
       "label": "Water",
       "max_hours": 8,
-      "last_reset": "2025-06-03T02:01:58.391904",
+      "last_reset": "2025-06-11T15:57:35.001028",
       "description": "Fresh water for drinking",
       "icon": "💧",
       "color": [
@@ -32,7 +32,7 @@
     "food": {
       "label": "Food",
       "max_hours": 6,
-      "last_reset": "2025-06-03T02:01:57.702122",
+      "last_reset": "2025-06-11T15:57:35.585813",
       "description": "Hay, pellets, and vegetables",
       "icon": "🥕",
       "color": [
