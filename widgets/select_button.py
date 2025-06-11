@@ -3,94 +3,106 @@ from kivy.uix.button import Button
 from kivy.uix.popup import Popup
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
-from kivy.properties import ListProperty, StringProperty, ObjectProperty
+from kivy.properties import ListProperty, StringProperty
 from kivy.event import EventDispatcher
 from kivy.metrics import dp
 from kivy.app import App
+from kivy.clock import Clock
 from app.logger import app_logger as logger
 
 
-class SelectButton(Button):
+class SelectButton(Button, EventDispatcher):
     """
     Кастомная замена для Spinner, использующая Button + Popup
-    Полностью избегает проблем с DropDown
+    ИСПРАВЛЕНО: Наследуем от EventDispatcher для корректной работы событий
     """
     
     values = ListProperty([])
     selected_value = StringProperty("")
     popup_title = StringProperty("Select Option")
     
-    # ИСПРАВЛЕНИЕ: Регистрируем событие on_select
+    # ИСПРАВЛЕНИЕ: Правильная регистрация событий
     __events__ = ('on_select',)
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._popup = None
-        self.bind(selected_value=self._update_text)
-        self.bind(on_release=self.open_selection)
+        self._popup_open = False  # ДОБАВЛЕНО: Флаг состояния popup
+        self._bind_events()
+        
+    def _bind_events(self):
+        """Безопасная привязка событий"""
+        try:
+            self.bind(selected_value=self._update_text)
+            self.bind(on_release=self._on_button_release)
+        except Exception as e:
+            logger.error(f"Error binding SelectButton events: {e}")
+            
+    def _on_button_release(self, *args):
+        """ИСПРАВЛЕНО: Безопасный обработчик нажатия кнопки"""
+        if not self._popup_open:
+            # Отложенный вызов для предотвращения конфликтов UI
+            Clock.schedule_once(lambda dt: self.open_selection(), 0.1)
         
     def _update_text(self, instance, value):
         """Обновление текста кнопки при изменении выбранного значения"""
-        # Показываем имя файла без расширения для мелодий
-        if value and '.' in value:
-            display_text = value.rsplit('.', 1)[0]  # Убираем расширение
-        else:
-            display_text = value if value else "Select..."
-        self.text = display_text
-        
-    def open_selection(self, *args):
-        """Открытие popup с выбором"""
         try:
-            if self._popup:
-                self._popup.dismiss()
-                self._popup = None
-                return
-                
-            if not self.values:
-                logger.warning("No values to select from")
-                return
-                
-            # Создаем содержимое popup
-            content = self._create_popup_content()
-            
-            # Создаем popup
-            self._popup = Popup(
-                title=self.popup_title,
-                content=content,
-                size_hint=(0.6, 0.8),
-                auto_dismiss=True
-            )
-            
-            # Привязываем событие закрытия
-            self._popup.bind(on_dismiss=self._on_popup_dismiss)
-            
-            # Открываем popup
-            self._popup.open()
-            
-        except Exception as e:
-            logger.error(f"Error opening selection popup: {e}")
-    
-    def _create_popup_content(self):
-        """Создание содержимого popup"""
-        # Основной контейнер
-        main_layout = BoxLayout(orientation='vertical', spacing=dp(10), padding=dp(10))
-        
-        # Скроллируемый список опций
-        scroll = ScrollView(do_scroll_x=False, do_scroll_y=True)
-        options_layout = BoxLayout(orientation='vertical', size_hint_y=None, spacing=dp(5))
-        options_layout.bind(minimum_height=options_layout.setter('height'))
-        
-        # Получаем theme_manager для стилизации
-        app = App.get_running_app()
-        tm = getattr(app, 'theme_manager', None)
-        
-        # Создаем кнопки для каждого значения
-        for value in self.values:
             # Показываем имя файла без расширения для мелодий
             if value and '.' in value:
                 display_text = value.rsplit('.', 1)[0]
             else:
-                display_text = value
+                display_text = value or "Select..."
+            
+            self.text = display_text
+        except Exception as e:
+            logger.error(f"Error updating SelectButton text: {e}")
+            self.text = "Select..."
+
+    def open_selection(self):
+        """Открытие окна выбора"""
+        if self._popup_open or not self.values:
+            return
+            
+        try:
+            self._popup_open = True
+            content = self._create_popup_content()
+            
+            self._popup = Popup(
+                title=self.popup_title,
+                content=content,
+                size_hint=(0.8, 0.8),
+                auto_dismiss=True
+            )
+            
+            # ИСПРАВЛЕНИЕ: Добавляем обработчик закрытия popup
+            self._popup.bind(on_dismiss=self._on_popup_dismiss)
+            self._popup.open()
+            
+        except Exception as e:
+            logger.error(f"Error opening SelectButton popup: {e}")
+            self._popup_open = False
+
+    def _create_popup_content(self):
+        """Создание содержимого popup"""
+        main_layout = BoxLayout(orientation='vertical', spacing=dp(8), padding=dp(8))
+        
+        # Скроллинг для списка опций
+        scroll = ScrollView()
+        options_layout = BoxLayout(
+            orientation='vertical', 
+            spacing=dp(4),
+            size_hint_y=None
+        )
+        options_layout.bind(minimum_height=options_layout.setter('height'))
+        
+        # Получаем theme_manager для стилизации
+        tm = self._get_theme_manager()
+        
+        # Создаем кнопки для каждого значения
+        for value in self.values:
+            display_text = value
+            if value and '.' in value:
+                display_text = value.rsplit('.', 1)[0]
                 
             btn = Button(
                 text=display_text,
@@ -110,8 +122,9 @@ class SelectButton(Button):
                 if value == self.selected_value:
                     btn.color = tm.get_rgba("primary")
             
-            # Привязываем выбор
-            btn.bind(on_release=lambda btn, val=value: self._select_value(val))
+            # ИСПРАВЛЕНИЕ: Безопасная привязка выбора с отложенным вызовом
+            btn.bind(on_release=lambda btn, val=value: Clock.schedule_once(
+                lambda dt: self._select_value(val), 0.1))
             options_layout.add_widget(btn)
         
         scroll.add_widget(options_layout)
@@ -137,135 +150,195 @@ class SelectButton(Button):
         return main_layout
     
     def _select_value(self, value):
-        """Обработка выбора значения"""
+        """ИСПРАВЛЕНО: Безопасная обработка выбора значения"""
         try:
             if value != self.selected_value:
                 old_value = self.selected_value
                 self.selected_value = value
                 
-                # ИСПРАВЛЕНИЕ: Теперь это событие корректно зарегистрировано
-                self.dispatch('on_select', value, old_value)
-                
-                logger.debug(f"Selected value: {value}")
+                # Диспетчеризация события с проверкой
+                try:
+                    self.dispatch('on_select', value, old_value)
+                    logger.debug(f"SelectButton value selected: {value}")
+                except Exception as dispatch_error:
+                    logger.error(f"Error dispatching on_select: {dispatch_error}")
             
-            # Закрываем popup
-            if self._popup:
-                self._popup.dismiss()
+            # Закрываем popup с задержкой для плавности UI
+            Clock.schedule_once(lambda dt: self._close_popup(), 0.2)
                 
         except Exception as e:
-            logger.error(f"Error selecting value: {e}")
+            logger.error(f"Error selecting value in SelectButton: {e}")
+            self._close_popup()
     
     def _cancel_selection(self, *args):
         """Отмена выбора"""
-        if self._popup:
-            self._popup.dismiss()
+        self._close_popup()
+    
+    def _close_popup(self):
+        """ДОБАВЛЕНО: Безопасное закрытие popup"""
+        try:
+            if self._popup:
+                self._popup.dismiss()
+        except Exception as e:
+            logger.error(f"Error closing SelectButton popup: {e}")
+        finally:
+            self._popup_open = False
     
     def _on_popup_dismiss(self, *args):
         """Обработка закрытия popup"""
         self._popup = None
+        self._popup_open = False
     
     def on_select(self, value, old_value):
         """Событие выбора - переопределяется в подклассах или привязывается извне"""
         pass
     
+    def _get_theme_manager(self):
+        """Безопасное получение theme_manager"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'theme_manager') and app.theme_manager:
+                return app.theme_manager
+        except Exception as e:
+            logger.error(f"Error getting theme manager: {e}")
+        return None
+    
     def set_values(self, values):
         """Установка новых значений"""
-        self.values = list(values) if values else []
-        
-        # Если текущее значение не в списке, сбрасываем
-        if self.selected_value and self.selected_value not in self.values:
-            self.selected_value = ""
+        try:
+            self.values = list(values) if values else []
+            
+            # Если текущее значение не в списке, сбрасываем
+            if self.selected_value and self.selected_value not in self.values:
+                self.selected_value = ""
+                
+        except Exception as e:
+            logger.error(f"Error setting SelectButton values: {e}")
     
     def set_selection(self, value):
         """Программная установка выбранного значения"""
-        if value in self.values:
-            self.selected_value = value
-        else:
-            logger.warning(f"Value '{value}' not in values list")
+        try:
+            if not value:
+                self.selected_value = ""
+            elif value in self.values:
+                self.selected_value = value
+            else:
+                logger.warning(f"SelectButton value '{value}' not in values list")
+        except Exception as e:
+            logger.error(f"Error setting SelectButton selection: {e}")
 
+
+# ИСПРАВЛЕНИЕ: Специализированные классы с корректной инициализацией
 
 class ThemeSelectButton(SelectButton):
-    """Специализированная кнопка выбора темы"""
+    """Кнопка выбора темы с правильной привязкой событий"""
     
     def __init__(self, **kwargs):
-        kwargs.setdefault('popup_title', 'Select Theme')
         super().__init__(**kwargs)
+        self.popup_title = "Select Theme"
     
     def on_select(self, value, old_value):
         """Обработка выбора темы"""
-        # Получаем parent screen для вызова метода обработки
-        from pages.settings import SettingsScreen
-        screen = self._find_parent_screen()
-        if isinstance(screen, SettingsScreen):
-            # ИСПРАВЛЕНИЕ: Определяем тип кнопки по popup_title
-            if hasattr(self, 'popup_title') and 'Mode' in self.popup_title:
-                screen.on_variant_select(value)
-            else:
-                screen.on_theme_select(value)
-
-    def _find_parent_screen(self):
-        """Поиск родительского экрана"""
+        try:
+            # Находим родительский экран настроек
+            screen = self._find_settings_screen()
+            if screen and hasattr(screen, 'on_theme_select'):
+                Clock.schedule_once(lambda dt: screen.on_theme_select(value), 0.1)
+        except Exception as e:
+            logger.error(f"Error in ThemeSelectButton.on_select: {e}")
+    
+    def _find_settings_screen(self):
+        """Поиск родительского экрана настроек"""
         parent = self.parent
         while parent:
-            if hasattr(parent, '__class__') and hasattr(parent.__class__, '__name__'):
-                if 'Screen' in parent.__class__.__name__:
-                    return parent
-            parent = getattr(parent, 'parent', None)
+            if hasattr(parent, 'on_theme_select'):
+                return parent
+            parent = parent.parent
         return None
 
 
 class LanguageSelectButton(SelectButton):
-    """Специализированная кнопка выбора языка"""
+    """Кнопка выбора языка с правильной привязкой событий"""
     
     def __init__(self, **kwargs):
-        kwargs.setdefault('popup_title', 'Select Language')
         super().__init__(**kwargs)
+        self.popup_title = "Select Language"
     
     def on_select(self, value, old_value):
         """Обработка выбора языка"""
-        from pages.settings import SettingsScreen
-        screen = self._find_parent_screen()
-        if isinstance(screen, SettingsScreen):
-            screen.on_language_select(value)
-
-    def _find_parent_screen(self):
-        """Поиск родительского экрана"""
+        try:
+            # Находим родительский экран настроек
+            screen = self._find_settings_screen()
+            if screen and hasattr(screen, 'on_language_select'):
+                Clock.schedule_once(lambda dt: screen.on_language_select(value), 0.1)
+        except Exception as e:
+            logger.error(f"Error in LanguageSelectButton.on_select: {e}")
+    
+    def _find_settings_screen(self):
+        """Поиск родительского экрана настроек"""
         parent = self.parent
         while parent:
-            if hasattr(parent, '__class__') and hasattr(parent.__class__, '__name__'):
-                if 'Screen' in parent.__class__.__name__:
-                    return parent
-            parent = getattr(parent, 'parent', None)
+            if hasattr(parent, 'on_language_select'):
+                return parent
+            parent = parent.parent
+        return None
+
+
+class VariantSelectButton(SelectButton):
+    """Кнопка выбора варианта темы с правильной привязкой событий"""
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.popup_title = "Select Variant"
+    
+    def on_select(self, value, old_value):
+        """Обработка выбора варианта"""
+        try:
+            # Находим родительский экран настроек
+            screen = self._find_settings_screen()
+            if screen and hasattr(screen, 'on_variant_select'):
+                Clock.schedule_once(lambda dt: screen.on_variant_select(value), 0.1)
+        except Exception as e:
+            logger.error(f"Error in VariantSelectButton.on_select: {e}")
+    
+    def _find_settings_screen(self):
+        """Поиск родительского экрана настроек"""
+        parent = self.parent
+        while parent:
+            if hasattr(parent, 'on_variant_select'):
+                return parent
+            parent = parent.parent
         return None
 
 
 class RingtoneSelectButton(SelectButton):
-    """Специализированная кнопка выбора мелодии"""
+    """Кнопка выбора рингтона с правильной привязкой событий"""
     
     def __init__(self, **kwargs):
-        kwargs.setdefault('popup_title', 'Select Ringtone')
         super().__init__(**kwargs)
+        self.popup_title = "Select Ringtone"
     
     def on_select(self, value, old_value):
-        """Обработка выбора мелодии"""
+        """Обработка выбора рингтона"""
         try:
-            from pages.alarm import AlarmScreen
-            screen = self._find_parent_screen()
-            if isinstance(screen, AlarmScreen):
-                # ИСПРАВЛЕНИЕ: Вызываем правильный метод
-                screen.select_ringtone(value)
+            # ИСПРАВЛЕНО: Ищем именно AlarmScreen и вызываем select_ringtone
+            screen = self._find_alarm_screen()
+            if screen and hasattr(screen, 'select_ringtone'):
+                Clock.schedule_once(lambda dt: screen.select_ringtone(value), 0.1)
                 logger.debug(f"RingtoneSelectButton: Called select_ringtone with {value}")
             else:
-                logger.warning(f"Parent screen not found or not AlarmScreen: {type(screen)}")
+                logger.warning(f"AlarmScreen not found or doesn't have select_ringtone method")
         except Exception as e:
             logger.error(f"Error in RingtoneSelectButton.on_select: {e}")
-
-    def _find_parent_screen(self):
-        """Поиск родительского экрана"""
+    
+    def _find_alarm_screen(self):
+        """Поиск родительского экрана будильника"""
         parent = self.parent
         while parent:
-            if hasattr(parent, '__class__') and hasattr(parent.__class__, '__name__'):
-                if 'Screen' in parent.__class__.__name__:
-                    return parent
+            # ИСПРАВЛЕНО: Проверяем класс и метод
+            if hasattr(parent, '__class__') and 'AlarmScreen' in str(parent.__class__):
+                return parent
+            if hasattr(parent, 'select_ringtone'):
+                return parent
             parent = getattr(parent, 'parent', None)
         return None

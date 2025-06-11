@@ -1,12 +1,12 @@
 {
   "current": {
-    "time": "2025-06-11T16:00",
-    "temperature": 21.9,
-    "condition": "Mostly Clear",
+    "time": "2025-06-11T23:45",
+    "temperature": 14.1,
+    "condition": "Clear Sky",
     "precipitation_probability": 0
   },
   "forecast_5h": {
-    "temperature": 21.5,
+    "temperature": 14.0,
     "condition": "Mostly Clear",
     "precipitation_probability": 0
   },
@@ -22,51 +22,51 @@
     {
       "day": "Thu",
       "date": "2025-06-12",
-      "temp_max": 24.0,
+      "temp_max": 23.3,
       "temp_min": 13.6,
-      "condition": "Slight Rain Showers",
-      "precipitation_probability": 38
+      "condition": "Slight Rain",
+      "precipitation_probability": 25
     },
     {
       "day": "Fri",
       "date": "2025-06-13",
-      "temp_max": 24.1,
-      "temp_min": 16.5,
-      "condition": "Cloudy",
-      "precipitation_probability": 66
+      "temp_max": 25.9,
+      "temp_min": 15.9,
+      "condition": "Slight Rain Showers",
+      "precipitation_probability": 64
     },
     {
       "day": "Sat",
       "date": "2025-06-14",
-      "temp_max": 23.1,
-      "temp_min": 16.5,
+      "temp_max": 23.2,
+      "temp_min": 16.2,
       "condition": "Thunderstorm",
-      "precipitation_probability": 83
+      "precipitation_probability": 73
     },
     {
       "day": "Sun",
       "date": "2025-06-15",
-      "temp_max": 22.1,
-      "temp_min": 13.0,
+      "temp_max": 22.3,
+      "temp_min": 12.8,
       "condition": "Cloudy",
-      "precipitation_probability": 5
+      "precipitation_probability": 0
     },
     {
       "day": "Mon",
       "date": "2025-06-16",
-      "temp_max": 24.8,
-      "temp_min": 12.5,
+      "temp_max": 25.0,
+      "temp_min": 14.2,
       "condition": "Cloudy",
-      "precipitation_probability": 0
+      "precipitation_probability": 3
     },
     {
       "day": "Tue",
       "date": "2025-06-17",
-      "temp_max": 22.9,
-      "temp_min": 13.1,
+      "temp_max": 25.4,
+      "temp_min": 15.4,
       "condition": "Cloudy",
       "precipitation_probability": 0
     }
   ],
-  "updated": "2025-06-11T16:02:53.754566"
+  "updated": "2025-06-11T23:46:33.092148"
 }
