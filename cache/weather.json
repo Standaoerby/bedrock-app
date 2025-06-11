@@ -1,72 +1,72 @@
 {
   "current": {
-    "time": "2025-06-07T05:00",
-    "temperature": 11.2,
-    "condition": "Slight Rain",
-    "precipitation_probability": 38
+    "time": "2025-06-11T03:00",
+    "temperature": 13.0,
+    "condition": "Mostly Clear",
+    "precipitation_probability": 0
   },
   "forecast_5h": {
-    "temperature": 11.2,
-    "condition": "Slight Rain",
-    "precipitation_probability": 88
+    "temperature": 12.6,
+    "condition": "Mostly Clear",
+    "precipitation_probability": 0
   },
   "weekly_forecast": [
     {
-      "day": "Sat",
-      "date": "2025-06-07",
-      "temp_max": 15.7,
-      "temp_min": 11.2,
-      "condition": "Slight Rain Showers",
-      "precipitation_probability": 100
-    },
-    {
-      "day": "Sun",
-      "date": "2025-06-08",
-      "temp_max": 17.3,
-      "temp_min": 8.7,
-      "condition": "Cloudy",
-      "precipitation_probability": 5
-    },
-    {
-      "day": "Mon",
-      "date": "2025-06-09",
-      "temp_max": 19.5,
-      "temp_min": 9.4,
-      "condition": "Cloudy",
-      "precipitation_probability": 8
-    },
-    {
-      "day": "Tue",
-      "date": "2025-06-10",
-      "temp_max": 20.1,
-      "temp_min": 12.7,
-      "condition": "Cloudy",
-      "precipitation_probability": 10
-    },
-    {
       "day": "Wed",
       "date": "2025-06-11",
-      "temp_max": 25.9,
-      "temp_min": 13.5,
+      "temp_max": 22.5,
+      "temp_min": 12.0,
       "condition": "Cloudy",
-      "precipitation_probability": 7
+      "precipitation_probability": 0
     },
     {
       "day": "Thu",
       "date": "2025-06-12",
-      "temp_max": 22.6,
-      "temp_min": 16.4,
-      "condition": "Thunderstorm",
+      "temp_max": 23.5,
+      "temp_min": 13.8,
+      "condition": "Slight Rain Showers",
       "precipitation_probability": 50
     },
     {
       "day": "Fri",
       "date": "2025-06-13",
-      "temp_max": 23.6,
-      "temp_min": 13.4,
+      "temp_max": 27.2,
+      "temp_min": 15.6,
+      "condition": "Slight Rain Showers",
+      "precipitation_probability": 77
+    },
+    {
+      "day": "Sat",
+      "date": "2025-06-14",
+      "temp_max": 22.7,
+      "temp_min": 15.7,
+      "condition": "Slight Rain Showers",
+      "precipitation_probability": 77
+    },
+    {
+      "day": "Sun",
+      "date": "2025-06-15",
+      "temp_max": 23.3,
+      "temp_min": 13.2,
       "condition": "Cloudy",
-      "precipitation_probability": 30
+      "precipitation_probability": 3
+    },
+    {
+      "day": "Mon",
+      "date": "2025-06-16",
+      "temp_max": 23.7,
+      "temp_min": 12.6,
+      "condition": "Cloudy",
+      "precipitation_probability": 3
+    },
+    {
+      "day": "Tue",
+      "date": "2025-06-17",
+      "temp_max": 26.7,
+      "temp_min": 15.4,
+      "condition": "Cloudy",
+      "precipitation_probability": 3
     }
   ],
-  "updated": "2025-06-07T05:06:01.938846"
+  "updated": "2025-06-11T03:09:00.734118"
 }

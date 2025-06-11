@@ -5,9 +5,9 @@
     "repeat": [
       "Mon",
       "Tue",
+      "Wed",
       "Fri",
-      "Thu",
-      "Wed"
+      "Thu"
     ],
     "ringtone": "robot.mp3",
     "fadein": true

@@ -1,3 +1,4 @@
+# Основные UI библиотеки
 kivy
 kivymd
 requests
@@ -10,17 +11,23 @@ pygame
 rpi-lgpio
 RPi.GPIO
 
-# Audio support
+# ТОЛЬКО ALSA аудио поддержка (убираем Audio Bonnet зависимости)
 pyalsaaudio
-python-mpd2
 
-# I2C and sensor libraries for Raspberry Pi
+# Убираем специфичные для Audio Bonnet библиотеки:
+# УДАЛЕНО: python-mpd2 - не нужен для USB audio
+# УДАЛЕНО: adafruit-circuitpython-wm8960 - только для Audio Bonnet
+
+# I2C и сенсоры (оставляем если есть другие датчики)
 smbus2
 adafruit-circuitpython-busdevice
 adafruit-circuitpython-ens160
 adafruit-circuitpython-ahtx0
 adafruit-blinka
-adafruit-circuitpython-wm8960
 
 # System monitoring
 psutil
+
+# Дополнительные аудио утилиты для USB (опционально)
+# pulsectl - для работы с PulseAudio если используется
+# sounddevice - альтернативная аудио библиотека
