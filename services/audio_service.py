@@ -329,6 +329,8 @@ class AudioService:
         except Exception as e:
             logger.error(f"❌ AudioService play error: {e}")
             self._reset_state()
+        logger.info(f"AudioService.play() called: {filepath}, caller: {inspect.stack()[1].function}")
+    
 
     def play_async(self, filepath, fadein=0):
         """ИСПРАВЛЕНО: Асинхронное воспроизведение через поток"""

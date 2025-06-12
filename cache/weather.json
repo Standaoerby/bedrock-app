@@ -1,13 +1,13 @@
 {
   "current": {
-    "time": "2025-06-12T03:30",
+    "time": "2025-06-12T04:15",
     "temperature": 13.7,
     "condition": "Mostly Clear",
     "precipitation_probability": 0
   },
   "forecast_5h": {
     "temperature": 13.7,
-    "condition": "Mostly Clear",
+    "condition": "Cloudy",
     "precipitation_probability": 0
   },
   "weekly_forecast": [
@@ -17,7 +17,7 @@
       "temp_max": 23.0,
       "temp_min": 13.7,
       "condition": "Slight Rain Showers",
-      "precipitation_probability": 25
+      "precipitation_probability": 20
     },
     {
       "day": "Fri",
@@ -25,7 +25,7 @@
       "temp_max": 24.4,
       "temp_min": 15.9,
       "condition": "Slight Rain Showers",
-      "precipitation_probability": 64
+      "precipitation_probability": 68
     },
     {
       "day": "Sat",
@@ -33,7 +33,7 @@
       "temp_max": 23.2,
       "temp_min": 16.2,
       "condition": "Cloudy",
-      "precipitation_probability": 73
+      "precipitation_probability": 60
     },
     {
       "day": "Sun",
@@ -41,7 +41,7 @@
       "temp_max": 22.3,
       "temp_min": 12.8,
       "condition": "Cloudy",
-      "precipitation_probability": 0
+      "precipitation_probability": 2
     },
     {
       "day": "Mon",
@@ -68,5 +68,5 @@
       "precipitation_probability": 3
     }
   ],
-  "updated": "2025-06-12T03:41:03.139708"
+  "updated": "2025-06-12T04:22:05.700028"
 }
