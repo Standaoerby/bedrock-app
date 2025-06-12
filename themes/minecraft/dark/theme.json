@@ -3,15 +3,15 @@
     "background": "#1B222C",
     "background_highlighted": "#666666",
     "overlay_card": "#282B2350",
-    "primary": "#AAAAAA",
-    "text": "#AAAAAA",
+    "primary": "#888888",
+    "text": "#888888",
     "text_secondary": "#3CB371",
     "text_inactive": "#000000",
     "text_accent": "#3CB371",
     "text_accent_2": "#3CB371",
     "clock_main": "#666666",
     "menu_color": "#25252580",
-    "menu_button_text": "#AAAAAA",
+    "menu_button_text": "#888888",
     "menu_button_text_active": "#3CB371"
   },
   "menu": {
