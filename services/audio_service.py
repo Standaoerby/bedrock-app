@@ -284,6 +284,14 @@ class AudioService:
         except Exception as e:
             logger.error(f"❌ AudioService play error: {e}")
             self._reset_state()
+    def play_async(self, filepath, fadein=0):
+        """Воспроизвести звук в отдельном потоке, чтобы не блокировать UI"""
+        threading.Thread(
+            target=self.play,
+            args=(filepath,),
+            kwargs={"fadein": fadein},
+            daemon=True,
+        ).start()
 
     def stop(self):
         """ИСПРАВЛЕНО: Остановка воспроизведения с проверкой mixer"""

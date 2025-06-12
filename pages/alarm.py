@@ -547,7 +547,7 @@ class AlarmScreen(Screen):
                 if hasattr(app, 'theme_manager') and app.theme_manager:
                     sound_path = app.theme_manager.get_sound(sound_name)
                     if sound_path and os.path.exists(sound_path):
-                        audio_service.play(sound_path)
+                        audio_service.play_async(sound_path)
                     else:
                         logger.debug(f"Sound file not found: {sound_name}")
                         

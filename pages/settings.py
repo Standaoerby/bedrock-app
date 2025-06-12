@@ -132,7 +132,7 @@ class SettingsScreen(Screen):
             if hasattr(app, "audio_service") and app.audio_service and tm:
                 path = tm.get_sound(sound_name)
                 if path:
-                    app.audio_service.play(path)
+                    app.audio_service.play_async(path)
         except Exception as e:
             logger.error(f"Error playing sound {sound_name}: {e}")
 

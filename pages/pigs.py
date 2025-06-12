@@ -259,7 +259,7 @@ class PigsScreen(Screen):
             if hasattr(app, 'audio_service') and app.audio_service and tm:
                 sound_file = tm.get_sound("confirm")
                 if sound_file:
-                    app.audio_service.play(sound_file)
+                    app.audio_service.play_async(sound_file)
             
             # Сбрасываем полосу в сервисе
             if hasattr(app, 'pigs_service') and app.pigs_service:
@@ -296,7 +296,7 @@ class PigsScreen(Screen):
             if hasattr(app, 'audio_service') and app.audio_service and tm:
                 sound_file = tm.get_sound("error")
                 if sound_file:
-                    app.audio_service.play(sound_file)
+                    app.audio_service.play_async(sound_file)
 
     def refresh_theme(self, *args):
         """Обновление темы для всех элементов"""

@@ -364,7 +364,7 @@ class HomeScreen(Screen):
             if hasattr(app, 'audio_service') and app.audio_service and tm:
                 sound_file = tm.get_sound("click")
                 if sound_file:
-                    app.audio_service.play(sound_file)
+                    app.audio_service.play_async(sound_file)
             
             # Переключаем состояние будильника
             if hasattr(app, 'alarm_service') and app.alarm_service:
