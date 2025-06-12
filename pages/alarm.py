@@ -11,8 +11,8 @@ from app.logger import app_logger as logger
 DAYS_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 # ИСПРАВЛЕНИЕ: Константы для дебаунсинга
-TIME_BUTTON_DEBOUNCE_DELAY = 0.15  # 150ms между нажатиями времени
-TOGGLE_BUTTON_DEBOUNCE_DELAY = 0.2  # 200ms для toggle кнопок
+TIME_BUTTON_DEBOUNCE_DELAY = 0.25   # 250ms между нажатиями времени  
+TOGGLE_BUTTON_DEBOUNCE_DELAY = 0.30 # 300ms для toggle кнопок
 
 class AlarmScreen(Screen):
     """Экран настройки будильника"""
