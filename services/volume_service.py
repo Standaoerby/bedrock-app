@@ -562,6 +562,58 @@ class VolumeControlService:
         except Exception as e:
             logger.error(f"Error getting volume: {e}")
             return self._current_volume
+    def volume_up_manual(self):
+        """ИСПРАВЛЕНО: Программное увеличение громкости (для UI кнопок)"""
+        try:
+            with self._volume_lock:
+                current_volume = self._get_system_volume()
+                new_volume = min(MAX_VOLUME, current_volume + VOLUME_STEP)
+                
+                if new_volume != current_volume:
+                    if self._set_system_volume(new_volume):
+                        self._current_volume = new_volume
+                        logger.info(f"USB Audio volume up (manual): {new_volume}%")
+                        
+                        # Вызываем callback если установлен
+                        if self._volume_change_callback:
+                            try:
+                                self._volume_change_callback(new_volume, 'up_manual')
+                            except Exception as callback_error:
+                                logger.error(f"Volume change callback error: {callback_error}")
+                        
+                        return True
+                return False
+                    
+        except Exception as e:
+            logger.error(f"Error in volume up manual: {e}")
+            return False
+
+    def volume_down_manual(self):
+        """ИСПРАВЛЕНО: Программное уменьшение громкости (для UI кнопок)"""
+        try:
+            with self._volume_lock:
+                current_volume = self._get_system_volume()
+                new_volume = max(MIN_VOLUME, current_volume - VOLUME_STEP)
+                
+                if new_volume != current_volume:
+                    if self._set_system_volume(new_volume):
+                        self._current_volume = new_volume
+                        logger.info(f"USB Audio volume down (manual): {new_volume}%")
+                        
+                        # Вызываем callback если установлен
+                        if self._volume_change_callback:
+                            try:
+                                self._volume_change_callback(new_volume, 'down_manual')
+                            except Exception as callback_error:
+                                logger.error(f"Volume change callback error: {callback_error}")
+                        
+                        return True
+                return False
+                    
+        except Exception as e:
+            logger.error(f"Error in volume down manual: {e}")
+            return False
+
     
     def set_volume_change_callback(self, callback):
         """Установка callback для изменения громкости"""
