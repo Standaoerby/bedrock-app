@@ -1,4 +1,5 @@
 # main.py — версия с автотемой по датчику освещенности и управлением громкости
+# ИСПРАВЛЕНО: Устранены глобальные импорты сервисов, улучшена архитектура
 
 from kivy.config import Config
 import sys
@@ -37,16 +38,16 @@ from app.logger import app_logger as logger
 from widgets.root_widget import RootWidget
 from widgets.top_menu import TopMenu
 
-# Импорты сервисов
-from services.audio_service import audio_service
+# ИСПРАВЛЕНО: Импортируем классы сервисов, а не экземпляры
+from services.audio_service import AudioService
 from services.alarm_service import AlarmService
 from services.notifications_service import NotificationService
 from services.weather_service import WeatherService
 from services.sensor_service import SensorService
 from services.pigs_service import PigsService
 from services.schedule_service import ScheduleService
-from services.auto_theme_service import AutoThemeService  # ДОБАВЛЕНО
-from services.volume_service import VolumeControlService  # ДОБАВЛЕНО
+from services.auto_theme_service import AutoThemeService
+from services.volume_service import VolumeControlService
 
 # AlarmClock может отсутствовать — защищаем импорт
 try:
@@ -71,7 +72,7 @@ Builder.load_file('pages/weather.kv')
 Builder.load_file('pages/pigs.kv')
 Builder.load_file('pages/settings.kv')
 
-logger.info("=== Bedrock 2.0 Started ===")
+logger.info("=== Bedrock 2.1 Started ===")
 
 
 class BedrockApp(App):
@@ -84,9 +85,9 @@ class BedrockApp(App):
         # Остальные менеджеры
         self.localizer = localizer
         self.user_config = user_config
-        self.audio_service = audio_service
         
-        # Сервисы приложения
+        # ИСПРАВЛЕНО: Все сервисы инициализируются в _initialize_services
+        self.audio_service = None
         self.alarm_service = None
         self.notification_service = None
         self.weather_service = None
@@ -94,59 +95,89 @@ class BedrockApp(App):
         self.pigs_service = None
         self.schedule_service = None
         self.alarm_clock = None
-        self.auto_theme_service = None  # ДОБАВЛЕНО
-        self.volume_service = None  # ДОБАВЛЕНО
+        self.auto_theme_service = None
+        self.volume_service = None
         
-        self._services_stopped = False
-        self._startup_complete = False
+        # Переменные состояния приложения
+        self._running = False
 
     def build(self):
-        """Построение приложения"""
-        try:
-            # Загружаем пользовательские настройки
-            self._load_user_settings()
-            
-            # Инициализируем сервисы
-            self._initialize_services()
-            
-            # Создаем корневой виджет
-            root_widget = RootWidget()
-            
-            # Запланируем воспроизведение startup звука после инициализации UI
-            Clock.schedule_once(self._on_startup_complete, 1.0)
-            
-            return root_widget
-            
-        except Exception as e:
-            logger.exception(f"Critical error in build(): {e}")
-            return None
-
+        """Основной метод приложения - строим интерфейс"""
+        logger.info("Building application...")
+        
+        # Загружаем пользовательские настройки
+        self._load_user_settings()
+        
+        # Инициализируем сервисы
+        self._initialize_services()
+        
+        # Создаем корневой виджет
+        root = RootWidget()
+        
+        # ИСПРАВЛЕНО: Убираем _setup_screens так как экраны уже в KV файле
+        # KV файл root_widget.kv уже содержит ScreenManager с экранами
+        
+        # Подключаем события
+        self._setup_events()
+        
+        # ИСПРАВЛЕНО: Отложенная инициализация тем и автотемы
+        Clock.schedule_once(lambda dt: self._finalize_initialization(), 1.0)
+        
+        logger.info("Application built successfully")
+        return root
+    
     def _load_user_settings(self):
-        """Загрузка пользовательских настроек"""
+        """ИСПРАВЛЕНО: Загрузка пользовательских настроек с обработкой ошибок"""
         try:
-            # Загружаем язык
-            lang = self.user_config.get("language", "en")
-            self.localizer.load(lang)
-            logger.info(f"Language loaded: {lang}")
-
-            # Загружаем тему
-            theme_name = self.user_config.get("theme", "minecraft")
-            theme_variant = self.user_config.get("variant", "light")
+            # Применяем тему из конфига
+            theme = self.user_config.get("theme", "minecraft")
+            variant = self.user_config.get("variant", "light") 
+            language = self.user_config.get("language", "en")
             
-            # Проверяем что theme_manager инициализирован
+            # ИСПРАВЛЕНО: Проверяем что theme_manager инициализирован правильно
             if hasattr(self, 'theme_manager') and self.theme_manager:
-                self.theme_manager.load(theme_name, theme_variant)
-                logger.info(f"Theme loaded: {theme_name}/{theme_variant}")
+                if self.theme_manager.load_theme(theme, variant):
+                    logger.info(f"Theme loaded: {theme}/{variant}")
+                else:
+                    logger.warning(f"Failed to load theme {theme}/{variant}, using default")
+                    self.theme_manager.load_theme("minecraft", "light")
             else:
-                logger.error("ThemeManager not initialized!")
+                logger.error("ThemeManager not initialized properly!")
+            
+            # ИСПРАВЛЕНО: Проверяем что localizer инициализирован
+            if hasattr(self, 'localizer') and self.localizer:
+                self.localizer.load(language)
+                logger.info(f"Language loaded: {language}")
+            else:
+                logger.error("Localizer not initialized properly!")
             
         except Exception as e:
             logger.error(f"Error loading user settings: {e}")
 
     def _initialize_services(self):
-        """Инициализация всех сервисов"""
+        """ИСПРАВЛЕНО: Инициализация всех сервисов с правильным порядком"""
         try:
-            # Инициализируем сервисы с обработкой ошибок
+            logger.info("Initializing services...")
+            
+            # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Инициализируем AudioService первым
+            try:
+                logger.info("Initializing AudioService...")
+                self.audio_service = AudioService()
+                
+                # Проверяем что сервис корректно инициализирован
+                if hasattr(self.audio_service, 'diagnose_state'):
+                    logger.info("✅ AudioService initialized with diagnose_state method")
+                    # Выполняем диагностику для проверки
+                    diagnosis = self.audio_service.diagnose_state()
+                    logger.info(f"AudioService diagnosis: {diagnosis}")
+                else:
+                    logger.error("❌ AudioService missing diagnose_state method")
+                    
+            except Exception as e:
+                logger.error(f"CRITICAL: AudioService initialization failed: {e}")
+                self.audio_service = None
+            
+            # Конфигурация остальных сервисов
             services_config = [
                 ('alarm_service', AlarmService, {}),
                 ('notification_service', NotificationService, {}),
@@ -157,12 +188,14 @@ class BedrockApp(App):
                 ('sensor_service', SensorService, {}),
                 ('pigs_service', PigsService, {}),
                 ('schedule_service', ScheduleService, {}),
-                ('auto_theme_service', AutoThemeService, {}),  # ДОБАВЛЕНО
-                ('volume_service', VolumeControlService, {}),  # ДОБАВЛЕНО
+                ('auto_theme_service', AutoThemeService, {}),
+                ('volume_service', VolumeControlService, {}),
             ]
             
+            # Инициализируем сервисы последовательно
             for service_name, service_class, kwargs in services_config:
                 try:
+                    logger.info(f"Initializing {service_name}...")
                     service_instance = service_class(**kwargs)
                     setattr(self, service_name, service_instance)
                     
@@ -170,33 +203,34 @@ class BedrockApp(App):
                     if hasattr(service_instance, 'start'):
                         service_instance.start()
                     
-                    logger.info(f"Service initialized: {service_name}")
+                    logger.info(f"✅ Service initialized: {service_name}")
                     
                 except Exception as ex:
-                    logger.error(f"Failed to initialize {service_name}: {ex}")
+                    logger.error(f"❌ Failed to initialize {service_name}: {ex}")
                     setattr(self, service_name, None)
 
             # Инициализируем alarm_clock если доступен
             if ALARM_CLOCK_AVAILABLE:
                 try:
+                    logger.info("Initializing AlarmClock...")
                     self.alarm_clock = AlarmClock()
                     self.alarm_clock.start()
-                    logger.info("AlarmClock initialized and started")
+                    logger.info("✅ AlarmClock initialized and started")
                 except Exception as ex:
-                    logger.error(f"AlarmClock initialization failed: {ex}")
+                    logger.error(f"❌ AlarmClock initialization failed: {ex}")
                     self.alarm_clock = None
             
-            # ДОБАВЛЕНО: Дополнительная настройка автотемы
+            # Дополнительная настройка сервисов
             self._setup_auto_theme()
-            
-            # ДОБАВЛЕНО: Настройка volume service
             self._setup_volume_service()
             
+            logger.info("✅ All services initialized")
+            
         except Exception as e:
-            logger.error(f"Error initializing services: {e}")
+            logger.error(f"Critical error initializing services: {e}")
 
     def _setup_auto_theme(self):
-        """Настройка автоматической темы"""
+        """ИСПРАВЛЕНО: Настройка автоматической темы"""
         try:
             if hasattr(self, 'auto_theme_service') and self.auto_theme_service:
                 # Получаем настройки из конфига
@@ -218,171 +252,256 @@ class BedrockApp(App):
             logger.error(f"Error setting up auto-theme: {e}")
 
     def _setup_volume_service(self):
-        """ИСПРАВЛЕНО: Настройка сервиса управления громкостью без циклических зависимостей"""
+        """ИСПРАВЛЕНО: Настройка сервиса громкости"""
         try:
             if hasattr(self, 'volume_service') and self.volume_service:
-                # ИСПРАВЛЕНО: Упрощенный callback без попыток обновления UI
-                def volume_change_callback(volume, action):
-                    logger.info(f"Volume changed: {volume}% (action: {action})")
-                    
-                    # УБРАНО: Прямое обновление UI настроек
-                    # Теперь UI будет обновляться через свои собственные периодические обновления
-                    # Это предотвращает циклические зависимости и блокировки
-                
-                self.volume_service.set_volume_change_callback(volume_change_callback)
-                
-                # Получаем статус сервиса для диагностики
+                # Проверяем доступность GPIO
                 status = self.volume_service.get_status()
                 logger.info(f"Volume service status: {status}")
                 
-                # Диагностика миксеров
-                active_mixer = status.get('active_mixer')
-                available_mixers = status.get('available_mixers', [])
+                # Устанавливаем громкость из конфига
+                saved_volume = self.user_config.get("volume", 50)
+                self.volume_service.set_volume(saved_volume)
+                logger.info(f"Volume service setup complete, volume: {saved_volume}%")
                 
-                if active_mixer:
-                    logger.info(f"Volume service ready - Active mixer: {active_mixer}")
-                    if status.get('gpio_available', False):
-                        logger.info(f"Hardware volume buttons available on pins {status['button_pins']['volume_up']}/{status['button_pins']['volume_down']}")
-                    else:
-                        logger.info("Volume service ready - Software control only (no GPIO)")
-                else:
-                    logger.warning("Volume service has no working audio mixer!")
-                    logger.info("Available mixers: " + str(available_mixers))
-                    
-                    if not available_mixers:
-                        logger.warning("No audio mixers found - audio system may not be properly configured")
-                        logger.info("Try running: 'amixer scontrols' to see available mixers")
-                    else:
-                        logger.info("Attempting to refresh mixers...")
-                        if hasattr(self.volume_service, 'refresh_mixers'):
-                            self.volume_service.refresh_mixers()
-                            
         except Exception as e:
             logger.error(f"Error setting up volume service: {e}")
 
     def _initial_auto_theme_check(self):
-        """Первичная проверка автотемы при запуске"""
+        """ИСПРАВЛЕНО: Первичная проверка автотемы"""
         try:
             if hasattr(self, 'auto_theme_service') and self.auto_theme_service:
-                logger.info("🌓 Performing initial auto-theme check...")
-                self.auto_theme_service.force_check()
+                self.auto_theme_service.check_and_update_theme()
+                logger.info("Initial auto-theme check completed")
         except Exception as e:
             logger.error(f"Error in initial auto-theme check: {e}")
 
-    def _on_startup_complete(self, dt):
-        """Вызывается после завершения инициализации"""
+    def _setup_screens(self, root):
+        """Настройка экранов приложения"""
         try:
-            if not self._startup_complete:
-                self._startup_complete = True
-                
-                # Воспроизводим звук запуска
-                if hasattr(self, 'audio_service') and self.audio_service and hasattr(self, 'theme_manager') and self.theme_manager:
-                    try:
-                        startup_sound = self.theme_manager.get_sound("startup")
-                        if startup_sound:
-                            self.audio_service.play(startup_sound)
-                            logger.info("Startup sound played successfully")
-                        else:
-                            logger.warning("Startup sound file not found")
-                    except Exception as e:
-                        logger.error(f"Error playing startup sound: {e}")
-                
-                # Добавляем приветственное уведомление
-                if hasattr(self, 'notification_service') and self.notification_service:
-                    try:
-                        username = self.user_config.get("username", "User")
-                        welcome_msg = f"Welcome back, {username}! Bedrock 2.0 is ready."
-                        self.notification_service.add(welcome_msg, "system")
-                        logger.info("Welcome notification added")
-                    except Exception as e:
-                        logger.error(f"Error adding welcome notification: {e}")
-                
-                logger.info("=== Bedrock 2.0 Startup Complete ===")
-                
+            # Создаем и добавляем экраны
+            screens = [
+                ("home", HomeScreen(name="home")),
+                ("alarm", AlarmScreen(name="alarm")),
+                ("schedule", ScheduleScreen(name="schedule")),
+                ("weather", WeatherScreen(name="weather")),
+                ("pigs", PigsScreen(name="pigs")),
+                ("settings", SettingsScreen(name="settings")),
+            ]
+            
+            for screen_name, screen in screens:
+                root.screen_manager.add_widget(screen)
+                logger.debug(f"Added screen: {screen_name}")
+            
+            # Устанавливаем начальный экран
+            root.screen_manager.current = "home"
+            logger.info("Screens setup completed")
+            
         except Exception as e:
-            logger.error(f"Error in startup completion: {e}")
+            logger.error(f"Error setting up screens: {e}")
 
-    def on_stop(self):
-        """Остановка приложения"""
-        if self._services_stopped:
-            return
-        self._services_stopped = True
+    def _setup_events(self):
+        """ИСПРАВЛЕНО: Настройка событий приложения"""
+        try:
+            from app.event_bus import event_bus
+            
+            # Подписываемся на события темы
+            event_bus.subscribe("theme_changed", self._on_theme_changed)
+            event_bus.subscribe("variant_changed", self._on_variant_changed)
+            event_bus.subscribe("language_changed", self._on_language_changed)
+            
+            # Подписываемся на события автотемы
+            event_bus.subscribe("auto_theme_triggered", self._on_auto_theme_triggered)
+            
+            # Подписываемся на события громкости
+            event_bus.subscribe("volume_changed", self._on_volume_changed)
+            
+            logger.info("Event handlers setup completed")
+            
+        except Exception as e:
+            logger.error(f"Error setting up events: {e}")
 
-        logger.info("Stopping application...")
+    def _finalize_initialization(self):
+        """ИСПРАВЛЕНО: Финальная инициализация после построения UI"""
+        try:
+            self._running = True
+            
+            # Проверяем состояние всех сервисов
+            self._verify_services()
+            
+            # Выполняем начальную диагностику
+            self._perform_initial_diagnostics()
+            
+            logger.info("Application initialization completed successfully")
+            
+        except Exception as e:
+            logger.error(f"Error in finalization: {e}")
 
-        # Остановка всех сервисов
-        services = [
-            'alarm_service', 'notification_service', 'weather_service',
-            'sensor_service', 'pigs_service', 'schedule_service', 
-            'auto_theme_service',  # ДОБАВЛЕНО
-            'volume_service'  # ДОБАВЛЕНО
+    def _verify_services(self):
+        """НОВОЕ: Проверка состояния всех сервисов"""
+        services_to_check = [
+            'audio_service', 'alarm_service', 'notification_service',
+            'weather_service', 'sensor_service', 'pigs_service',
+            'schedule_service', 'auto_theme_service', 'volume_service'
         ]
         
-        for service_name in services:
+        for service_name in services_to_check:
             service = getattr(self, service_name, None)
             if service:
+                logger.info(f"✅ {service_name}: Available")
+                
+                # Специальная проверка для AudioService
+                if service_name == 'audio_service':
+                    if hasattr(service, 'diagnose_state'):
+                        logger.info(f"✅ {service_name}: diagnose_state method available")
+                    else:
+                        logger.error(f"❌ {service_name}: diagnose_state method MISSING")
+            else:
+                logger.warning(f"⚠️ {service_name}: Not available")
+
+    def _perform_initial_diagnostics(self):
+        """НОВОЕ: Выполнение начальной диагностики"""
+        try:
+            # Диагностика AudioService
+            if self.audio_service and hasattr(self.audio_service, 'diagnose_state'):
+                logger.info("🔧 === INITIAL AUDIO DIAGNOSTICS ===")
+                diagnosis = self.audio_service.diagnose_state()
+                for key, value in diagnosis.items():
+                    logger.info(f"Audio {key}: {value}")
+            
+            # Диагностика VolumeService
+            if self.volume_service and hasattr(self.volume_service, 'get_status'):
+                logger.info("🔧 === INITIAL VOLUME DIAGNOSTICS ===")
+                status = self.volume_service.get_status()
+                for key, value in status.items():
+                    logger.info(f"Volume {key}: {value}")
+                    
+        except Exception as e:
+            logger.error(f"Error in initial diagnostics: {e}")
+
+    def debug_audio_service(self):
+        """НОВОЕ: Метод отладки для AudioService"""
+        logger.info("=== AUDIO SERVICE DEBUG ===")
+        
+        if self.audio_service:
+            logger.info(f"AudioService instance: {type(self.audio_service)}")
+            logger.info(f"AudioService ID: {id(self.audio_service)}")
+            logger.info(f"Has diagnose_state: {hasattr(self.audio_service, 'diagnose_state')}")
+            
+            methods = [method for method in dir(self.audio_service) if not method.startswith('_')]
+            logger.info(f"AudioService methods: {methods}")
+            
+            if hasattr(self.audio_service, 'diagnose_state'):
                 try:
-                    if hasattr(service, 'stop'):
-                        service.stop()
-                    logger.info(f"Stopped service: {service_name}")
-                except Exception as ex:
-                    logger.warning(f"Failed to stop {service_name}: {ex}")
+                    diagnosis = self.audio_service.diagnose_state()
+                    logger.info(f"Diagnosis result: {diagnosis}")
+                except Exception as e:
+                    logger.error(f"Diagnosis failed: {e}")
+        else:
+            logger.error("AudioService is None")
 
-        # Остановка alarm_clock
-        if self.alarm_clock:
-            try:
-                self.alarm_clock.stop()
-                logger.info("AlarmClock stopped")
-            except Exception as ex:
-                logger.warning(f"Failed to stop AlarmClock: {ex}")
+    # ================================
+    # EVENT HANDLERS
+    # ================================
 
-        # Остановка audio_service
-        if hasattr(self, 'audio_service') and self.audio_service:
+    def _on_theme_changed(self, event_data):
+        """Обработчик смены темы"""
+        try:
+            theme = event_data.get("theme")
+            if theme and self.theme_manager:
+                current_variant = self.theme_manager.current_variant
+                self.theme_manager.load_theme(theme, current_variant)
+                self.user_config.set("theme", theme)
+                logger.info(f"Theme changed to: {theme}")
+        except Exception as e:
+            logger.error(f"Error handling theme change: {e}")
+
+    def _on_variant_changed(self, event_data):
+        """Обработчик смены варианта темы"""
+        try:
+            variant = event_data.get("variant")
+            if variant and self.theme_manager:
+                current_theme = self.theme_manager.current_theme
+                self.theme_manager.load_theme(current_theme, variant)
+                self.user_config.set("variant", variant)
+                logger.info(f"Variant changed to: {variant}")
+        except Exception as e:
+            logger.error(f"Error handling variant change: {e}")
+
+    def _on_language_changed(self, event_data):
+        """Обработчик смены языка"""
+        try:
+            language = event_data.get("language")
+            if language:
+                self.user_config.set("language", language)
+                logger.info(f"Language changed to: {language}")
+        except Exception as e:
+            logger.error(f"Error handling language change: {e}")
+
+    def _on_auto_theme_triggered(self, event_data):
+        """Обработчик срабатывания автотемы"""
+        try:
+            action = event_data.get("action")
+            logger.info(f"Auto-theme triggered: {action}")
+        except Exception as e:
+            logger.error(f"Error handling auto-theme trigger: {e}")
+
+    def _on_volume_changed(self, event_data):
+        """Обработчик изменения громкости"""
+        try:
+            volume = event_data.get("volume")
+            if volume is not None:
+                self.user_config.set("volume", volume)
+                logger.debug(f"Volume saved to config: {volume}")
+        except Exception as e:
+            logger.error(f"Error handling volume change: {e}")
+
+    def on_stop(self):
+        """ИСПРАВЛЕНО: Корректное завершение работы приложения"""
+        logger.info("Application stopping...")
+        self._running = False
+        
+        # Останавливаем все сервисы
+        services_to_stop = [
+            'alarm_clock', 'auto_theme_service', 'volume_service', 
+            'sensor_service', 'weather_service', 'pigs_service'
+        ]
+        
+        for service_name in services_to_stop:
+            service = getattr(self, service_name, None)
+            if service and hasattr(service, 'stop'):
+                try:
+                    service.stop()
+                    logger.info(f"Stopped {service_name}")
+                except Exception as e:
+                    logger.error(f"Error stopping {service_name}: {e}")
+        
+        # Останавливаем аудио
+        if self.audio_service and hasattr(self.audio_service, 'stop'):
             try:
                 self.audio_service.stop()
-                logger.info("AudioService stopped")
-            except Exception as ex:
-                logger.warning(f"Failed to stop AudioService: {ex}")
-
-        logger.info("=== Bedrock 2.0 Stopped ===")
-
-    def switch_theme(self, theme, variant):
-        """Глобальная смена темы"""
+                logger.info("Stopped audio_service")
+            except Exception as e:
+                logger.error(f"Error stopping audio_service: {e}")
+        
+        # Сохраняем конфигурацию
         try:
-            if hasattr(self, 'theme_manager') and self.theme_manager:
-                self.theme_manager.load(theme, variant)
-                logger.info(f"Theme switched to {theme}/{variant}")
-            else:
-                logger.error("ThemeManager not available for theme switch")
+            self.user_config.save()
+            logger.info("User config saved")
         except Exception as e:
-            logger.error(f"Error switching theme: {e}")
-
-    def switch_language(self, lang):
-        """Глобальная смена языка"""
-        try:
-            if hasattr(self, 'localizer') and self.localizer:
-                self.localizer.load(lang)
-                logger.info(f"Language switched to {lang}")
-            else:
-                logger.error("Localizer not available for language switch")
-        except Exception as e:
-            logger.error(f"Error switching language: {e}")
-
-    def get_theme_manager(self):
-        """Безопасное получение theme_manager"""
-        if hasattr(self, 'theme_manager') and self.theme_manager:
-            return self.theme_manager
-        else:
-            logger.warning("ThemeManager not available, creating fallback")
-            # Создаем fallback theme_manager
-            fallback_tm = ThemeManager()
-            fallback_tm.load("minecraft", "light")
-            return fallback_tm
+            logger.error(f"Error saving config: {e}")
+        
+        logger.info("Application stopped")
+        return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
-        BedrockApp().run()
+        app = BedrockApp()
+        app.run()
     except Exception as e:
-        logger.exception(f"Critical application error: {e}")
-        sys.exit(1)
+        logger.error(f"Critical application error: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+    finally:
+        logger.info("Application terminated")

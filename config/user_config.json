@@ -18,5 +18,6 @@
     "longitude": -0.178
   },
   "auto_theme_enabled": true,
-  "light_sensor_threshold": 3
+  "light_sensor_threshold": 3,
+  "volume": 50
 }

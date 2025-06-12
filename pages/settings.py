@@ -5,6 +5,7 @@ from kivy.clock import Clock
 from app.event_bus import event_bus
 from app.logger import app_logger as logger
 import os
+import threading
 
 
 class SettingsScreen(Screen):
@@ -125,16 +126,35 @@ class SettingsScreen(Screen):
         self._update_events = []
 
     def _play_sound(self, sound_name):
-        """Воспроизведение звука темы"""
-        try:
-            app = App.get_running_app()
-            tm = self.get_theme_manager()
-            if hasattr(app, "audio_service") and app.audio_service and tm:
-                path = tm.get_sound(sound_name)
-                if path:
-                    app.audio_service.play_async(path)
-        except Exception as e:
-            logger.error(f"Error playing sound {sound_name}: {e}")
+        """ИСПРАВЛЕНО: Thread-safe воспроизведение системных звуков"""
+        def play_in_thread():
+            try:
+                app = App.get_running_app()
+                if hasattr(app, 'audio_service') and app.audio_service:
+                    audio_service = app.audio_service
+                    
+                    # Проверяем что mixer инициализирован
+                    if not audio_service.is_mixer_initialized():
+                        logger.debug(f"Cannot play sound '{sound_name}' - mixer not initialized")
+                        return
+                        
+                    if hasattr(app, 'theme_manager') and app.theme_manager:
+                        sound_path = app.theme_manager.get_sound(sound_name)
+                        if sound_path and os.path.exists(sound_path):
+                            # ИСПРАВЛЕНО: Используем play_async если доступен
+                            if hasattr(audio_service, 'play_async'):
+                                audio_service.play_async(sound_path)
+                            else:
+                                audio_service.play(sound_path)
+                        else:
+                            logger.debug(f"Sound file not found: {sound_name}")
+                            
+            except Exception as e:
+                logger.error(f"Error playing sound '{sound_name}': {e}")
+        
+        # ИСПРАВЛЕНО: Воспроизводим в отдельном потоке чтобы не блокировать UI
+        threading.Thread(target=play_in_thread, daemon=True).start()
+
 
     def _check_available_themes(self):
         """ИСПРАВЛЕНО: Упрощенная проверка количества доступных тем"""

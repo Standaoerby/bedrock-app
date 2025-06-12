@@ -1,10 +1,14 @@
+# app/theme_manager.py
+# ИСПРАВЛЕНО: Добавлен метод load_theme, исправлены ошибки с путями и шрифтами
+
 import os
 import json
 from app.logger import app_logger as logger
 
 class ThemeManager:
     """
-    Менеджер тем. Отвечает за загрузку, хранение и отдачу ресурсов темы:
+    ИСПРАВЛЕНО: Менеджер тем с правильными методами загрузки
+    Отвечает за загрузку, хранение и отдачу ресурсов темы:
     цвета, изображения, шрифты, иконки, оверлеи, звуки и т.д.
     """
     def __init__(self, themes_dir="themes"):
@@ -12,18 +16,24 @@ class ThemeManager:
         self.theme_name = None
         self.variant = None
         self.theme_data = {}
+        self.current_theme = None  # ДОБАВЛЕНО для совместимости
+        self.current_variant = None  # ДОБАВЛЕНО для совместимости
+        
         self.default_theme = {
             "colors": {
                 "primary": "#40916c",
                 "background": "#f0efeb",
                 "accent": "#277da1",
-                "text": "#ffffff",
-                "text_secondary": "#aaaaaa",
-                "menu_color": "#25252580"
+                "text": "#000000",  # ИСПРАВЛЕНО: темный текст для светлой темы
+                "text_secondary": "#666666",  # ИСПРАВЛЕНО: правильный цвет
+                "menu_color": "#25252580",
+                "menu_button_text": "#ffffff",
+                "menu_button_text_active": "#40916c",
+                "overlay_card": "#ffffff"  # ДОБАВЛЕНО
             },
             "fonts": {
-                "main": "Minecraftia-Regular.ttf",
-                "title": "Minecraftia-Regular.ttf"
+                "main": "",  # ИСПРАВЛЕНО: пустая строка = дефолтный шрифт
+                "title": ""  # ИСПРАВЛЕНО: пустая строка = дефолтный шрифт
             },
             "images": {
                 "background": "background.png",
@@ -46,33 +56,74 @@ class ThemeManager:
             }
         }
 
+    def load_theme(self, theme_name, variant="light"):
+        """ИСПРАВЛЕНО: Правильный метод для загрузки темы (используется в main.py)"""
+        return self.load(theme_name, variant)
+
     def load(self, theme_name, variant="light"):
         """Загрузка новой темы и варианта (light/dark)."""
         self.theme_name = theme_name
         self.variant = variant
+        self.current_theme = theme_name  # Для совместимости
+        self.current_variant = variant   # Для совместимости
+        
         theme_path = os.path.join(
             self.themes_dir, theme_name, variant, "theme.json"
         )
+        
         try:
             with open(theme_path, encoding="utf-8") as f:
-                self.theme_data = json.load(f)
+                loaded_data = json.load(f)
+                
+            # Мерджим с дефолтными значениями для предотвращения ошибок
+            self.theme_data = self._merge_with_defaults(loaded_data)
             logger.info(f"Theme loaded: {theme_name}/{variant}")
+            return True
+            
         except Exception as ex:
             logger.warning(f"Failed to load theme {theme_name}/{variant}: {ex}")
+            logger.info("Using default theme")
             self.theme_data = self.default_theme.copy()
+            return False
+
+    def _merge_with_defaults(self, loaded_data):
+        """НОВОЕ: Мерджим загруженные данные с дефолтными для предотвращения ошибок"""
+        merged = self.default_theme.copy()
+        
+        for section, values in loaded_data.items():
+            if section in merged and isinstance(values, dict):
+                merged[section].update(values)
+            else:
+                merged[section] = values
+                
+        return merged
 
     def get_color(self, name, fallback="#ffffff"):
         """Вернуть hex-цвет по имени (например, 'primary')."""
         try:
-            return self.theme_data.get("colors", {}).get(name) or fallback
+            color = self.theme_data.get("colors", {}).get(name)
+            if color:
+                return color
+            return fallback
         except Exception:
             return fallback
 
     def get_rgba(self, name, fallback="#ffffff"):
-        """Вернуть цвет в формате RGBA для Kivy (tuple 0..1)."""
+        """ИСПРАВЛЕНО: Вернуть цвет в формате RGBA для Kivy (tuple 0..1)."""
         try:
             from kivy.utils import get_color_from_hex
             hex_color = self.get_color(name, fallback)
+            
+            # ИСПРАВЛЕНИЕ: Проверяем что hex_color это строка
+            if not isinstance(hex_color, str):
+                logger.warning(f"Color {name} is not a string: {hex_color}, using fallback")
+                hex_color = fallback
+                
+            # Проверяем формат hex
+            if not hex_color.startswith('#'):
+                logger.warning(f"Color {name} invalid format: {hex_color}, using fallback")
+                hex_color = fallback
+                
             return get_color_from_hex(hex_color)
         except Exception as e:
             logger.error(f"Error getting RGBA color {name}: {e}")
@@ -81,78 +132,49 @@ class ThemeManager:
     def get_param(self, name, fallback=None):
         """Получить параметр темы (например, menu_height, button_width)."""
         try:
-            # Сначала ищем в menu секции
-            menu_params = self.theme_data.get("menu", {})
-            if name in menu_params:
-                return menu_params[name]
-            
-            # Потом в colors секции
-            colors = self.theme_data.get("colors", {})
-            if name in colors:
-                return colors[name]
-            
-            # Потом в корне theme_data
-            if name in self.theme_data:
-                return self.theme_data[name]
-            
-            # Fallback к default_theme
-            default_menu = self.default_theme.get("menu", {})
-            if name in default_menu:
-                return default_menu[name]
-            
-            default_colors = self.default_theme.get("colors", {})
-            if name in default_colors:
-                return default_colors[name]
-            
+            # Ищем в разных секциях
+            for section_name, section_data in self.theme_data.items():
+                if isinstance(section_data, dict) and name in section_data:
+                    return section_data[name]
             return fallback
-        except Exception as e:
-            logger.error(f"Error getting param {name}: {e}")
+        except Exception:
             return fallback
 
-    def get_font(self, name):
-        """Вернуть путь к шрифту по имени."""
+    def get_font(self, name, fallback=""):
+        """ИСПРАВЛЕНО: Вернуть путь к шрифту или пустую строку для дефолта."""
         try:
-            # Получаем имя файла шрифта из конфигурации темы
             font_file = self.theme_data.get("fonts", {}).get(name)
+            
+            # ИСПРАВЛЕНИЕ: Если шрифт не задан или пустой, возвращаем пустую строку
             if not font_file:
-                # Фолбэк на дефолт
-                font_file = self.default_theme["fonts"].get(name, "Minecraftia-Regular.ttf")
+                return ""
             
             if not self.theme_name:
                 logger.warning("Theme not loaded, using default font")
                 return ""
             
-            # ИСПРАВЛЕНИЕ: Проверяем, не является ли font_file уже полным путем
+            # Проверяем, не является ли font_file уже полным путем
             if os.path.sep in font_file or '/' in font_file:
-                # Если в font_file уже есть путь, используем его как есть
                 path = font_file
             else:
-                # Если это просто имя файла, формируем полный путь
+                # ИСПРАВЛЕНО: Шрифты лежат в папке темы, а НЕ в папке варианта!
                 path = os.path.join(
                     self.themes_dir, self.theme_name, "fonts", font_file
                 )
             
-            # Нормализуем путь для корректного отображения
             path = os.path.normpath(path)
-            
+                
             if not os.path.isfile(path):
-                logger.warning(f"Font not found: {path}, trying fallback")
-                # Пробуем fallback путь
-                fallback_path = os.path.join(self.themes_dir, self.theme_name, "fonts", "Minecraftia-Regular.ttf")
-                fallback_path = os.path.normpath(fallback_path)
-                if os.path.isfile(fallback_path):
-                    return fallback_path
-                else:
-                    logger.warning(f"Fallback font also not found: {fallback_path}")
-                    return ""
-            
+                logger.warning(f"Font not found: {path}, using default")
+                return ""  # Пустая строка = дефолтный шрифт Kivy
+                
             return path
         except Exception as e:
             logger.error(f"Error getting font {name}: {e}")
             return ""
 
     def get_image(self, name):
-        """Вернуть путь к изображению по имени (например, 'background' или 'btn_bg')."""
+        """ИСПРАВЛЕНО: Вернуть путь к изображению или пустую строку."""
         try:
             img_file = self.theme_data.get("images", {}).get(name)
             if not img_file:
@@ -220,7 +242,7 @@ class ThemeManager:
             return ""
 
     def get_sound(self, name):
-        """Вернуть путь к звуковому файлу по имени (например, 'click')."""
+        """ИСПРАВЛЕНО: Вернуть путь к звуковому файлу по имени (например, 'click')."""
         try:
             sound_file = self.theme_data.get("sounds", {}).get(name)
             if not sound_file:
@@ -234,7 +256,7 @@ class ThemeManager:
                 # Если в sound_file уже есть путь, используем его как есть
                 path = sound_file
             else:
-                # Если это просто имя файла, формируем полный путь
+                # ИСПРАВЛЕНО: Звуки лежат в папке темы, а НЕ в папке варианта!
                 path = os.path.join(
                     self.themes_dir, self.theme_name, "sounds", sound_file
                 )
@@ -254,5 +276,44 @@ class ThemeManager:
         """Проверить, загружена ли тема."""
         return self.theme_name is not None and self.variant is not None
 
-# Глобальный singleton
+    def diagnose_state(self):
+        """НОВОЕ: Диагностика состояния ThemeManager"""
+        return {
+            "theme_name": self.theme_name,
+            "variant": self.variant,
+            "current_theme": self.current_theme,
+            "current_variant": self.current_variant,
+            "is_loaded": self.is_loaded(),
+            "themes_dir": self.themes_dir,
+            "theme_data_keys": list(self.theme_data.keys()) if self.theme_data else [],
+            "colors_count": len(self.theme_data.get("colors", {})),
+            "fonts_count": len(self.theme_data.get("fonts", {})),
+            "images_count": len(self.theme_data.get("images", {})),
+            "sounds_count": len(self.theme_data.get("sounds", {}))
+        }
+
+# ИСПРАВЛЕНО: Создаем глобальный экземпляр с правильной инициализацией
 theme_manager = ThemeManager()
+
+def get_theme_manager():
+    """НОВОЕ: Безопасное получение экземпляра ThemeManager"""
+    return theme_manager
+
+def validate_theme_manager_module():
+    """НОВОЕ: Валидация модуля ThemeManager для отладки"""
+    try:
+        tm = ThemeManager()
+        assert hasattr(tm, 'load_theme'), "load_theme method missing"
+        assert hasattr(tm, 'load'), "load method missing"
+        assert hasattr(tm, 'get_color'), "get_color method missing"
+        assert hasattr(tm, 'get_rgba'), "get_rgba method missing"
+        assert hasattr(tm, 'get_font'), "get_font method missing"
+        print("✅ ThemeManager module validation passed")
+        return True
+    except Exception as e:
+        print(f"❌ ThemeManager module validation failed: {e}")
+        return False
+
+# Только в режиме разработки
+if __name__ == "__main__":
+    validate_theme_manager_module()

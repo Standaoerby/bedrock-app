@@ -1,7 +1,6 @@
 """
 Volume Control Service for USB Audio devices
-Handles GPIO button presses and system volume control for USB dongles/cards
-ИСПРАВЛЕНО: Убрана циклическая зависимость, оптимизирован для USB audio
+ИСПРАВЛЕНО: Убрана циклическая зависимость, улучшена архитектура, безопасность GPIO
 """
 import time
 import subprocess
@@ -58,7 +57,7 @@ except ImportError:
 
 
 class VolumeControlService:
-    """Service for handling physical volume control buttons with USB audio support"""
+    """ИСПРАВЛЕНО: Service for handling physical volume control buttons with USB audio support"""
     
     def __init__(self):
         """Initialize volume control service"""
@@ -88,541 +87,408 @@ class VolumeControlService:
         # Callback events
         self._volume_change_callback = None
         
-        # Инициализируем USB аудио систему
-        self._init_usb_audio_system()
+        # ДОБАВЛЕНО: Версионирование и отслеживание экземпляров
+        self._service_version = "2.1.0"
+        self._instance_id = id(self)
         
-        logger.info(f"VolumeControlService initialized - Current volume: {self._current_volume}% (USB mixer: {self._active_mixer})")
-    
+        logger.info(f"VolumeControlService v{self._service_version} initializing (ID: {self._instance_id})")
+        
+        # Инициализируем систему
+        self._init_usb_audio_system()
+        self._init_gpio_system()
+        
+        logger.info(f"VolumeControlService initialization complete")
+
     def _init_usb_audio_system(self):
-        """Инициализация и автоопределение USB аудио миксеров"""
+        """ИСПРАВЛЕНО: Инициализация USB аудио системы с детальным логированием"""
         try:
+            if not ALSA_AVAILABLE:
+                logger.warning("ALSA not available - volume control disabled")
+                return
+                
             # Находим USB аудиокарты
-            self._discover_usb_cards()
+            self._find_usb_audio_cards()
             
-            # Находим доступные миксеры на USB картах
-            self._discover_usb_mixers()
+            # Находим доступные миксеры для USB карт
+            self._find_available_mixers()
             
-            # Выбираем лучший USB миксер
-            self._select_best_usb_mixer()
+            # Выбираем лучший миксер
+            self._select_best_mixer()
             
-            # Получаем текущую громкость
-            self._current_volume = self._get_system_volume()
+            # Читаем текущую громкость
+            self._read_current_volume()
             
-            logger.info(f"USB Audio system initialized - USB cards: {len(self._usb_cards)}, Active mixer: {self._active_mixer}")
+            logger.info(f"USB Audio system initialized. "
+                       f"Active mixer: {self._active_mixer['name'] if self._active_mixer else 'None'}")
             
         except Exception as e:
             logger.error(f"Error initializing USB audio system: {e}")
-            # Fallback на системные миксеры
-            self._fallback_to_system_mixers()
-    
-    def _discover_usb_cards(self):
+            self._active_mixer = None
+
+    def _find_usb_audio_cards(self):
         """Поиск USB аудиокарт в системе"""
         self._usb_cards = []
         
         if not ALSA_AVAILABLE:
-            logger.warning("ALSA not available - cannot detect USB audio cards")
             return
-            
+        
         try:
-            # Получаем все доступные ALSA карты
-            all_cards = alsaaudio.cards()
-            logger.debug(f"All ALSA cards: {all_cards}")
+            cards = alsaaudio.cards()
+            logger.info(f"Available ALSA cards: {cards}")
             
-            # Ищем USB аудиокарты по именам
-            usb_keywords = [
-                'gs3',              # Ваше устройство
-                'usb', 'headset', 'webcam', 'plantronics', 'logitech', 
-                'creative', 'behringer', 'focusrite', 'scarlett', 
-                'audio-technica', 'spdif', 'device', 'external'
-            ]
-            
-            for i, card_name in enumerate(all_cards):
-                card_lower = card_name.lower()
-                
-                # Проверяем, является ли карта USB устройством
-                is_usb = any(keyword in card_lower for keyword in usb_keywords)
-                
-                if is_usb:
-                    self._usb_cards.append({
-                        'index': i,
-                        'name': card_name,
-                        'device': f'hw:{i}'
-                    })
-                    logger.info(f"Found USB audio card {i}: {card_name}")
-            
-            # Дополнительная проверка через /proc/asound/cards
-            try:
-                with open('/proc/asound/cards', 'r') as f:
-                    cards_info = f.read()
+            for i, card_name in enumerate(cards):
+                # Определяем USB карты по названию
+                if any(usb_keyword in card_name.lower() 
+                      for usb_keyword in ['usb', 'headset', 'webcam', 'gs3', 'dongle']):
                     
-                lines = cards_info.strip().split('\n')
-                for line in lines:
-                    if any(keyword in line.lower() for keyword in usb_keywords):
-                        # Извлекаем номер карты
-                        parts = line.split()
-                        if parts:
-                            card_num_str = parts[0].rstrip(':')
-                            if card_num_str.isdigit():
-                                card_num = int(card_num_str)
-                                
-                                # Проверяем, не добавили ли уже эту карту
-                                if not any(card['index'] == card_num for card in self._usb_cards):
-                                    card_name = ' '.join(parts[2:]) if len(parts) > 2 else f"USB Card {card_num}"
-                                    self._usb_cards.append({
-                                        'index': card_num,
-                                        'name': card_name,
-                                        'device': f'hw:{card_num}'
-                                    })
-                                    logger.info(f"Found additional USB audio card {card_num}: {card_name}")
-                                    
-            except Exception as e:
-                logger.debug(f"Could not read /proc/asound/cards: {e}")
-                
-            logger.info(f"Discovered {len(self._usb_cards)} USB audio card(s)")
+                    self._usb_cards.append({
+                        'name': card_name,
+                        'index': i
+                    })
+                    logger.info(f"Found USB audio card: {card_name} (index {i})")
             
+            if not self._usb_cards:
+                logger.info("No USB audio cards found, checking all cards")
+                # Fallback: добавляем все карты кроме первой (обычно встроенная)
+                for i, card_name in enumerate(cards[1:], 1):
+                    self._usb_cards.append({
+                        'name': card_name,
+                        'index': i
+                    })
+                    
         except Exception as e:
-            logger.error(f"Error discovering USB cards: {e}")
-    
-    def _discover_usb_mixers(self):
-        """Поиск доступных миксеров на USB аудиокартах"""
+            logger.error(f"Error finding USB audio cards: {e}")
+
+    def _find_available_mixers(self):
+        """Поиск доступных миксеров для USB карт"""
         self._available_mixers = []
         
-        if not ALSA_AVAILABLE or not self._usb_cards:
-            logger.warning("Cannot discover USB mixers - no ALSA or no USB cards found")
+        if not ALSA_AVAILABLE:
             return
-            
-        # Проверяем миксеры на каждой USB карте
-        for usb_card in self._usb_cards:
-            card_index = usb_card['index']
-            card_name = usb_card['name']
-            
-            logger.debug(f"Checking mixers on USB card {card_index}: {card_name}")
+        
+        # Проверяем миксеры для каждой USB карты
+        for card in self._usb_cards:
+            card_index = card['index']
+            card_name = card['name']
             
             try:
-                # Получаем список миксеров для этой карты
+                # Получаем список миксеров для карты
                 mixers = alsaaudio.mixers(cardindex=card_index)
+                logger.debug(f"Card {card_name} mixers: {mixers}")
                 
                 for mixer_name in mixers:
                     try:
-                        # Проверяем, что миксер работает
-                        mixer = alsaaudio.Mixer(mixer_name, cardindex=card_index)
+                        # Пытаемся создать mixer объект для проверки
+                        mixer_obj = alsaaudio.Mixer(mixer_name, cardindex=card_index)
                         
-                        # Проверяем наличие volume контроля
-                        if hasattr(mixer, 'getvolume'):
-                            volumes = mixer.getvolume()
-                            if volumes:  # Если миксер возвращает громкость
+                        # Проверяем что у миксера есть volume control
+                        if hasattr(mixer_obj, 'getvolume'):
+                            volumes = mixer_obj.getvolume()
+                            if volumes:  # Есть channels с volume
                                 self._available_mixers.append({
                                     'name': mixer_name,
                                     'card_index': card_index,
                                     'card_name': card_name,
-                                    'device': f'hw:{card_index}',
-                                    'current_volume': volumes[0] if volumes else 50
+                                    'channels': len(volumes)
                                 })
-                                logger.debug(f"Found working mixer '{mixer_name}' on USB card {card_index}")
-                        
-                        mixer.close()
+                                logger.debug(f"Added mixer: {mixer_name} on {card_name}")
                         
                     except Exception as mixer_error:
-                        logger.debug(f"Mixer '{mixer_name}' on card {card_index} not accessible: {mixer_error}")
+                        logger.debug(f"Mixer {mixer_name} not suitable: {mixer_error}")
                         
             except Exception as card_error:
-                logger.debug(f"Cannot access mixers on USB card {card_index}: {card_error}")
+                logger.error(f"Error checking mixers for card {card_name}: {card_error}")
+
+    def _select_best_mixer(self):
+        """Выбор лучшего миксера на основе приоритетов"""
+        self._active_mixer = None
         
-        logger.info(f"Found {len(self._available_mixers)} working USB audio mixer(s)")
-        for mixer in self._available_mixers:
-            logger.debug(f"  - {mixer['name']} on {mixer['card_name']} (card {mixer['card_index']})")
-    
-    def _select_best_usb_mixer(self):
-        """Выбор лучшего USB миксера из доступных"""
         if not self._available_mixers:
-            logger.warning("No USB audio mixers found")
-            return False
-            
-        # Ищем миксер с наивысшим приоритетом
-        for priority_mixer in USB_MIXER_PRIORITIES:
+            logger.warning("No suitable mixers found")
+            return
+        
+        # Сортируем миксеры по приоритету
+        for priority_name in USB_MIXER_PRIORITIES:
             for mixer in self._available_mixers:
-                if mixer['name'].lower() == priority_mixer.lower():
+                if mixer['name'] == priority_name:
                     self._active_mixer = mixer
                     self._mixer_card = mixer['card_index']
-                    logger.info(f"Selected USB mixer: '{mixer['name']}' on card {mixer['card_index']} ({mixer['card_name']})")
-                    return True
+                    logger.info(f"Selected mixer: {mixer['name']} on card {mixer['card_name']}")
+                    return
         
-        # Если приоритетный не найден, берём первый доступный
+        # Если не найден приоритетный, берем первый доступный
         if self._available_mixers:
-            mixer = self._available_mixers[0]
-            self._active_mixer = mixer
-            self._mixer_card = mixer['card_index']
-            logger.info(f"Using first available USB mixer: '{mixer['name']}' on card {mixer['card_index']}")
-            return True
-            
-        return False
-    
-    def _fallback_to_system_mixers(self):
-        """Fallback на системные миксеры если USB не найдены"""
-        logger.info("Falling back to system audio mixers")
-        
-        if not ALSA_AVAILABLE:
-            logger.error("ALSA not available - volume control disabled")
+            self._active_mixer = self._available_mixers[0]
+            self._mixer_card = self._active_mixer['card_index']
+            logger.info(f"Using fallback mixer: {self._active_mixer['name']} on {self._active_mixer['card_name']}")
+
+    def _read_current_volume(self):
+        """Чтение текущей громкости с активного миксера"""
+        if not self._active_mixer:
+            self._current_volume = 50
             return
-            
-        try:
-            # Пробуем системные миксеры на карте 0
-            mixers = alsaaudio.mixers(cardindex=0)
-            
-            for priority_mixer in ['Master', 'PCM', 'Speaker', 'Headphone']:
-                if priority_mixer in mixers:
-                    try:
-                        mixer = alsaaudio.Mixer(priority_mixer, cardindex=0)
-                        volumes = mixer.getvolume()
-                        mixer.close()
-                        
-                        if volumes:
-                            self._active_mixer = {
-                                'name': priority_mixer,
-                                'card_index': 0,
-                                'card_name': 'System Default',
-                                'device': 'hw:0',
-                                'current_volume': volumes[0]
-                            }
-                            self._mixer_card = 0
-                            logger.info(f"Using system mixer: '{priority_mixer}' on default card")
-                            return
-                            
-                    except Exception as e:
-                        logger.debug(f"System mixer '{priority_mixer}' not working: {e}")
-                        
-        except Exception as e:
-            logger.error(f"Error accessing system mixers: {e}")
-    
-    def _get_system_volume(self):
-        """Получение текущей системной громкости с USB аудио"""
-        if not self._active_mixer or not ALSA_AVAILABLE:
-            return 50  # Default fallback
-            
+        
         try:
             mixer = alsaaudio.Mixer(
                 self._active_mixer['name'], 
                 cardindex=self._active_mixer['card_index']
             )
-            
             volumes = mixer.getvolume()
-            mixer.close()
             
             if volumes:
-                volume = volumes[0]  # Берём первый канал
-                logger.debug(f"Current USB audio volume: {volume}%")
-                return volume
+                # Берем среднее значение по каналам
+                self._current_volume = sum(volumes) // len(volumes)
+                logger.debug(f"Current volume: {self._current_volume}%")
             else:
-                logger.warning("No volume data from USB mixer")
-                return 50
+                self._current_volume = 50
                 
         except Exception as e:
-            logger.error(f"Error getting USB audio volume: {e}")
-            return 50
-    
-    def _set_system_volume(self, volume):
-        """Установка системной громкости для USB аудио"""
-        if not self._active_mixer or not ALSA_AVAILABLE:
-            logger.warning("Cannot set USB audio volume - no active mixer")
-            return False
-            
-        try:
-            volume = max(MIN_VOLUME, min(MAX_VOLUME, int(volume)))
-            
-            mixer = alsaaudio.Mixer(
-                self._active_mixer['name'], 
-                cardindex=self._active_mixer['card_index']
-            )
-            
-            # Устанавливаем громкость на все каналы
-            mixer.setvolume(volume)
-            mixer.close()
-            
-            logger.debug(f"Set USB audio volume to {volume}% on mixer '{self._active_mixer['name']}'")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error setting USB audio volume: {e}")
-            return False
-    
-    def start(self):
-        """Запуск сервиса управления громкостью"""
-        if self.running:
-            logger.warning("VolumeControlService already running")
-            return
-            
-        logger.info("Starting USB Volume Control Service...")
+            logger.error(f"Error reading volume: {e}")
+            self._current_volume = 50
+
+    def _init_gpio_system(self):
+        """ИСПРАВЛЕНО: Инициализация GPIO с proper cleanup"""
+        self.gpio_available = False
         
-        # Инициализируем GPIO если доступен
-        if self._init_gpio():
-            logger.info("GPIO initialized for volume buttons")
-        else:
-            logger.info("GPIO not available - software volume control only")
-            
-        self.running = True
-        self._stop_event.clear()
-        
-        # Запускаем поток мониторинга кнопок (если GPIO доступен)
-        if self.gpio_available:
-            self.thread = Thread(target=self._monitor_buttons, daemon=True)
-            self.thread.start()
-            logger.info("Volume button monitoring started")
-        else:
-            logger.info("Volume service started in software-only mode")
-    
-    def stop(self):
-        """Остановка сервиса"""
-        if not self.running:
-            return
-            
-        logger.info("Stopping USB Volume Control Service...")
-        
-        self.running = False
-        self._stop_event.set()
-        
-        # Ждём завершения потока
-        if self.thread and self.thread.is_alive():
-            self.thread.join(timeout=1.0)
-            
-        # Очищаем GPIO
-        self._cleanup_gpio()
-        
-        logger.info("Volume Control Service stopped")
-    
-    def _init_gpio(self):
-        """Инициализация GPIO для кнопок громкости"""
-        # Пробуем lgpio
+        # Пытаемся инициализировать GPIO
         if LGPIO_AVAILABLE:
             try:
                 self.gpio_handle = lgpio.gpiochip_open(0)
-                
-                # Настраиваем пины как входы с подтяжкой
-                lgpio.gpio_claim_input(self.gpio_handle, VOLUME_UP_PIN, lgpio.SET_PULL_UP)
-                lgpio.gpio_claim_input(self.gpio_handle, VOLUME_DOWN_PIN, lgpio.SET_PULL_UP)
-                
-                self.gpio_available = True
-                self.gpio_lib = 'lgpio'
-                logger.info(f"GPIO initialized with lgpio - pins {VOLUME_UP_PIN}/{VOLUME_DOWN_PIN}")
-                return True
-                
+                if self.gpio_handle >= 0:
+                    # Настраиваем пины как входы с подтяжкой
+                    lgpio.gpio_claim_input(self.gpio_handle, VOLUME_UP_PIN, lgpio.SET_PULL_UP)
+                    lgpio.gpio_claim_input(self.gpio_handle, VOLUME_DOWN_PIN, lgpio.SET_PULL_UP)
+                    
+                    self.gpio_lib = "lgpio"
+                    self.gpio_available = True
+                    logger.info("GPIO initialized with lgpio")
+                    return
+                    
             except Exception as e:
-                logger.error(f"lgpio initialization failed: {e}")
-                if self.gpio_handle:
+                logger.warning(f"lgpio initialization failed: {e}")
+                if self.gpio_handle is not None and self.gpio_handle >= 0:
                     try:
                         lgpio.gpiochip_close(self.gpio_handle)
                     except:
                         pass
                     self.gpio_handle = None
         
-        # Пробуем RPi.GPIO как fallback
         if RPI_GPIO_AVAILABLE:
             try:
                 RPi_GPIO.setmode(RPi_GPIO.BCM)
                 RPi_GPIO.setup(VOLUME_UP_PIN, RPi_GPIO.IN, pull_up_down=RPi_GPIO.PUD_UP)
                 RPi_GPIO.setup(VOLUME_DOWN_PIN, RPi_GPIO.IN, pull_up_down=RPi_GPIO.PUD_UP)
                 
+                self.gpio_lib = "RPi.GPIO"
                 self.gpio_available = True
-                self.gpio_lib = 'RPi.GPIO'
-                logger.info(f"GPIO initialized with RPi.GPIO - pins {VOLUME_UP_PIN}/{VOLUME_DOWN_PIN}")
-                return True
+                logger.info("GPIO initialized with RPi.GPIO")
+                return
                 
             except Exception as e:
-                logger.error(f"RPi.GPIO initialization failed: {e}")
-                try:
-                    RPi_GPIO.cleanup()
-                except:
-                    pass
+                logger.warning(f"RPi.GPIO initialization failed: {e}")
         
-        logger.warning("No GPIO library available - volume buttons disabled")
-        return False
-    
-    def _cleanup_gpio(self):
-        """Очистка GPIO ресурсов"""
-        if not self.gpio_available:
+        logger.warning("GPIO not available - hardware buttons disabled")
+
+    def start(self):
+        """Запуск сервиса мониторинга кнопок"""
+        if self.running:
+            logger.warning("VolumeControlService already running")
             return
-            
+        
+        if not self.gpio_available:
+            logger.info("GPIO not available, volume service started in software-only mode")
+            self.running = True
+            return
+        
+        self.running = True
+        self._stop_event.clear()
+        
+        # Запускаем поток мониторинга кнопок
+        self.thread = Thread(target=self._monitor_buttons, daemon=True)
+        self.thread.start()
+        
+        logger.info("VolumeControlService started with GPIO monitoring")
+
+    def stop(self):
+        """ИСПРАВЛЕНО: Безопасная остановка сервиса с cleanup GPIO"""
+        if not self.running:
+            return
+        
+        logger.info("Stopping VolumeControlService...")
+        self.running = False
+        self._stop_event.set()
+        
+        # Ждем завершения потока
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=2.0)
+        
+        # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Proper GPIO cleanup
+        self._cleanup_gpio()
+        
+        logger.info("VolumeControlService stopped")
+
+    def _cleanup_gpio(self):
+        """НОВОЕ: Proper GPIO cleanup для предотвращения утечек ресурсов"""
         try:
-            if self.gpio_lib == 'lgpio' and self.gpio_handle is not None:
-                lgpio.gpio_free(self.gpio_handle, VOLUME_UP_PIN)
-                lgpio.gpio_free(self.gpio_handle, VOLUME_DOWN_PIN)
-                lgpio.gpiochip_close(self.gpio_handle)
+            if self.gpio_lib == "lgpio" and self.gpio_handle is not None:
+                # Освобождаем GPIO pins
+                try:
+                    lgpio.gpio_free(self.gpio_handle, VOLUME_UP_PIN)
+                    lgpio.gpio_free(self.gpio_handle, VOLUME_DOWN_PIN)
+                except Exception as e:
+                    logger.debug(f"Error freeing GPIO pins: {e}")
+                
+                # Закрываем handle
+                try:
+                    lgpio.gpiochip_close(self.gpio_handle)
+                except Exception as e:
+                    logger.debug(f"Error closing GPIO handle: {e}")
+                    
                 self.gpio_handle = None
                 
-            elif self.gpio_lib == 'RPi.GPIO':
-                RPi_GPIO.cleanup()
-                
-            logger.debug("GPIO resources cleaned up")
+            elif self.gpio_lib == "RPi.GPIO":
+                try:
+                    RPi_GPIO.cleanup([VOLUME_UP_PIN, VOLUME_DOWN_PIN])
+                except Exception as e:
+                    logger.debug(f"Error cleaning up RPi.GPIO: {e}")
+            
+            self.gpio_available = False
+            logger.debug("GPIO cleanup completed")
             
         except Exception as e:
-            logger.error(f"Error cleaning up GPIO: {e}")
-        finally:
-            self.gpio_available = False
-            self.gpio_lib = None
-    
+            logger.error(f"Error in GPIO cleanup: {e}")
+
     def _monitor_buttons(self):
         """Мониторинг нажатий кнопок громкости"""
-        logger.debug("Starting volume button monitoring...")
+        logger.info("Button monitoring started")
         
         while self.running and not self._stop_event.is_set():
             try:
-                # Проверяем состояния кнопок
-                self._check_button(VOLUME_UP_PIN, 'up')
-                self._check_button(VOLUME_DOWN_PIN, 'down')
-                
+                self._check_volume_buttons()
                 time.sleep(0.05)  # 50ms polling
                 
             except Exception as e:
                 logger.error(f"Error in button monitoring: {e}")
                 time.sleep(0.1)
-                
-        logger.debug("Volume button monitoring stopped")
-    
-    def _check_button(self, pin, action):
-        """Проверка состояния кнопки с дебаунсингом"""
+        
+        logger.info("Button monitoring stopped")
+
+    def _check_volume_buttons(self):
+        """Проверка состояния кнопок громкости с дебаунсингом"""
+        current_time = time.time()
+        
+        # Читаем состояние пинов
         try:
-            # Читаем состояние пина
-            if self.gpio_lib == 'lgpio':
-                current_state = lgpio.gpio_read(self.gpio_handle, pin)
-            else:  # RPi.GPIO
-                current_state = RPi_GPIO.input(pin)
-            
-            # Кнопка нажата при LOW (из-за pull-up)
-            button_pressed = (current_state == 0)
-            last_state = not self._last_button_state[pin]  # Инвертируем для логики
-            
-            current_time = time.time()
-            
-            # Проверяем изменение состояния с дебаунсингом
-            if (button_pressed and not last_state and 
-                current_time - self._last_button_time[pin] > DEBOUNCE_TIME):
-                
-                self._last_button_time[pin] = current_time
-                self._handle_volume_button(action)
-            
-            self._last_button_state[pin] = not button_pressed  # Сохраняем инвертированное
-            
+            if self.gpio_lib == "lgpio":
+                up_state = lgpio.gpio_read(self.gpio_handle, VOLUME_UP_PIN)
+                down_state = lgpio.gpio_read(self.gpio_handle, VOLUME_DOWN_PIN)
+            elif self.gpio_lib == "RPi.GPIO":
+                up_state = RPi_GPIO.input(VOLUME_UP_PIN)
+                down_state = RPi_GPIO.input(VOLUME_DOWN_PIN)
+            else:
+                return
         except Exception as e:
-            logger.error(f"Error checking button {pin}: {e}")
-    
-    def _handle_volume_button(self, action):
-        """Обработка нажатия кнопки громкости"""
-        try:
-            with self._volume_lock:
-                current_volume = self._get_system_volume()
-                
-                if action == 'up':
-                    new_volume = min(MAX_VOLUME, current_volume + VOLUME_STEP)
-                else:  # down
-                    new_volume = max(MIN_VOLUME, current_volume - VOLUME_STEP)
-                
-                if new_volume != current_volume:
-                    if self._set_system_volume(new_volume):
-                        self._current_volume = new_volume
-                        logger.info(f"USB Audio volume {action}: {new_volume}%")
-                        
-                        # Вызываем callback если установлен
-                        if self._volume_change_callback:
-                            try:
-                                self._volume_change_callback(new_volume, action)
-                            except Exception as callback_error:
-                                logger.error(f"Volume change callback error: {callback_error}")
-                
-        except Exception as e:
-            logger.error(f"Error handling volume button {action}: {e}")
-    
+            logger.error(f"Error reading GPIO: {e}")
+            return
+        
+        # Проверяем кнопку Volume Up
+        if (not up_state and self._last_button_state[VOLUME_UP_PIN] and 
+            current_time - self._last_button_time[VOLUME_UP_PIN] > DEBOUNCE_TIME):
+            
+            self._last_button_time[VOLUME_UP_PIN] = current_time
+            self.volume_up_manual()
+            logger.debug("Volume up button pressed")
+        
+        # Проверяем кнопку Volume Down
+        if (not down_state and self._last_button_state[VOLUME_DOWN_PIN] and 
+            current_time - self._last_button_time[VOLUME_DOWN_PIN] > DEBOUNCE_TIME):
+            
+            self._last_button_time[VOLUME_DOWN_PIN] = current_time
+            self.volume_down_manual()
+            logger.debug("Volume down button pressed")
+        
+        # Сохраняем состояние кнопок
+        self._last_button_state[VOLUME_UP_PIN] = up_state
+        self._last_button_state[VOLUME_DOWN_PIN] = down_state
+
+    def get_volume(self):
+        """Получение текущей громкости"""
+        with self._volume_lock:
+            return self._current_volume
+
     def set_volume(self, volume):
-        """Программная установка громкости"""
+        """ИСПРАВЛЕНО: Установка громкости с синхронизацией"""
+        volume = max(MIN_VOLUME, min(MAX_VOLUME, int(volume)))
+        
+        if not self._active_mixer:
+            logger.warning("No active mixer - cannot set volume")
+            return False
+        
         try:
+            mixer = alsaaudio.Mixer(
+                self._active_mixer['name'], 
+                cardindex=self._active_mixer['card_index']
+            )
+            
+            # Устанавливаем громкость на всех каналах
+            mixer.setvolume(volume)
+            
             with self._volume_lock:
-                if self._set_system_volume(volume):
-                    self._current_volume = volume
-                    logger.info(f"USB Audio volume set to: {volume}%")
-                    
-                    # Вызываем callback
-                    if self._volume_change_callback:
-                        try:
-                            self._volume_change_callback(volume, 'set')
-                        except Exception as callback_error:
-                            logger.error(f"Volume change callback error: {callback_error}")
-                    
-                    return True
-                else:
-                    return False
-                    
+                self._current_volume = volume
+            
+            # Уведомляем об изменении
+            self._notify_volume_change(volume)
+            
+            logger.debug(f"Volume set to {volume}% on {self._active_mixer['name']}")
+            return True
+            
         except Exception as e:
             logger.error(f"Error setting volume: {e}")
             return False
-    
-    def get_volume(self):
-        """Получение текущей громкости"""
-        try:
-            with self._volume_lock:
-                self._current_volume = self._get_system_volume()
-                return self._current_volume
-        except Exception as e:
-            logger.error(f"Error getting volume: {e}")
-            return self._current_volume
+
     def volume_up_manual(self):
-        """ИСПРАВЛЕНО: Программное увеличение громкости (для UI кнопок)"""
-        try:
-            with self._volume_lock:
-                current_volume = self._get_system_volume()
-                new_volume = min(MAX_VOLUME, current_volume + VOLUME_STEP)
-                
-                if new_volume != current_volume:
-                    if self._set_system_volume(new_volume):
-                        self._current_volume = new_volume
-                        logger.info(f"USB Audio volume up (manual): {new_volume}%")
-                        
-                        # Вызываем callback если установлен
-                        if self._volume_change_callback:
-                            try:
-                                self._volume_change_callback(new_volume, 'up_manual')
-                            except Exception as callback_error:
-                                logger.error(f"Volume change callback error: {callback_error}")
-                        
-                        return True
-                return False
-                    
-        except Exception as e:
-            logger.error(f"Error in volume up manual: {e}")
-            return False
+        """Увеличение громкости (ручное или кнопка)"""
+        current = self.get_volume()
+        new_volume = min(MAX_VOLUME, current + VOLUME_STEP)
+        
+        if self.set_volume(new_volume):
+            logger.info(f"Volume up: {current}% → {new_volume}%")
+            return new_volume
+        return current
 
     def volume_down_manual(self):
-        """ИСПРАВЛЕНО: Программное уменьшение громкости (для UI кнопок)"""
-        try:
-            with self._volume_lock:
-                current_volume = self._get_system_volume()
-                new_volume = max(MIN_VOLUME, current_volume - VOLUME_STEP)
-                
-                if new_volume != current_volume:
-                    if self._set_system_volume(new_volume):
-                        self._current_volume = new_volume
-                        logger.info(f"USB Audio volume down (manual): {new_volume}%")
-                        
-                        # Вызываем callback если установлен
-                        if self._volume_change_callback:
-                            try:
-                                self._volume_change_callback(new_volume, 'down_manual')
-                            except Exception as callback_error:
-                                logger.error(f"Volume change callback error: {callback_error}")
-                        
-                        return True
-                return False
-                    
-        except Exception as e:
-            logger.error(f"Error in volume down manual: {e}")
-            return False
+        """Уменьшение громкости (ручное или кнопка)"""
+        current = self.get_volume()
+        new_volume = max(MIN_VOLUME, current - VOLUME_STEP)
+        
+        if self.set_volume(new_volume):
+            logger.info(f"Volume down: {current}% → {new_volume}%")
+            return new_volume
+        return current
 
-    
+    def _notify_volume_change(self, volume):
+        """ИСПРАВЛЕНО: Уведомление об изменении громкости через event_bus"""
+        try:
+            # Используем event_bus вместо прямого импорта App
+            from app.event_bus import event_bus
+            event_bus.publish("volume_changed", {"volume": volume})
+            
+            # Callback если установлен
+            if self._volume_change_callback:
+                self._volume_change_callback(volume)
+                
+        except Exception as e:
+            logger.error(f"Error notifying volume change: {e}")
+
     def set_volume_change_callback(self, callback):
         """Установка callback для изменения громкости"""
         self._volume_change_callback = callback
-        logger.debug("Volume change callback set")
-    
+
     def get_status(self):
-        """Получение статуса сервиса"""
+        """Получение полного статуса сервиса"""
         return {
+            'instance_id': self._instance_id,
+            'service_version': self._service_version,
             'running': self.running,
             'gpio_available': self.gpio_available,
             'gpio_library': self.gpio_lib,
@@ -646,6 +512,8 @@ class VolumeControlService:
         
         status = self.get_status()
         
+        logger.info(f"Service version: {status['service_version']}")
+        logger.info(f"Instance ID: {status['instance_id']}")
         logger.info(f"ALSA available: {status['alsa_available']}")
         logger.info(f"USB cards found: {status['usb_cards_count']}")
         logger.info(f"Available mixers: {status['available_mixers_count']}")
@@ -681,6 +549,34 @@ class VolumeControlService:
         
         return self.get_status()
 
+    def verify_instance(self):
+        """НОВОЕ: Верификация экземпляра VolumeControlService"""
+        return {
+            "class_name": self.__class__.__name__,
+            "instance_id": self._instance_id,
+            "service_version": self._service_version,
+            "has_diagnose_audio_system": hasattr(self, 'diagnose_audio_system'),
+            "has_get_status": hasattr(self, 'get_status'),
+            "methods": [method for method in dir(self) if not method.startswith('_')]
+        }
 
-# Создаем глобальный экземпляр (НЕ автозапускаем)
-volume_service = VolumeControlService()
+
+# ИСПРАВЛЕНО: НЕ создаем глобальный экземпляр
+# Каждое приложение должно создать свой экземпляр через main.py
+
+def validate_volume_service_module():
+    """Валидация модуля VolumeControlService для отладки"""
+    try:
+        service = VolumeControlService()
+        assert hasattr(service, 'get_status'), "get_status method missing"
+        assert hasattr(service, 'set_volume'), "set_volume method missing"
+        assert hasattr(service, 'diagnose_audio_system'), "diagnose_audio_system method missing"
+        print("✅ VolumeControlService module validation passed")
+        return True
+    except Exception as e:
+        print(f"❌ VolumeControlService module validation failed: {e}")
+        return False
+
+# Только в режиме разработки
+if __name__ == "__main__":
+    validate_volume_service_module()
