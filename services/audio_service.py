@@ -1,300 +1,263 @@
-# services/audio_service.py
+# services/audio_service.py - ИСПРАВЛЕНИЕ для thread safety с toggle кнопками
 import os
 import time
 import threading
-from pygame import mixer
+from kivy.clock import Clock, mainthread
 from app.logger import app_logger as logger
 
-# Попытка импорта ALSA для прямого управления
+try:
+    from pygame import mixer
+    PYGAME_AVAILABLE = True
+    logger.info("🎵 Pygame mixer imported successfully")
+except ImportError as e:
+    PYGAME_AVAILABLE = False
+    logger.error(f"❌ Failed to import pygame mixer: {e}")
+
 try:
     import alsaaudio
     ALSA_AVAILABLE = True
 except ImportError:
     ALSA_AVAILABLE = False
-    logger.warning("alsaaudio not available - using default pygame mixer")
-
 
 class AudioService:
-    def __init__(self):
-        self.is_playing = False
-        self.current_file = None
-        self.is_long_audio = False
-        self.last_play_time = 0
-        self._is_stopped = False
-        self.audio_device = None
-        self._mixer_initialized = False  # ДОБАВЛЕНО: Флаг инициализации
-        self._init_lock = threading.Lock()  # ДОБАВЛЕНО: Блокировка для thread-safety
+    """
+    Thread-safe аудио сервис с исправлениями для toggle кнопок
+    """
+    
+    def __init__(self, device_preference=None):
+        # ИСПРАВЛЕНИЕ: Добавляем thread safety
+        self._init_lock = threading.RLock()  # RLock позволяет повторные блокировки в том же потоке
+        self._state_lock = threading.Lock()   # Отдельный lock для состояния
         
-        # Инициализируем аудиосистему с проверкой
-        self._safe_init_audio()
+        # Состояние воспроизведения (thread-safe)
+        self._is_playing = False
+        self._current_file = None
+        self._is_long_audio = False
+        self._last_play_time = 0
         
-    def _safe_init_audio(self):
-        """ИСПРАВЛЕНО: Безопасная инициализация с блокировкой"""
+        # ИСПРАВЛЕНИЕ: Callbacks для UI обновлений
+        self._ui_callbacks = []
+        
+        # Настройки устройства
+        self.audio_device = device_preference
+        self._mixer_initialized = False
+        self._initialization_attempted = False
+        
+        # Инициализация в отдельном потоке
+        self._init_thread = threading.Thread(target=self._initialize_audio, daemon=True)
+        self._init_thread.start()
+
+    def _initialize_audio(self):
+        """Thread-safe инициализация аудио системы"""
         with self._init_lock:
+            if self._initialization_attempted:
+                return
+            self._initialization_attempted = True
+            
+            if not PYGAME_AVAILABLE:
+                logger.error("❌ Pygame not available - audio service disabled")
+                return
+
             try:
-                self._init_audio()
-            except Exception as e:
-                logger.error(f"Critical audio initialization error: {e}")
-                # Устанавливаем минимальное состояние для предотвращения краха
-                self._mixer_initialized = False
-                self.audio_device = "error_state"
-        
-    def _init_audio(self):
-        """Инициализация аудиосистемы для USB audio устройств"""
-        try:
-            # Сначала закрываем предыдущий mixer если есть
-            self._safe_quit_mixer()
-            
-            # Ищем USB аудиоустройства (dongle, карты)
-            usb_device = self._find_usb_audio_device()
-            
-            if usb_device:
-                logger.info(f"Found USB audio device: {usb_device}")
-                if self._init_pygame_with_device(usb_device):
-                    self._mixer_initialized = True
-                    return
-            
-            # Fallback на системное аудио по умолчанию
-            logger.info("Using system default audio device")
-            if self._init_pygame_default():
+                # Настройка ALSA устройства если доступно
+                if ALSA_AVAILABLE and self.audio_device:
+                    self._setup_alsa_device()
+                
+                # Инициализация pygame mixer
+                mixer.pre_init(
+                    frequency=44100,
+                    size=-16,
+                    channels=2,
+                    buffer=1024
+                )
+                mixer.init()
+                
                 self._mixer_initialized = True
-            else:
-                logger.error("Failed to initialize any audio device")
+                logger.info(f"🎵 Audio service initialized successfully on {self.audio_device}")
+                
+                # Уведомляем UI об успешной инициализации
+                self._notify_ui_callbacks('audio_initialized', True)
+                
+            except Exception as e:
+                logger.error(f"❌ Audio service initialization failed: {e}")
                 self._mixer_initialized = False
-                
-        except Exception as e:
-            logger.error(f"Audio initialization error: {e}")
-            self._mixer_initialized = False
+                self._notify_ui_callbacks('audio_initialized', False)
 
-    def _safe_quit_mixer(self):
-        """ДОБАВЛЕНО: Безопасное закрытие mixer"""
+    def _setup_alsa_device(self):
+        """Настройка ALSA устройства"""
         try:
-            if mixer.get_init() is not None:
-                mixer.quit()
-                time.sleep(0.1)  # Задержка для освобождения ресурсов
+            if isinstance(self.audio_device, str) and self.audio_device.startswith("hw:"):
+                os.environ['SDL_AUDIODRIVER'] = 'alsa'
+                os.environ['ALSA_CARD'] = self.audio_device.replace("hw:", "")
+                logger.info(f"🔊 ALSA device configured: {self.audio_device}")
         except Exception as e:
-            logger.debug(f"Error quitting mixer (non-critical): {e}")
+            logger.warning(f"⚠️ ALSA device setup failed: {e}")
 
-    def _find_usb_audio_device(self):
-        """Поиск USB аудиоустройств в системе"""
-        try:
-            if ALSA_AVAILABLE:
-                # Получаем список ALSA карт
-                cards = alsaaudio.cards()
-                logger.info(f"Available ALSA cards: {cards}")
-                
-                # Ищем USB аудиоустройства по известным именам
-                usb_audio_names = [
-                    'gs3',          # Ваше конкретное устройство
-                    'usb',          # Generic USB audio
-                    'headset',      # USB headsets
-                    'webcam',       # Webcam audio
-                    'plantronics',  # Plantronics headsets
-                    'logitech',     # Logitech devices
-                    'creative',     # Creative USB cards
-                    'behringer',    # Behringer interfaces
-                    'focusrite',    # Focusrite interfaces
-                    'audioengine',  # AudioEngine devices
-                ]
-                
-                for i, card in enumerate(cards):
-                    card_lower = card.lower()
-                    if any(name in card_lower for name in usb_audio_names):
-                        device = f"hw:{i},0"
-                        logger.info(f"Found potential USB audio device: {card} -> {device}")
-                        return device
-                        
-        except Exception as e:
-            logger.error(f"Error finding USB audio devices: {e}")
-        
-        return None
+    # ========================================
+    # THREAD-SAFE STATE MANAGEMENT
+    # ========================================
 
-    def _init_pygame_with_device(self, device):
-        """ИСПРАВЛЕНО: Инициализация pygame с конкретным USB устройством"""
-        try:
-            # Настраиваем переменные окружения для SDL
-            os.environ['SDL_AUDIODRIVER'] = 'alsa'
-            os.environ['AUDIODEV'] = device
-            
-            # ИСПРАВЛЕНИЕ: Более консервативные настройки для совместимости
-            mixer.pre_init(
-                frequency=44100,    # Стандартная частота для лучшей совместимости
-                size=-16,           # 16-bit signed
-                channels=2,         # Стерео
-                buffer=2048         # Увеличенный буфер для USB устройств
-            )
-            
-            mixer.init()
-            
-            # Проверяем успешность инициализации
-            if not self._test_audio_output():
-                logger.warning("USB device test failed, falling back to default")
-                return False
-                
-            logger.info(f"AudioService initialized with USB device: {device}")
-            self.audio_device = device
-            return True
-                
-        except Exception as e:
-            logger.error(f"Error initializing pygame with USB audio: {e}")
-            return False
+    def _get_state(self):
+        """Thread-safe получение состояния"""
+        with self._state_lock:
+            return {
+                'is_playing': self._is_playing,
+                'current_file': self._current_file,
+                'is_long_audio': self._is_long_audio,
+                'last_play_time': self._last_play_time
+            }
 
-    def _init_pygame_default(self):
-        """ИСПРАВЛЕНО: Базовая инициализация pygame mixer для системного аудио"""
-        try:
-            # Очищаем переменные окружения
-            os.environ.pop('SDL_AUDIODRIVER', None)
-            os.environ.pop('AUDIODEV', None)
-            
-            # Инициализируем с настройками по умолчанию
-            mixer.pre_init(
-                frequency=44100,    # Стандартная частота
-                size=-16,           # 16-bit signed
-                channels=2,         # Стерео
-                buffer=1024         # Стандартный буфер
-            )
-            
-            mixer.init()
-            
-            # ИСПРАВЛЕНИЕ: Проверяем успешность инициализации
-            if not self._test_audio_output():
-                logger.error("Default audio device test failed")
-                return False
-                
-            logger.info("AudioService initialized with system default audio")
-            self.audio_device = "system_default"
-            return True
-            
-        except Exception as e:
-            logger.error(f"Default audio initialization error: {e}")
-            return False
+    def _set_state(self, **kwargs):
+        """Thread-safe обновление состояния"""
+        with self._state_lock:
+            if 'is_playing' in kwargs:
+                self._is_playing = kwargs['is_playing']
+            if 'current_file' in kwargs:
+                self._current_file = kwargs['current_file']
+            if 'is_long_audio' in kwargs:
+                self._is_long_audio = kwargs['is_long_audio']
+            if 'last_play_time' in kwargs:
+                self._last_play_time = kwargs['last_play_time']
 
-    def _test_audio_output(self):
-        """ИСПРАВЛЕНО: Тест аудиовыхода с лучшей проверкой"""
-        try:
-            # Проверяем, что mixer инициализирован корректно
-            init_result = mixer.get_init()
-            if init_result is None:
-                logger.error("Mixer not initialized - get_init() returned None")
-                return False
-                
-            # Логируем параметры инициализации
-            freq, format_info, channels = init_result
-            logger.debug(f"Audio initialized: {freq}Hz, format={format_info}, channels={channels}")
+    def _reset_state(self):
+        """Thread-safe сброс состояния"""
+        with self._state_lock:
+            old_playing = self._is_playing
+            self._is_playing = False
+            self._current_file = None
+            self._is_long_audio = False
             
-            # ИСПРАВЛЕНИЕ: Дополнительная проверка доступности mixer.music
+            # Уведомляем UI о изменении состояния если нужно
+            if old_playing:
+                self._notify_ui_callbacks('playback_stopped', None)
+
+    # ========================================
+    # UI CALLBACKS MANAGEMENT
+    # ========================================
+
+    def add_ui_callback(self, callback):
+        """Добавить callback для уведомления UI"""
+        if callback not in self._ui_callbacks:
+            self._ui_callbacks.append(callback)
+
+    def remove_ui_callback(self, callback):
+        """Удалить callback"""
+        if callback in self._ui_callbacks:
+            self._ui_callbacks.remove(callback)
+
+    @mainthread
+    def _notify_ui_callbacks(self, event_type, data):
+        """Thread-safe уведомление UI callbacks"""
+        for callback in self._ui_callbacks:
             try:
-                # Проверяем что модуль music доступен
-                mixer.music.get_busy()  # Простой вызов для проверки
-                return True
-            except Exception as music_error:
-                logger.error(f"mixer.music not available: {music_error}")
-                return False
-            
-        except Exception as e:
-            logger.error(f"Audio test failed: {e}")
-            return False
+                callback(event_type, data)
+            except Exception as e:
+                logger.error(f"Error in UI callback: {e}")
 
-    def is_mixer_initialized(self):
-        """ДОБАВЛЕНО: Проверка состояния mixer"""
-        with self._init_lock:
-            return self._mixer_initialized and mixer.get_init() is not None
-
-    def set_volume(self, value):
-        """ИСПРАВЛЕНО: Установка громкости с проверкой mixer"""
-        if not self.is_mixer_initialized():
-            logger.warning("Cannot set volume - mixer not initialized")
-            return
-            
-        try:
-            volume = max(0.0, min(1.0, value))
-            mixer.music.set_volume(volume)
-            logger.debug(f"Set pygame volume to {volume} on device {self.audio_device}")
-                    
-        except Exception as e:
-            logger.error(f"AudioService set_volume error: {e}")
+    # ========================================
+    # THREAD-SAFE AUDIO PLAYBACK
+    # ========================================
 
     def play(self, filepath, fadein=0):
-        """ИСПРАВЛЕНО: Воспроизведение файла с проверкой mixer"""
-        if not filepath or not os.path.isfile(filepath):
-            logger.warning(f"Audio file not found: {filepath}")
+        """Thread-safe воспроизведение звука"""
+        if not self.is_mixer_initialized():
+            logger.warning("🔇 Audio service not initialized - skipping playback")
             return
             
-        # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверяем mixer перед использованием
-        if not self.is_mixer_initialized():
-            logger.error("❌ AudioService play error: mixer not initialized")
-            # Пытаемся переинициализировать
-            logger.info("Attempting to reinitialize audio system...")
-            self._safe_init_audio()
-            
-            if not self.is_mixer_initialized():
-                logger.error("❌ AudioService: Failed to reinitialize mixer")
-                return
-            
-        try:
-            with self._init_lock:  # Защищаем от concurrent access
-                is_ringtone = 'ringtones' in filepath
-                is_theme_sound = any(sound_type in filepath for sound_type in 
-                                ['click', 'confirm', 'error', 'notify', 'startup'])
+        if not os.path.exists(filepath):
+            logger.error(f"❌ Audio file not found: {filepath}")
+            return
+
+        # Выполняем актуальное воспроизведение в фоновом потоке
+        threading.Thread(
+            target=self._play_audio_thread,
+            args=(filepath, fadein),
+            daemon=True
+        ).start()
+
+    def _play_audio_thread(self, filepath, fadein):
+        """Фоновое воспроизведение аудио (НЕ блокирует UI)"""
+        with self._init_lock:
+            try:
+                # Проверяем состояние и защиту от спама
+                state = self._get_state()
+                is_ringtone = not any(short_sound in os.path.basename(filepath).lower() 
+                                    for short_sound in ['click', 'confirm', 'error', 'notify', 'startup'])
                 
                 current_time = time.time()
                 
                 # Защита от слишком частого воспроизведения
-                if current_time - self.last_play_time < 0.1 and not is_ringtone:
+                if current_time - state['last_play_time'] < 0.1 and not is_ringtone:
                     logger.debug(f"Skipping audio play - too frequent")
                     return
                 
                 # Если уже играет длинный звук (рингтон), не прерываем
-                if self.is_long_audio and mixer.music.get_busy():
-                    if not is_ringtone:  # Новый звук не рингтон - не прерываем рингтон
+                if state['is_long_audio'] and self._is_pygame_busy():
+                    if not is_ringtone:
                         logger.debug(f"Skipping audio play - ringtone is playing")
                         return
                 
                 # Останавливаем текущее воспроизведение
-                if mixer.music.get_busy():
+                if self._is_pygame_busy():
                     mixer.music.stop()
                     time.sleep(0.05)  # Короткая задержка для освобождения
                 
                 # Устанавливаем состояние
-                self.is_playing = True
-                self.current_file = filepath
-                self.is_long_audio = is_ringtone
-                self.last_play_time = current_time
+                self._set_state(
+                    is_playing=True,
+                    current_file=filepath,
+                    is_long_audio=is_ringtone,
+                    last_play_time=current_time
+                )
                 
                 # Загружаем и воспроизводим файл
-                try:
-                    mixer.music.load(filepath)
+                mixer.music.load(filepath)
+                
+                if fadein > 0:
+                    mixer.music.play(loops=0, fade_ms=int(fadein * 1000))
+                else:
+                    mixer.music.play()
                     
-                    if fadein > 0:
-                        mixer.music.play(loops=0, fade_ms=int(fadein * 1000))
-                    else:
-                        mixer.music.play()
-                        
-                    # Устанавливаем полную громкость для pygame
-                    mixer.music.set_volume(1.0)
+                mixer.music.set_volume(1.0)
+                
+                logger.debug(f"🎵 Playing audio: {os.path.basename(filepath)} on {self.audio_device}")
+                
+                # Уведомляем UI о начале воспроизведения
+                self._notify_ui_callbacks('playback_started', {
+                    'file': filepath,
+                    'is_ringtone': is_ringtone
+                })
+                
+                # Если это рингтон, запускаем мониторинг завершения
+                if is_ringtone:
+                    self._monitor_ringtone_completion()
                     
-                    logger.debug(f"🎵 Playing audio: {os.path.basename(filepath)} on {self.audio_device}")
-                    
-                except Exception as play_error:
-                    logger.error(f"❌ Error during playback: {play_error}")
-                    # Сбрасываем состояние при ошибке
+            except Exception as e:
+                logger.error(f"❌ AudioService play error: {e}")
+                self._reset_state()
+
+    def _monitor_ringtone_completion(self):
+        """Мониторинг завершения воспроизведения рингтона"""
+        def check_completion():
+            try:
+                if not self._is_pygame_busy():
+                    logger.debug("🎵 Ringtone playback completed")
                     self._reset_state()
-                    return
-            
-        except Exception as e:
-            logger.error(f"❌ AudioService play error: {e}")
-            self._reset_state()
+                else:
+                    # Проверяем снова через 0.5 секунды
+                    Clock.schedule_once(lambda dt: check_completion(), 0.5)
+            except Exception as e:
+                logger.error(f"Error monitoring ringtone: {e}")
+                self._reset_state()
+        
+        Clock.schedule_once(lambda dt: check_completion(), 0.5)
+
     def play_async(self, filepath, fadein=0):
-        """Воспроизвести звук в отдельном потоке, чтобы не блокировать UI"""
-        threading.Thread(
-            target=self.play,
-            args=(filepath,),
-            kwargs={"fadein": fadein},
-            daemon=True,
-        ).start()
+        """Асинхронное воспроизведение звука (алиас для play)"""
+        self.play(filepath, fadein)
 
     def stop(self):
-        """ИСПРАВЛЕНО: Остановка воспроизведения с проверкой mixer"""
+        """Thread-safe остановка воспроизведения"""
         logger.debug(f"🛑 AudioService.stop() called")
         
         if not self.is_mixer_initialized():
@@ -304,7 +267,7 @@ class AudioService:
         
         try:
             with self._init_lock:
-                if self.is_playing or mixer.music.get_busy():
+                if self._get_state()['is_playing'] or self._is_pygame_busy():
                     mixer.music.stop()
                     time.sleep(0.05)  # Короткая задержка
         except Exception as e:
@@ -312,31 +275,48 @@ class AudioService:
         finally:
             self._reset_state()
 
+    # ========================================
+    # THREAD-SAFE STATE QUERIES
+    # ========================================
+
     def is_busy(self):
-        """ИСПРАВЛЕНО: Проверка активности воспроизведения с проверкой mixer"""
+        """Thread-safe проверка активности воспроизведения"""
         if not self.is_mixer_initialized():
             # Если mixer не инициализирован, сбрасываем состояние
-            if self.is_playing:
+            if self._get_state()['is_playing']:
                 self._reset_state()
             return False
             
         try:
-            busy = mixer.music.get_busy()
+            busy = self._is_pygame_busy()
+            
             # Синхронизируем состояние с pygame
-            if not busy and self.is_playing:
+            state = self._get_state()
+            if not busy and state['is_playing']:
                 logger.debug(f"🔍 Pygame not busy but is_playing=True - syncing state")
                 self._reset_state()
+                
             return busy
         except Exception as e:
             logger.error(f"❌ AudioService is_busy error: {e}")
             self._reset_state()
             return False
 
-    def _reset_state(self):
-        """ДОБАВЛЕНО: Сброс внутреннего состояния"""
-        self.is_playing = False
-        self.current_file = None
-        self.is_long_audio = False
+    def _is_pygame_busy(self):
+        """Безопасная проверка состояния pygame"""
+        try:
+            return mixer.music.get_busy()
+        except Exception:
+            return False
+
+    def is_mixer_initialized(self):
+        """Thread-safe проверка инициализации mixer"""
+        with self._init_lock:
+            return self._mixer_initialized and PYGAME_AVAILABLE
+
+    # ========================================
+    # UTILITY METHODS
+    # ========================================
 
     def get_device_info(self):
         """Получение информации об аудиоустройстве"""
@@ -344,7 +324,8 @@ class AudioService:
             "device": self.audio_device,
             "device_type": "usb" if "hw:" in str(self.audio_device) else "system_default",
             "alsa_available": ALSA_AVAILABLE,
-            "mixer_initialized": self.is_mixer_initialized()
+            "mixer_initialized": self.is_mixer_initialized(),
+            "current_state": self._get_state()
         }
         
         if ALSA_AVAILABLE:
@@ -353,128 +334,30 @@ class AudioService:
             except:
                 info["alsa_cards"] = []
                 
-        # Добавляем информацию о текущих настройках pygame
-        try:
-            if self.is_mixer_initialized():
-                init_result = mixer.get_init()
-                if init_result:
-                    freq, format_info, channels = init_result
-                    info["pygame_settings"] = {
-                        "frequency": freq,
-                        "format": format_info,
-                        "channels": channels
-                    }
-        except:
-            info["pygame_settings"] = None
-                
         return info
 
-    def diagnose_state(self):
-        """Диагностика состояния AudioService"""
+    def cleanup(self):
+        """Освобождение ресурсов"""
+        logger.info("🧹 Cleaning up audio service...")
+        
         try:
-            mixer_init = self.is_mixer_initialized()
-            pygame_busy = mixer.music.get_busy() if mixer_init else False
-            pygame_init = mixer.get_init() if mixer_init else None
+            self.stop()
             
-            logger.info(f"🔧 === AUDIOSERVICE DIAGNOSIS ===")
-            logger.info(f"mixer_initialized: {mixer_init}")
-            logger.info(f"is_playing: {self.is_playing}")
-            logger.info(f"current_file: {self.current_file}")
-            logger.info(f"is_long_audio: {self.is_long_audio}")
-            logger.info(f"last_play_time: {self.last_play_time}")
-            logger.info(f"audio_device: {self.audio_device}")
-            logger.info(f"pygame mixer.get_busy(): {pygame_busy}")
-            logger.info(f"pygame mixer.get_init(): {pygame_init}")
+            if self.is_mixer_initialized():
+                mixer.quit()
+                
+            self._ui_callbacks.clear()
             
-            return {
-                "mixer_initialized": mixer_init,
-                "is_playing": self.is_playing,
-                "current_file": self.current_file,
-                "is_long_audio": self.is_long_audio,
-                "pygame_busy": pygame_busy,
-                "pygame_init": pygame_init,
-                "audio_device": self.audio_device
-            }
         except Exception as e:
-            logger.error(f"Error in diagnose_state: {e}")
-            return {"error": str(e)}
+            logger.error(f"Error during audio service cleanup: {e}")
 
-    def reinitialize_audio(self):
-        """ИСПРАВЛЕНО: Переинициализация аудио системы"""
-        logger.info("Reinitializing audio system...")
-        
-        # Останавливаем воспроизведение
-        self.stop()
-        
-        # Переинициализируем
-        self._safe_init_audio()
-        
-        # Возвращаем статус
-        return self.is_mixer_initialized()
-
-    def get_available_devices(self):
-        """Получение списка доступных аудиоустройств"""
-        devices = []
-        
-        if ALSA_AVAILABLE:
-            try:
-                cards = alsaaudio.cards()
-                for i, card in enumerate(cards):
-                    devices.append({
-                        "name": card,
-                        "device": f"hw:{i},0",
-                        "index": i,
-                        "type": "usb" if any(keyword in card.lower() 
-                                           for keyword in ['usb', 'headset', 'device']) else "other"
-                    })
-            except Exception as e:
-                logger.error(f"Error getting ALSA cards: {e}")
-        
-        # Добавляем системное устройство по умолчанию
-        devices.append({
-            "name": "System Default",
-            "device": "system_default", 
-            "index": -1,
-            "type": "default"
-        })
-        
-        return devices
-
-    def switch_device(self, device_identifier):
-        """Переключение на другое аудиоустройство"""
-        logger.info(f"Switching audio device to: {device_identifier}")
-        
-        # Останавливаем текущее воспроизведение
-        self.stop()
-        
-        # Переинициализируем с новым устройством
-        with self._init_lock:
-            self._safe_quit_mixer()
-            
-            try:
-                if device_identifier == "system_default":
-                    success = self._init_pygame_default()
-                else:
-                    success = self._init_pygame_with_device(device_identifier)
-                
-                self._mixer_initialized = success
-                
-                if success:
-                    logger.info(f"Successfully switched to audio device: {self.audio_device}")
-                else:
-                    logger.error(f"Failed to switch to audio device: {device_identifier}")
-                    # Fallback к системному аудио
-                    if self._init_pygame_default():
-                        self._mixer_initialized = True
-                        logger.info("Fallback to system default audio successful")
-                    
-                return self._mixer_initialized
-                    
-            except Exception as e:
-                logger.error(f"Error switching audio device: {e}")
-                self._mixer_initialized = False
-                return False
+    def __del__(self):
+        """Деструктор"""
+        try:
+            self.cleanup()
+        except:
+            pass  # Игнорируем ошибки в деструкторе
 
 
-# Создаем глобальный экземпляр
+# Создаем глобальный экземпляр для совместимости с main.py
 audio_service = AudioService()

@@ -21,10 +21,10 @@ class AlarmScreen(Screen):
     alarm_time = StringProperty("07:30")
     alarm_active = BooleanProperty(True)
     alarm_repeat = ListProperty(["Mon", "Tue", "Wed", "Thu", "Fri"])
-    selected_ringtone = StringProperty("robot.mp3")
+    selected_ringtone = StringProperty("Bathtime In Clerkenwell.mp3")
     
     # ListProperty для значений спиннера (устанавливается один раз)
-    ringtone_list = ListProperty(["robot.mp3"])
+    ringtone_list = ListProperty(["Bathtime In Clerkenwell.mp3"])
     
     alarm_fadein = BooleanProperty(False)
 
@@ -643,14 +643,14 @@ class AlarmScreen(Screen):
                     break
             
             if not ringtones:
-                ringtones = ["robot.mp3"]  # Fallback
+                ringtones = ["Bathtime In Clerkenwell.mp3"]  # Fallback
                 
             self.ringtone_list = sorted(ringtones)
             logger.info(f"Loaded {len(ringtones)} ringtones")
             
         except Exception as e:
             logger.error(f"Error loading ringtones: {e}")
-            self.ringtone_list = ["robot.mp3"]
+            self.ringtone_list = ["Bathtime In Clerkenwell.mp3"]
 
     def load_alarm_config(self):
         """Загрузка конфигурации будильника"""
@@ -665,7 +665,7 @@ class AlarmScreen(Screen):
                 self.alarm_time = alarm_config.get('time', '07:30')
                 self.alarm_active = alarm_config.get('enabled', True)
                 self.alarm_repeat = alarm_config.get('repeat', ["Mon", "Tue", "Wed", "Thu", "Fri"])
-                self.selected_ringtone = alarm_config.get('ringtone', 'robot.mp3')
+                self.selected_ringtone = alarm_config.get('ringtone', 'Bathtime In Clerkenwell.mp3')
                 self.alarm_fadein = alarm_config.get('fadein', False)
                 
                 logger.info(f"Alarm config loaded: {self.alarm_time}, active: {self.alarm_active}")

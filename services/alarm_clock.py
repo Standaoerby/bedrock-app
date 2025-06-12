@@ -135,7 +135,7 @@ class AlarmClock:
                 return
             
             alarm_time = alarm.get("time", "--:--")
-            ringtone = alarm.get("ringtone", "robot.mp3")
+            ringtone = alarm.get("ringtone", "Bathtime In Clerkenwell.mp3")
             
             self._alarm_active = True
             self._last_trigger_time = current_time_str
@@ -189,7 +189,7 @@ class AlarmClock:
         except Exception as e:
             logger.error(f"Error snoozing alarm: {e}")
     
-    def trigger_alarm(self, ringtone="robot.mp3", fadein=False):
+    def trigger_alarm(self, ringtone="Bathtime In Clerkenwell.mp3", fadein=False):
         try:
             from kivy.app import App
             app = App.get_running_app()

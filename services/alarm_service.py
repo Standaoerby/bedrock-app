@@ -17,7 +17,7 @@ class AlarmService:
             "time": "07:30",
             "enabled": True,
             "repeat": ["Mon", "Tue", "Wed", "Thu", "Fri"],
-            "ringtone": "robot.mp3",  # ИСПРАВЛЕНО: было "ringtones"
+            "ringtone": "Bathtime In Clerkenwell.mp3",  # ИСПРАВЛЕНО: было "ringtones"
             "fadein": False,
         }
         
@@ -127,7 +127,7 @@ class AlarmService:
             
             if app and hasattr(app, 'alarm_clock') and app.alarm_clock:
                 alarm = self.get_alarm()
-                ringtone = alarm.get("ringtone", "robot.mp3")
+                ringtone = alarm.get("ringtone", "Bathtime In Clerkenwell.mp3")
                 fadein = alarm.get("fadein", False)
                 
                 app.alarm_clock.trigger_alarm(ringtone, fadein)
