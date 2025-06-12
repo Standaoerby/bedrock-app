@@ -11,16 +11,14 @@
         Image:
             id: background_image
             source: app.theme_manager.get_image("background")
-            allow_stretch: True
-            keep_ratio: False
+            fit_mode: "fill"
             size: self.parent.size
             pos: self.parent.pos
 
         Image:
             id: overlay_image
             source: app.theme_manager.get_image("overlay_" + root.current_page)
-            allow_stretch: True
-            keep_ratio: False
+            fit_mode: "fill"
             size: self.parent.size
             pos: self.parent.pos
 

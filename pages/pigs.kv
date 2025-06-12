@@ -177,8 +177,7 @@
                         source: root.get_pig_image_path()
                         size_hint: 1, None
                         height: self.parent.height - dp(40)  # Оставляем место для статуса
-                        allow_stretch: True
-                        keep_ratio: True
+                        fit_mode: "contain"
                     
                     # Индикатор общего статуса
                     

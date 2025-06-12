@@ -136,11 +136,10 @@ class BedrockApp(App):
             
             # ИСПРАВЛЕНО: Проверяем что theme_manager инициализирован правильно
             if hasattr(self, 'theme_manager') and self.theme_manager:
-                if self.theme_manager.load_theme(theme, variant):
-                    logger.info(f"Theme loaded: {theme}/{variant}")
-                else:
+                if not self.theme_manager.load_theme(theme, variant):
                     logger.warning(f"Failed to load theme {theme}/{variant}, using default")
                     self.theme_manager.load_theme("minecraft", "light")
+                    # ✅ Убрали дублирующее логирование - ThemeManager сам логирует результат
             else:
                 logger.error("ThemeManager not initialized properly!")
             
@@ -177,7 +176,7 @@ class BedrockApp(App):
                 logger.error(f"CRITICAL: AudioService initialization failed: {e}")
                 self.audio_service = None
             
-            # Конфигурация остальных сервисов
+            # Конфигурация остальных сервисов (порядок КРИТИЧЕСКИ ВАЖЕН!)
             services_config = [
                 ('alarm_service', AlarmService, {}),
                 ('notification_service', NotificationService, {}),
@@ -188,7 +187,6 @@ class BedrockApp(App):
                 ('sensor_service', SensorService, {}),
                 ('pigs_service', PigsService, {}),
                 ('schedule_service', ScheduleService, {}),
-                ('auto_theme_service', AutoThemeService, {}),
                 ('volume_service', VolumeControlService, {}),
             ]
             
@@ -208,6 +206,30 @@ class BedrockApp(App):
                 except Exception as ex:
                     logger.error(f"❌ Failed to initialize {service_name}: {ex}")
                     setattr(self, service_name, None)
+
+            # 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: AutoThemeService инициализируется ПОСЛЕ sensor_service и theme_manager
+            try:
+                logger.info("Initializing auto_theme_service...")
+                if self.sensor_service and self.theme_manager:
+                    self.auto_theme_service = AutoThemeService(
+                        sensor_service=self.sensor_service,
+                        theme_manager=self.theme_manager
+                    )
+                    
+                    # Запускаем сервис
+                    if hasattr(self.auto_theme_service, 'start'):
+                        self.auto_theme_service.start()
+                    
+                    logger.info("✅ Service initialized: auto_theme_service")
+                else:
+                    logger.error("❌ Cannot initialize auto_theme_service: missing dependencies")
+                    logger.error(f"sensor_service available: {self.sensor_service is not None}")
+                    logger.error(f"theme_manager available: {self.theme_manager is not None}")
+                    self.auto_theme_service = None
+                    
+            except Exception as ex:
+                logger.error(f"❌ Failed to initialize auto_theme_service: {ex}")
+                self.auto_theme_service = None
 
             # Инициализируем alarm_clock если доступен
             if ALARM_CLOCK_AVAILABLE:
@@ -235,21 +257,33 @@ class BedrockApp(App):
             if hasattr(self, 'auto_theme_service') and self.auto_theme_service:
                 # Получаем настройки из конфига
                 threshold = self.user_config.get("light_sensor_threshold", 3)
-                
-                # Калибруем датчик
-                if hasattr(self, 'sensor_service') and self.sensor_service:
-                    self.auto_theme_service.calibrate_sensor(threshold)
-                
-                # Проверяем включена ли автотема
                 auto_enabled = self.user_config.get("auto_theme_enabled", False)
+                
                 logger.info(f"Auto-theme setup: enabled={auto_enabled}, threshold={threshold}s")
                 
-                # Если включена, делаем первичную проверку через 3 секунды
+                # 🚨 ИСПРАВЛЕНО: Используем правильный метод calibrate_sensor с параметром
+                if hasattr(self, 'sensor_service') and self.sensor_service:
+                    self.auto_theme_service.calibrate_sensor(threshold)
+                    logger.info(f"Auto-theme sensor calibrated: {threshold}s threshold")
+                
+                # Включаем автотему если настроено
                 if auto_enabled:
+                    self.auto_theme_service.set_enabled(True)
+                    # Если включена, делаем первичную проверку через 3 секунды
                     Clock.schedule_once(lambda dt: self._initial_auto_theme_check(), 3.0)
                     
         except Exception as e:
             logger.error(f"Error setting up auto-theme: {e}")
+
+    def _initial_auto_theme_check(self):
+        """ИСПРАВЛЕНО: Первичная проверка автотемы"""
+        try:
+            if hasattr(self, 'auto_theme_service') and self.auto_theme_service:
+                # 🚨 ИСПРАВЛЕНО: Используем правильный метод check_and_update_theme
+                self.auto_theme_service.check_and_update_theme()
+                logger.info("Initial auto-theme check completed")
+        except Exception as e:
+            logger.error(f"Error in initial auto-theme check: {e}")
 
     def _setup_volume_service(self):
         """ИСПРАВЛЕНО: Настройка сервиса громкости"""
@@ -266,16 +300,6 @@ class BedrockApp(App):
                 
         except Exception as e:
             logger.error(f"Error setting up volume service: {e}")
-
-    def _initial_auto_theme_check(self):
-        """ИСПРАВЛЕНО: Первичная проверка автотемы"""
-        try:
-            if hasattr(self, 'auto_theme_service') and self.auto_theme_service:
-                self.auto_theme_service.check_and_update_theme()
-                logger.info("Initial auto-theme check completed")
-        except Exception as e:
-            logger.error(f"Error in initial auto-theme check: {e}")
-
     def _setup_screens(self, root):
         """Настройка экранов приложения"""
         try:

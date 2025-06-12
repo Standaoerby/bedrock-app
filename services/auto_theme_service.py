@@ -5,14 +5,13 @@ import time
 from app.logger import app_logger as logger
 from app.event_bus import event_bus
 from kivy.app import App
-from kivy.clock import Clock
-
+from kivy.clock import Clock  # 🚨 КРИТИЧЕСКИ ВАЖНО: Импорт Clock для thread-safe операций
 
 
 class AutoThemeService:
     """
     Сервис автоматического переключения темы на основе освещенности
-    Версия 1.1.0 - Добавлен метод check_and_update_theme
+    Версия 1.2.0 - ИСПРАВЛЕНО: Добавлен метод calibrate_sensor с параметром
     """
     
     def __init__(self, sensor_service, theme_manager):
@@ -68,12 +67,26 @@ class AutoThemeService:
         """Калибровка датчика освещенности"""
         if self.enabled:
             self._calibrate_sensor()
+
+    def calibrate_sensor(self, threshold_seconds=None):
+        """🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Публичный метод калибровки с параметром threshold"""
+        with self._lock:
+            if threshold_seconds is not None:
+                self.threshold_seconds = max(1, min(threshold_seconds, 10))  # Ограничиваем диапазон 1-10 секунд
+                self.calibration_time = self.threshold_seconds
+                logger.info(f"AutoTheme threshold updated to {self.threshold_seconds}s")
+            
+            # Выполняем калибровку
+            self._calibrate_sensor()
+            
+            logger.info(f"AutoTheme sensor calibrated with {self.threshold_seconds}s threshold")
             
     def _calibrate_sensor(self):
         """Внутренняя калибровка датчика"""
         try:
             if hasattr(self.sensor_service, 'calibrate_light_sensor'):
-                confidence = self.sensor_service.calibrate_light_sensor()
+                # 🚨 ИСПРАВЛЕНО: Передаем параметр threshold_seconds в метод calibrate_light_sensor
+                confidence = self.sensor_service.calibrate_light_sensor(self.threshold_seconds)
                 logger.info(f"[Light sensor calibrated] {self.calibration_time}s, confidence: {confidence}")
                 
                 # Сброс состояния после калибровки
@@ -107,6 +120,34 @@ class AutoThemeService:
                 return False
                 
             return self._check_light_level()
+
+    def get_status(self):
+        """🚨 ДОБАВЛЕНО: Получение статуса сервиса"""
+        with self._lock:
+            try:
+                sensor_available = hasattr(self.sensor_service, 'get_light_level') if self.sensor_service else False
+                current_light = self.sensor_service.get_light_level() if sensor_available else True
+                using_mock = getattr(self.sensor_service, 'using_mock_sensors', True) if self.sensor_service else True
+                
+                return {
+                    "enabled": self.enabled,
+                    "running": self.running,
+                    "sensor_available": sensor_available,
+                    "service_running": self.running,
+                    "current_light": current_light,
+                    "using_mock": using_mock,
+                    "threshold_seconds": self.threshold_seconds,
+                    "current_state": self.current_light_state,
+                    "state_stable": self.state_stable
+                }
+            except Exception as e:
+                logger.error(f"Error getting AutoTheme status: {e}")
+                return {
+                    "enabled": self.enabled,
+                    "running": self.running,
+                    "sensor_available": False,
+                    "error": str(e)
+                }
             
     def _monitor_loop(self):
         """Основной цикл мониторинга"""
@@ -125,8 +166,8 @@ class AutoThemeService:
     def _check_light_level(self):
         """Проверка уровня освещенности и переключение темы"""
         try:
-            # Получаем текущее состояние света
-            is_light = self.sensor_service.is_light_detected()
+            # 🚨 ИСПРАВЛЕНО: Используем правильный метод get_light_level() вместо is_light_detected()
+            is_light = self.sensor_service.get_light_level()
             current_time = time.time()
             
             # Логика гистерезиса для предотвращения частых переключений
@@ -145,9 +186,14 @@ class AutoThemeService:
                         self.current_light_state = is_light
                         
                         # Переключаем тему
-                        new_theme = "light" if is_light else "dark"
-                        self._switch_theme(new_theme)
-                        logger.info(f"🔍 Light change detected and stable - switched to {new_theme} theme")
+                        new_variant = "light" if is_light else "dark"
+                        self._switch_theme(new_variant)
+                        
+                        # Логируем изменение (безопасно для фонового потока)
+                        confidence = 1.00 if current_time - self.state_start_time >= self.threshold_seconds else 0.75
+                        logger.info(f"[Light changed] {'Dark → Light' if is_light else 'Light → Dark'} (confidence: {confidence:.2f})")
+                        logger.info(f"[🌓 Auto-switching theme] {'Light' if is_light else 'Dark'} detected → {new_variant} theme")
+                        
                         return True
                         
             else:
@@ -163,50 +209,82 @@ class AutoThemeService:
                 
         except Exception as e:
             logger.error(f"Error checking light level: {e}")
+            return False
             
-        return False
-        
-    def _switch_theme(self, theme_type):
-        """Переключение темы через главный поток Kivy"""
+    def _switch_theme(self, variant):
+        """🚨 ИСПРАВЛЕНО: Thread-safe переключение темы через главный поток Kivy"""
+        try:
+            # Переносим ВСЕ операции с UI в главный поток через Clock.schedule_once
+            Clock.schedule_once(lambda dt: self._do_switch_theme_on_main_thread(variant), 0)
+                
+        except Exception as e:
+            logger.error(f"Error scheduling theme switch: {e}")
+            
+    def _do_switch_theme_on_main_thread(self, variant):
+        """Выполнение переключения темы в главном потоке Kivy"""
         try:
             app = App.get_running_app()
-            if app and self.theme_manager:
-                # Выполняем в главном потоке Kivy
-                Clock.schedule_once(lambda dt: self._do_switch_theme(theme_type), 0)
+            if app and hasattr(app, 'theme_manager'):
+                # Получаем текущую тему
+                current_theme = app.theme_manager.current_theme
+                
+                # Проверяем, нужно ли переключать
+                current_variant = getattr(app.theme_manager, 'current_variant', None)
+                if current_variant == variant:
+                    logger.debug(f"Theme already set to {variant}, skipping switch")
+                    return
+                
+                # Переключаем вариант темы (в главном потоке)
+                app.theme_manager.load_theme(current_theme, variant)
+                
+                # Обновляем конфиг пользователя
+                if hasattr(app, 'user_config'):
+                    app.user_config.set('variant', variant)
+                
+                # 🚨 ИСПРАВЛЕНО: Публикуем событие в главном потоке
+                event_bus.publish("theme_changed", {
+                    "theme": current_theme,
+                    "variant": variant,
+                    "source": "auto_theme_service"
+                })
+                
+                logger.info(f"✅ Theme auto-switched to {variant} - UI updated")
+                
+            else:
+                logger.error("Cannot switch theme - ThemeManager not available")
                 
         except Exception as e:
-            logger.error(f"Error switching theme: {e}")
-            
-    def _do_switch_theme(self, theme_type):
-        """Выполнение переключения темы в главном потоке"""
-        try:
-            # Получаем текущую тему
-            current_theme = self.theme_manager.get_current_theme()
-            
-            # Переключаем только если тема отличается
-            if current_theme != f"minecraft/{theme_type}":
-                self.theme_manager.load_theme("minecraft", theme_type)
-                logger.info(f"[Auto-theme] Switched to {theme_type} theme")
+            logger.error(f"Error switching theme in main thread: {e}")
+
+
+# ИСПРАВЛЕНО: НЕ создаем глобальный экземпляр
+# Каждое приложение должно создать свой экземпляр через main.py
+
+def validate_auto_theme_service_module():
+    """Валидация модуля AutoThemeService для отладки"""
+    try:
+        # Создаем мок-объекты для тестирования
+        class MockSensorService:
+            def get_light_level(self):
+                return True
+            def calibrate_light_sensor(self, threshold=3):
+                return 0.8
                 
-                # Обновляем UI если есть текущий экран
-                app = App.get_running_app()
-                if app and hasattr(app, 'root') and app.root:
-                    if hasattr(app.root, 'current_screen'):
-                        screen = app.root.current_screen
-                        if hasattr(screen, 'refresh_theme'):
-                            screen.refresh_theme()
-                            
-        except Exception as e:
-            logger.error(f"Error in theme switch: {e}")
-            
-    def get_status(self):
-        """Получение статуса сервиса"""
-        with self._lock:
-            return {
-                'enabled': self.enabled,
-                'running': self.running,
-                'current_light_state': 'light' if self.current_light_state else 'dark' if self.current_light_state is not None else 'unknown',
-                'threshold_seconds': self.threshold_seconds,
-                'state_stable': self.state_stable,
-                'has_light_sensor': hasattr(self.sensor_service, 'is_light_detected')
-            }
+        class MockThemeManager:
+            def load_theme(self, theme, variant):
+                pass
+            current_theme = "minecraft"
+        
+        service = AutoThemeService(MockSensorService(), MockThemeManager())
+        assert hasattr(service, 'calibrate_sensor'), "calibrate_sensor method missing"
+        assert hasattr(service, 'check_and_update_theme'), "check_and_update_theme method missing"
+        assert hasattr(service, 'get_status'), "get_status method missing"
+        print("✅ AutoThemeService module validation passed")
+        return True
+    except Exception as e:
+        print(f"❌ AutoThemeService module validation failed: {e}")
+        return False
+
+# Только в режиме разработки
+if __name__ == "__main__":
+    validate_auto_theme_service_module()

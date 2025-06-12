@@ -1,6 +1,6 @@
 {
   "current": {
-    "time": "2025-06-12T04:15",
+    "time": "2025-06-12T04:45",
     "temperature": 13.7,
     "condition": "Mostly Clear",
     "precipitation_probability": 0
@@ -30,43 +30,43 @@
     {
       "day": "Sat",
       "date": "2025-06-14",
-      "temp_max": 23.2,
-      "temp_min": 16.2,
-      "condition": "Cloudy",
+      "temp_max": 22.9,
+      "temp_min": 15.7,
+      "condition": "Thunderstorm",
       "precipitation_probability": 60
     },
     {
       "day": "Sun",
       "date": "2025-06-15",
-      "temp_max": 22.3,
-      "temp_min": 12.8,
+      "temp_max": 22.4,
+      "temp_min": 12.7,
       "condition": "Cloudy",
       "precipitation_probability": 2
     },
     {
       "day": "Mon",
       "date": "2025-06-16",
-      "temp_max": 25.0,
-      "temp_min": 14.2,
+      "temp_max": 24.8,
+      "temp_min": 13.6,
       "condition": "Cloudy",
       "precipitation_probability": 3
     },
     {
       "day": "Tue",
       "date": "2025-06-17",
-      "temp_max": 25.4,
-      "temp_min": 15.4,
-      "condition": "Cloudy",
+      "temp_max": 26.5,
+      "temp_min": 14.7,
+      "condition": "Partly Cloudy",
       "precipitation_probability": 0
     },
     {
       "day": "Wed",
       "date": "2025-06-18",
-      "temp_max": 23.0,
-      "temp_min": 16.8,
+      "temp_max": 27.8,
+      "temp_min": 16.7,
       "condition": "Cloudy",
-      "precipitation_probability": 3
+      "precipitation_probability": 0
     }
   ],
-  "updated": "2025-06-12T04:22:05.700028"
+  "updated": "2025-06-12T04:50:24.106244"
 }
