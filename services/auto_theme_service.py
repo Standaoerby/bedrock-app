@@ -51,12 +51,16 @@ class AutoThemeService:
         logger.info("AutoThemeService stopped")
         
     def set_enabled(self, enabled):
-        """Включение/выключение автоматической смены темы"""
+        """🚨 ИСПРАВЛЕНО: Включение/выключение автоматической смены темы БЕЗ повторной калибровки"""
         with self._lock:
+            old_enabled = self.enabled
             self.enabled = enabled
-            if enabled:
-                self._calibrate_sensor()
-            logger.info(f"Auto-theme {'enabled' if enabled else 'disabled'}")
+            
+            # Логируем только изменения состояния
+            if old_enabled != enabled:
+                logger.info(f"Auto-theme {'enabled' if enabled else 'disabled'}")
+            
+            # НЕ калибруем повторно - калибровка должна быть сделана заранее через calibrate_sensor()
             
     def is_enabled(self):
         """Проверка включен ли сервис"""
@@ -69,32 +73,29 @@ class AutoThemeService:
             self._calibrate_sensor()
 
     def calibrate_sensor(self, threshold_seconds=None):
-        """🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Публичный метод калибровки с параметром threshold"""
+        """🚨 ИСПРАВЛЕНО: Публичный метод калибровки БЕЗ дублирования логов"""
         with self._lock:
             if threshold_seconds is not None:
                 self.threshold_seconds = max(1, min(threshold_seconds, 10))  # Ограничиваем диапазон 1-10 секунд
                 self.calibration_time = self.threshold_seconds
-                logger.info(f"AutoTheme threshold updated to {self.threshold_seconds}s")
             
-            # Выполняем калибровку
+            # Выполняем калибровку (логирование внутри _calibrate_sensor)
             self._calibrate_sensor()
             
-            logger.info(f"AutoTheme sensor calibrated with {self.threshold_seconds}s threshold")
-            
     def _calibrate_sensor(self):
-        """Внутренняя калибровка датчика"""
+        """🚨 ИСПРАВЛЕНО: Внутренняя калибровка БЕЗ дублирования логов"""
         try:
             if hasattr(self.sensor_service, 'calibrate_light_sensor'):
-                # 🚨 ИСПРАВЛЕНО: Передаем параметр threshold_seconds в метод calibrate_light_sensor
+                # 🚨 ИСПРАВЛЕНО: Передаем параметр threshold_seconds и НЕ логируем результат
                 confidence = self.sensor_service.calibrate_light_sensor(self.threshold_seconds)
-                logger.info(f"[Light sensor calibrated] {self.calibration_time}s, confidence: {confidence}")
                 
                 # Сброс состояния после калибровки
                 self.current_light_state = None
                 self.state_start_time = None
                 self.state_stable = False
                 
-                logger.info(f"[Auto-theme sensor calibrated] {self.threshold_seconds}s threshold")
+                # 🚨 ИСПРАВЛЕНО: Одно компактное сообщение вместо трёх
+                logger.info(f"Auto-theme calibrated: {self.threshold_seconds}s threshold, confidence: {confidence}")
             else:
                 logger.warning("Sensor service doesn't support light calibration")
                 
@@ -102,15 +103,12 @@ class AutoThemeService:
             logger.error(f"Error calibrating light sensor: {e}")
             
     def force_check(self):
-        """Принудительная проверка освещенности"""
-        logger.info("🔍 Force checking light sensor for auto-theme...")
-        
+        """🚨 ИСПРАВЛЕНО: Принудительная проверка освещенности БЕЗ избыточного логирования"""
         with self._lock:
             if not self.enabled:
-                logger.info("Auto-theme is disabled")
                 return
                 
-            # Выполняем проверку
+            # Выполняем проверку без дополнительного логирования
             self._check_light_level()
             
     def check_and_update_theme(self):
@@ -189,10 +187,9 @@ class AutoThemeService:
                         new_variant = "light" if is_light else "dark"
                         self._switch_theme(new_variant)
                         
-                        # Логируем изменение (безопасно для фонового потока)
+                        # 🚨 ИСПРАВЛЕНО: Более читаемое и компактное логирование
                         confidence = 1.00 if current_time - self.state_start_time >= self.threshold_seconds else 0.75
-                        logger.info(f"[Light changed] {'Dark → Light' if is_light else 'Light → Dark'} (confidence: {confidence:.2f})")
-                        logger.info(f"[🌓 Auto-switching theme] {'Light' if is_light else 'Dark'} detected → {new_variant} theme")
+                        logger.info(f"🌓 Auto-theme: {'Dark→Light' if is_light else 'Light→Dark'} (confidence: {confidence:.2f}) → {new_variant} theme")
                         
                         return True
                         
@@ -221,7 +218,7 @@ class AutoThemeService:
             logger.error(f"Error scheduling theme switch: {e}")
             
     def _do_switch_theme_on_main_thread(self, variant):
-        """Выполнение переключения темы в главном потоке Kivy"""
+        """🚨 ИСПРАВЛЕНО: Выполнение переключения темы в главном потоке БЕЗ дублирования логов"""
         try:
             app = App.get_running_app()
             if app and hasattr(app, 'theme_manager'):
@@ -231,8 +228,7 @@ class AutoThemeService:
                 # Проверяем, нужно ли переключать
                 current_variant = getattr(app.theme_manager, 'current_variant', None)
                 if current_variant == variant:
-                    logger.debug(f"Theme already set to {variant}, skipping switch")
-                    return
+                    return  # Тема уже установлена
                 
                 # Переключаем вариант темы (в главном потоке)
                 app.theme_manager.load_theme(current_theme, variant)
@@ -241,14 +237,14 @@ class AutoThemeService:
                 if hasattr(app, 'user_config'):
                     app.user_config.set('variant', variant)
                 
-                # 🚨 ИСПРАВЛЕНО: Публикуем событие в главном потоке
+                # 🚨 ИСПРАВЛЕНО: Публикуем событие в главном потоке БЕЗ дополнительного логирования
                 event_bus.publish("theme_changed", {
                     "theme": current_theme,
                     "variant": variant,
                     "source": "auto_theme_service"
                 })
                 
-                logger.info(f"✅ Theme auto-switched to {variant} - UI updated")
+                # 🚨 ИСПРАВЛЕНО: НЕ логируем здесь - логирование уже произошло в _check_light_level
                 
             else:
                 logger.error("Cannot switch theme - ThemeManager not available")

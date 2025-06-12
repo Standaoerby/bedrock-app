@@ -252,7 +252,7 @@ class BedrockApp(App):
             logger.error(f"Critical error initializing services: {e}")
 
     def _setup_auto_theme(self):
-        """ИСПРАВЛЕНО: Настройка автоматической темы"""
+        """🚨 ИСПРАВЛЕНО: Настройка автоматической темы БЕЗ дублирования"""
         try:
             if hasattr(self, 'auto_theme_service') and self.auto_theme_service:
                 # Получаем настройки из конфига
@@ -261,15 +261,13 @@ class BedrockApp(App):
                 
                 logger.info(f"Auto-theme setup: enabled={auto_enabled}, threshold={threshold}s")
                 
-                # 🚨 ИСПРАВЛЕНО: Используем правильный метод calibrate_sensor с параметром
-                if hasattr(self, 'sensor_service') and self.sensor_service:
-                    self.auto_theme_service.calibrate_sensor(threshold)
-                    logger.info(f"Auto-theme sensor calibrated: {threshold}s threshold")
-                
-                # Включаем автотему если настроено
+                # 🚨 ИСПРАВЛЕНО: Калибруем только если включена автотема
                 if auto_enabled:
+                    # Устанавливаем параметры перед включением
+                    self.auto_theme_service.calibrate_sensor(threshold)
                     self.auto_theme_service.set_enabled(True)
-                    # Если включена, делаем первичную проверку через 3 секунды
+                    
+                    # Делаем первичную проверку через 3 секунды
                     Clock.schedule_once(lambda dt: self._initial_auto_theme_check(), 3.0)
                     
         except Exception as e:

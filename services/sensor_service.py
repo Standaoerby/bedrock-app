@@ -365,7 +365,7 @@ class SensorService:
             return False
     
     def calibrate_light_sensor(self, threshold_seconds=3):
-        """Set light sensor switching threshold"""
+        """🚨 ИСПРАВЛЕНО: Калибровка датчика освещения БЕЗ избыточного логирования"""
         # Adjust confidence based on threshold
         if threshold_seconds <= 2:
             self._confidence_level = 0.6  # Fast switching
@@ -375,7 +375,8 @@ class SensorService:
         # Clear existing readings for fresh calibration
         self._light_readings.clear()
         
-        logger.info(f"Light sensor calibrated: {threshold_seconds}s, confidence: {self._confidence_level}")
+        # 🚨 ИСПРАВЛЕНО: НЕ логируем здесь - логирование происходит в AutoThemeService
+        return self._confidence_level  # Возвращаем числовое значение, а не None
     
     def update_readings(self):
         """Force update readings (for manual refresh)"""

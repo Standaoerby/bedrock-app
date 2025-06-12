@@ -537,7 +537,7 @@ class SettingsScreen(Screen):
         logger.info(f"Auto theme toggled: {self.auto_theme_enabled}")
 
     def on_threshold_change(self, value):
-        """Изменение порога датчика освещения"""
+        """🚨 ИСПРАВЛЕНО: Изменение порога датчика освещения БЕЗ дублирования логов"""
         try:
             new_threshold = max(1, min(int(value), 5))
             if new_threshold != self.light_sensor_threshold:
@@ -545,16 +545,11 @@ class SettingsScreen(Screen):
                 
                 app = App.get_running_app()
                 
-                # Обновляем AutoThemeService
+                # Обновляем AutoThemeService (логирование происходит внутри)
                 if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
                     app.auto_theme_service.calibrate_sensor(new_threshold)
-                    logger.info(f"Auto-theme threshold updated to {new_threshold}s")
                 
-                # Обновляем калибровку датчика в SensorService
-                if hasattr(app, 'sensor_service') and app.sensor_service:
-                    app.sensor_service.calibrate_light_sensor(new_threshold)
-                
-                logger.info(f"Light sensor threshold changed to: {new_threshold}")
+                # 🚨 ИСПРАВЛЕНО: НЕ дублируем логирование - AutoThemeService уже логирует
                 
         except Exception as e:
             logger.error(f"Error changing threshold: {e}")
