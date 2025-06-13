@@ -704,6 +704,20 @@ class AlarmScreen(Screen):
             
             logger.info(f"Alarm config saved: {self.alarm_time}")
             
+            # ИСПРАВЛЕНО: Отправляем событие для синхронизации с home.py
+            try:
+                event_bus.publish("alarm_settings_changed", {
+                    "time": self.alarm_time,
+                    "enabled": self.alarm_active,
+                    "repeat": list(self.alarm_repeat),
+                    "ringtone": self.selected_ringtone,
+                    "fadein": self.alarm_fadein,
+                    "source": "alarm_screen"
+                })
+                logger.debug("Alarm settings change event published")
+            except Exception as event_error:
+                logger.error(f"Error publishing alarm settings event: {event_error}")
+            
             if not silent:
                 self._play_sound("confirm")
                 
