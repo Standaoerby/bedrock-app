@@ -161,149 +161,190 @@ class BedrockApp(App):
             logger.error(f"Error setting up audio environment: {e}")
 
     def _initialize_services(self):
-        """
-        ОПТИМИЗИРОВАНО: Ленивая инициализация сервисов
-        - Критические сервисы загружаются сразу
-        - Некритические - в фоне или по требованию
-        - Ускоряет время запуска в 3-5 раз
-        """
+        """🔥 FIXED: Enhanced service initialization with proper error handling"""
+        logger.info("Initializing services (optimized)...")
+        
+        # ===== PHASE 1: CRITICAL SERVICES =====
+        
+        # 1. AudioService - critical for system feedback
         try:
-            logger.info("Initializing services (optimized)...")
-            
-            # ВАЖНО 2025: Настройка аудио для Raspberry Pi 5 USB Audio
-            self._setup_audio_environment()
-            
-            # ===== ФАЗА 1: КРИТИЧЕСКИЕ СЕРВИСЫ (сразу) =====
-            
-            # 1. AudioService - критический для UI звуков
-            try:
-                logger.info("Initializing AudioService...")
-                self.audio_service = AudioService()
-                logger.info("✅ AudioService initialized")
-            except Exception as e:
-                logger.error(f"CRITICAL: AudioService failed: {e}")
-                self.audio_service = None
-            
-            # 2. AlarmService - критический для будильника
-            try:
-                logger.info("Initializing AlarmService...")
-                self.alarm_service = AlarmService()
-                logger.info("✅ AlarmService initialized")
-            except Exception as e:
-                logger.error(f"❌ AlarmService failed: {e}")
-                self.alarm_service = None
-            
-            # 3. NotificationService - легкий, нужен для уведомлений
-            try:
-                self.notification_service = NotificationService()
-                logger.info("✅ NotificationService initialized")
-            except Exception as e:
-                logger.error(f"❌ NotificationService failed: {e}")
-                self.notification_service = None
-                
-            # 4. ScheduleService - легкий, нужен для расписания
-            try:
-                self.schedule_service = ScheduleService()
-                logger.info("✅ ScheduleService initialized")
-            except Exception as e:
-                logger.error(f"❌ ScheduleService failed: {e}")
-                self.schedule_service = None
-            
-            # ===== ФАЗА 2: ОТЛОЖЕННЫЕ СЕРВИСЫ (через 1-2 секунды) =====
-            # Эти сервисы могут быть медленными или зависеть от железа
-            # ВАЖНО 2025: VolumeService требует совместимых GPIO библиотек для Pi 5
-            
-            self._deferred_services = {
-                'weather_service': (WeatherService, {}),
-                'sensor_service': (SensorService, {}),
-                'volume_service': (VolumeControlService, {}),  # Использует rpi-lgpio для Pi 5
-                'pigs_service': (PigsService, {})
-            }
-            
-            # AlarmClock только если доступен
-            if ALARM_CLOCK_AVAILABLE:
-                try:
-                    logger.info("Initializing AlarmClock...")
-                    self.alarm_clock = AlarmClock()
-                    logger.info("✅ AlarmClock initialized")
-                except Exception as ex:
-                    logger.error(f"❌ AlarmClock failed: {ex}")
-                    self.alarm_clock = None
-            else:
-                self.alarm_clock = None
-                
-            logger.info("✅ Service initialization phase 1 complete")
-            
+            logger.info("Initializing AudioService...")
+            self.audio_service = AudioService()
+            logger.info("✅ AudioService initialized")
         except Exception as e:
-            logger.error(f"Critical error in service initialization: {e}")
+            logger.error(f"❌ AudioService failed: {e}")
+            self.audio_service = None
+        
+        # 2. AlarmService - depends on audio but not critical for UI
+        try:
+            logger.info("Initializing AlarmService...")
+            self.alarm_service = AlarmService()
+            logger.info("✅ AlarmService initialized")
+        except Exception as e:
+            logger.error(f"❌ AlarmService failed: {e}")
+            self.alarm_service = None
+        
+        # 3. NotificationService - lightweight, needed for notifications  
+        try:
+            self.notification_service = NotificationService()
+            logger.info("✅ NotificationService initialized")
+        except Exception as e:
+            logger.error(f"❌ NotificationService failed: {e}")
+            self.notification_service = None
+        
+        # 4. ScheduleService - lightweight, only loads JSON
+        try:
+            self.schedule_service = ScheduleService() 
+            logger.info("✅ ScheduleService initialized")
+        except Exception as e:
+            logger.error(f"❌ ScheduleService failed: {e}")
+            self.schedule_service = None
+        
+        logger.info("✅ Service initialization phase 1 complete")
+        
+        # ===== PHASE 2: DEFERRED SERVICES (background) =====
+        
+        # 🔥 FIXED: Properly extract lat/lon from user config
+        location_config = self.user_config.get('location', {})
+        default_lat = 51.5566  # London fallback
+        default_lon = -0.178
+        
+        user_lat = location_config.get('latitude', default_lat)
+        user_lon = location_config.get('longitude', default_lon)
+        
+        # Validate coordinates
+        if not isinstance(user_lat, (int, float)) or not isinstance(user_lon, (int, float)):
+            logger.warning(f"Invalid coordinates in config: lat={user_lat}, lon={user_lon}")
+            user_lat, user_lon = default_lat, default_lon
+        
+        logger.info(f"Using coordinates: lat={user_lat}, lon={user_lon}")
+        
+        # List of services for deferred loading
+        self._deferred_services = {
+            'weather_service': (WeatherService, {
+                'lat': user_lat,
+                'lon': user_lon
+            }),
+            'sensor_service': (SensorService, {}),
+            'volume_service': (VolumeControlService, {}),
+            'pigs_service': (PigsService, {}),
+        }
+        
+        # Initialize placeholders for deferred services
+        for service_name in self._deferred_services:
+            setattr(self, service_name, None)
+        
+        # Schedule deferred initialization
+        Clock.schedule_once(self._init_deferred_services, 1.5)
+        
+        # ===== PHASE 3: auto_theme_service =====
+        self.auto_theme_service = None
+        
+        # ===== PHASE 4: ALARM_CLOCK =====
+        if ALARM_CLOCK_AVAILABLE:
+            try:
+                logger.info("Initializing AlarmClock...")
+                self.alarm_clock = AlarmClock()
+                self.alarm_clock.start()
+                logger.info("✅ AlarmClock initialized")
+            except Exception as ex:
+                logger.error(f"❌ AlarmClock failed: {ex}")
+                self.alarm_clock = None
+        else:
+            self.alarm_clock = None
 
     def _init_deferred_services(self, dt):
-        """Инициализация отложенных сервисов в фоновом потоке"""
-        def init_worker():
+        """🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: убираем дублирование инициализации"""
+        logger.info("🔄 Starting deferred service initialization...")
+        
+        # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: проверяем что сервисы не инициализированы
+        services_to_init = {}
+        
+        if not self.weather_service:
+            location = self.user_config.get('location', {})
+            lat = location.get('latitude', 51.5566)
+            lon = location.get('longitude', -0.178)
+            if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+                lat, lon = 51.5566, -0.178
+            services_to_init['weather_service'] = (WeatherService, {'lat': lat, 'lon': lon})
+        
+        if not self.sensor_service:
+            services_to_init['sensor_service'] = (SensorService, {})
+        
+        if not self.volume_service:
+            services_to_init['volume_service'] = (VolumeControlService, {})
+        
+        if not self.pigs_service:
+            services_to_init['pigs_service'] = (PigsService, {})
+        
+        # Инициализируем только те сервисы, которые еще не инициализированы
+        for service_name, (service_class, kwargs) in services_to_init.items():
             try:
-                logger.info("🔄 Starting deferred service initialization...")
+                logger.info(f"Initializing {service_name}...")
                 
-                for service_name, (service_class, kwargs) in self._deferred_services.items():
-                    try:
-                        logger.info(f"Initializing {service_name}...")
-                        service_instance = service_class(**kwargs)
-                        setattr(self, service_name, service_instance)
-                        
-                        # Запускаем сервис если у него есть метод start
-                        if hasattr(service_instance, 'start'):
-                            service_instance.start()
-                        
-                        logger.info(f"✅ {service_name} initialized")
-                        
-                    except Exception as ex:
-                        logger.error(f"❌ Failed to initialize {service_name}: {ex}")
-                        setattr(self, service_name, None)
+                if kwargs:
+                    service_instance = service_class(**kwargs)
+                else:
+                    service_instance = service_class()
                 
-                # Финализируем инициализацию
-                Clock.schedule_once(lambda dt: self._finalize_deferred_services(), 0.5)
+                setattr(self, service_name, service_instance)
+                logger.info(f"✅ {service_name} initialized")
                 
             except Exception as e:
-                logger.error(f"Error in deferred service initialization: {e}")
+                logger.error(f"❌ Failed to initialize {service_name}: {e}")
+                setattr(self, service_name, None)
+        
+        # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: одна финализация
+        if not hasattr(self, '_finalization_scheduled'):
+            self._finalization_scheduled = True
+            Clock.schedule_once(self._finalize_service_dependencies, 1.0)
 
-        # Запускаем в фоновом потоке
-        threading.Thread(target=init_worker, daemon=True).start()
+    def _finalize_service_dependencies(self, dt):
+        """🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: правильная инициализация AutoThemeService"""
+        logger.info("🔄 Finalizing service dependencies...")
+        
+        # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: правильные аргументы для AutoThemeService
+        if self.sensor_service and not self.auto_theme_service:
+            try:
+                logger.info("Initializing auto_theme_service...")
+                self.auto_theme_service = AutoThemeService(
+                    sensor_service=self.sensor_service,
+                    threshold_seconds=3
+                )
+                
+                # Запускаем сервис
+                if hasattr(self.auto_theme_service, 'start'):
+                    self.auto_theme_service.start()
+                
+                logger.info("✅ auto_theme_service initialized")
+                
+            except Exception as e:
+                logger.error(f"❌ auto_theme_service failed: {e}")
+                self.auto_theme_service = None
+        
+        # Печатаем статус сервисов один раз
+        self._print_service_status()
+        logger.info("✅ All services initialized and configured")
 
-    def _finalize_deferred_services(self):
-        """Финализация сервисов с зависимостями"""
-        try:
-            logger.info("🔄 Finalizing service dependencies...")
-            
-            # Инициализируем AutoThemeService если все зависимости готовы
-            if self.sensor_service and self.theme_manager:
-                try:
-                    logger.info("Initializing auto_theme_service...")
-                    self.auto_theme_service = AutoThemeService(
-                        sensor_service=self.sensor_service,
-                        threshold_seconds=3
-                    )
-                    
-                    if hasattr(self.auto_theme_service, 'start'):
-                        self.auto_theme_service.start()
-                    
-                    logger.info("✅ auto_theme_service initialized")
-                    
-                    # Настройка auto_theme
-                    self._setup_auto_theme()
-                    
-                except Exception as ex:
-                    logger.error(f"❌ auto_theme_service failed: {ex}")
-                    self.auto_theme_service = None
+    def _print_service_status(self):
+        """🔥 NEW: Print comprehensive service status"""
+        services = [
+            ('audio_service', self.audio_service),
+            ('alarm_service', self.alarm_service), 
+            ('notification_service', self.notification_service),
+            ('weather_service', self.weather_service),
+            ('sensor_service', self.sensor_service),
+            ('pigs_service', self.pigs_service),
+            ('schedule_service', self.schedule_service),
+            ('auto_theme_service', self.auto_theme_service),
+            ('volume_service', self.volume_service),
+        ]
+        
+        for service_name, service_instance in services:
+            if service_instance is not None:
+                logger.info(f"[✅ {service_name}] Available")
             else:
-                logger.warning("❌ Cannot initialize auto_theme_service: missing dependencies")
-            
-            # Настройка volume_service
-            if self.volume_service:
-                self._setup_volume_service()
-            
-            logger.info("✅ All services initialized and configured")
-            
-        except Exception as e:
-            logger.error(f"Error in service finalization: {e}")
+                logger.warning(f"[⚠️ {service_name}] Not available")
 
     def get_service(self, service_name):
         """Безопасное получение сервиса с проверкой готовности"""
@@ -371,28 +412,37 @@ class BedrockApp(App):
             logger.error(f"Error setting up volume service: {e}")
 
     def _setup_screens(self, root):
-        """Настройка экранов приложения"""
+        """🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: правильный поиск screen manager"""
         try:
-            # Создаем и добавляем экраны
-            screens = [
-                ("home", HomeScreen(name="home")),
-                ("alarm", AlarmScreen(name="alarm")),
-                ("schedule", ScheduleScreen(name="schedule")),
-                ("weather", WeatherScreen(name="weather")),
-                ("pigs", PigsScreen(name="pigs")),
-                ("settings", SettingsScreen(name="settings")),
-            ]
+            logger.info("Setting up application screens...")
             
-            for screen_name, screen in screens:
-                root.screen_manager.add_widget(screen)
-                logger.debug(f"Added screen: {screen_name}")
+            # ИСПРАВЛЕНО: ищем 'sm' вместо 'screen_manager' (соответствует KV файлу)
+            if not hasattr(root, 'ids') or not root.ids:
+                logger.error("Root widget missing ids - check .kv file")
+                return False
+                
+            # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: используем 'sm' как в KV файле
+            screen_manager = root.ids.get('sm')  # Было: 'screen_manager'
+            if not screen_manager:
+                logger.error("ScreenManager 'sm' not found in root.ids")
+                logger.debug(f"Available ids: {list(root.ids.keys())}")
+                return False
             
-            # Устанавливаем начальный экран
-            root.screen_manager.current = "home"
-            logger.info("Screens setup completed")
+            # Устанавливаем screen_manager в root для совместимости
+            root.screen_manager = screen_manager
             
+            # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: проверяем, что экраны уже созданы в KV
+            if hasattr(screen_manager, 'screen_names') and screen_manager.screen_names:
+                logger.info(f"✅ Screens loaded from KV: {list(screen_manager.screen_names)}")
+                screen_manager.current = 'home'
+                return True
+            else:
+                logger.error("No screens found in ScreenManager")
+                return False
+                
         except Exception as e:
-            logger.error(f"Error setting up screens: {e}")
+            logger.error(f"❌ Error setting up screens: {e}")
+            return False
 
     def _setup_events(self):
         """ИСПРАВЛЕНО: Настройка событий приложения"""

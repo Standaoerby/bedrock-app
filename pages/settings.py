@@ -50,12 +50,22 @@ class SettingsScreen(Screen):
         # Подписка на события
         event_bus.subscribe("language_changed", self.refresh_text)
         event_bus.subscribe("theme_changed", self._on_theme_changed_delayed)
+        event_bus.subscribe("volume_changed", self._on_volume_changed)
         self._update_events = []
         self._initialized = False
         
         # 🔥 НОВОЕ: Защита от множественных обновлений
         self._theme_update_scheduled = False
-
+    def _on_volume_changed(self, event_data):
+        """🔥 НОВОЕ: Обработка изменения громкости от других источников"""
+        try:
+            if isinstance(event_data, dict) and 'volume' in event_data:
+                new_volume = event_data['volume']
+                if new_volume != self.current_volume:
+                    self.current_volume = new_volume
+                    logger.debug(f"Volume updated from event: {new_volume}%")
+        except Exception as e:
+            logger.error(f"Error handling volume change event: {e}")
     # ================================================
     # ЖИЗНЕННЫЙ ЦИКЛ ЭКРАНА
     # ================================================
@@ -375,6 +385,68 @@ class SettingsScreen(Screen):
                 pass  # TODO: Добавить обновление текстов
         except Exception as e:
             logger.error(f"Error refreshing text: {e}")
+    def volume_up(self):
+        """🔥 НОВОЕ: Увеличение громкости через VolumeService"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'volume_service') and app.volume_service:
+                # Вызываем метод VolumeService
+                new_volume = app.volume_service.volume_up_manual()
+                
+                # Обновляем отображаемое значение
+                self.current_volume = new_volume
+                
+                # Сохраняем в конфиг
+                app.user_config.set('volume', new_volume)
+                
+                logger.info(f"Volume increased to {new_volume}%")
+            else:
+                logger.warning("Volume service not available")
+                
+        except Exception as e:
+            logger.error(f"Error in volume_up: {e}")
+
+    def volume_down(self):
+        """🔥 НОВОЕ: Уменьшение громкости через VolumeService"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'volume_service') and app.volume_service:
+                # Вызываем метод VolumeService
+                new_volume = app.volume_service.volume_down_manual()
+                
+                # Обновляем отображаемое значение
+                self.current_volume = new_volume
+                
+                # Сохраняем в конфиг
+                app.user_config.set('volume', new_volume)
+                
+                logger.info(f"Volume decreased to {new_volume}%")
+            else:
+                logger.warning("Volume service not available")
+                
+        except Exception as e:
+            logger.error(f"Error in volume_down: {e}")
+
+    def set_volume_direct(self, volume):
+        """🔥 НОВОЕ: Прямая установка громкости"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'volume_service') and app.volume_service:
+                # Ограничиваем значения
+                volume = max(0, min(100, int(volume)))
+                
+                # Устанавливаем громкость
+                if app.volume_service.set_volume(volume):
+                    self.current_volume = volume
+                    app.user_config.set('volume', volume)
+                    logger.info(f"Volume set to {volume}%")
+                else:
+                    logger.warning("Failed to set volume")
+            else:
+                logger.warning("Volume service not available")
+                
+        except Exception as e:
+            logger.error(f"Error in set_volume_direct: {e}")
 
     # ================================================
     # ЗАГРУЗКА И СОХРАНЕНИЕ НАСТРОЕК
@@ -465,24 +537,33 @@ class SettingsScreen(Screen):
             self.current_light_status = "Status Error"
 
     def check_volume_service(self):
-        """Проверка доступности сервиса громкости"""
+        """🔥 ИСПРАВЛЕНО: Улучшенная проверка доступности VolumeService"""
         try:
             app = App.get_running_app()
             
             if hasattr(app, 'volume_service') and app.volume_service:
+                # Проверяем статус сервиса
+                status = app.volume_service.get_status()
+                
+                # Сервис доступен
                 self.volume_service_available = True
+                
                 # Получаем текущую громкость
-                try:
-                    self.current_volume = app.volume_service.get_volume()
-                except Exception as e:
-                    logger.debug(f"Error getting volume: {e}")
-                    self.current_volume = 50
+                current_vol = app.volume_service.get_volume()
+                self.current_volume = current_vol
+                
+                logger.info(f"✅ Volume service available, current volume: {current_vol}%")
+                logger.debug(f"Volume service status: {status}")
+                
             else:
                 self.volume_service_available = False
+                self.current_volume = 50  # Default value
+                logger.warning("⚠️ Volume service not available")
                 
         except Exception as e:
             logger.error(f"Error checking volume service: {e}")
             self.volume_service_available = False
+            self.current_volume = 50
 
     def update_sensor_status(self):
         """Обновление статуса датчика освещения"""
@@ -490,25 +571,49 @@ class SettingsScreen(Screen):
             self.check_sensor_availability()
 
     def _setup_select_buttons(self):
-        """Настройка селекторов"""
+        """🔧 ИСПРАВЛЕННАЯ версия настройки кнопок выбора"""
         try:
-            # Настройка селекторов тем
-            if hasattr(self, 'ids'):
-                if 'theme_button' in self.ids:
-                    self.ids.theme_button.text = self.current_theme.title()
-                    self.ids.theme_button.bind_callback(self.on_theme_select)
+            if not hasattr(self, 'ids'):
+                logger.warning("Settings screen missing ids")
+                return
+                
+            # 🔧 ИСПРАВЛЕНО: Обработка отсутствующих кнопок
+            theme_button = self.ids.get('theme_select_button')
+            variant_button = self.ids.get('variant_select_button') 
+            language_button = self.ids.get('language_select_button')
+            
+            # Проверяем theme button
+            if theme_button:
+                if hasattr(theme_button, 'bind_selection_callback'):
+                    theme_button.bind_selection_callback(self.on_theme_select)
+                    logger.debug("✅ Theme button callback bound")
+                elif hasattr(theme_button, 'bind'):
+                    # Fallback для простых кнопок
+                    theme_button.bind(on_release=lambda btn: self.on_theme_select(self.current_theme))
+                    logger.debug("✅ Theme button fallback binding")
+            else:
+                logger.warning("⚠️ Theme select button not found")
+                
+            # Проверяем variant button
+            if variant_button:
+                if hasattr(variant_button, 'bind_selection_callback'):
+                    variant_button.bind_selection_callback(self.on_variant_select)
+                    logger.debug("✅ Variant button callback bound")
+                elif hasattr(variant_button, 'bind'):
+                    variant_button.bind(on_release=lambda btn: self.on_variant_select(self.current_variant))
+                    logger.debug("✅ Variant button fallback binding")
                     
-                if 'variant_button' in self.ids:
-                    self.ids.variant_button.text = self.current_variant.title()
-                    self.ids.variant_button.bind_callback(self.on_variant_select)
-                    
-                if 'language_button' in self.ids:
-                    self.ids.language_button.text = self.current_language.upper()
-                    self.ids.language_button.bind_callback(self.on_language_select)
+            # Проверяем language button
+            if language_button:
+                if hasattr(language_button, 'bind_selection_callback'):
+                    language_button.bind_selection_callback(self.on_language_select)
+                    logger.debug("✅ Language button callback bound")
+                elif hasattr(language_button, 'bind'):
+                    language_button.bind(on_release=lambda btn: self.on_language_select(self.current_language))
+                    logger.debug("✅ Language button fallback binding")
                     
         except Exception as e:
-            logger.error(f"Error setting up select buttons: {e}")
-
+            logger.error(f"❌ Error setting up select buttons: {e}")
     # ================================================
     # ОБРАБОТЧИКИ СОБЫТИЙ ПОЛЬЗОВАТЕЛЯ
     # ================================================

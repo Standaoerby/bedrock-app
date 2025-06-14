@@ -232,18 +232,22 @@ class SelectButton(Button, EventDispatcher):
 
 class ThemeSelectButton(SelectButton):
     """Кнопка выбора темы с правильной привязкой событий"""
-    
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.popup_title = "Select Theme"
+        # 🔥 EMERGENCY FIX: Add missing attribute
+        self.bind_callback = None
     
     def on_select(self, value, old_value):
-        """Обработка выбора темы"""
+        """🔥 FIXED: Handle selection properly"""
         try:
-            # Находим родительский экран настроек
-            screen = self._find_settings_screen()
-            if screen and hasattr(screen, 'on_theme_select'):
-                Clock.schedule_once(lambda dt: screen.on_theme_select(value), 0.1)
+            # Find parent settings screen
+            parent = self.parent
+            while parent:
+                if hasattr(parent, 'on_theme_select'):
+                    parent.on_theme_select(value)
+                    break
+                parent = parent.parent
         except Exception as e:
             logger.error(f"Error in ThemeSelectButton.on_select: {e}")
     

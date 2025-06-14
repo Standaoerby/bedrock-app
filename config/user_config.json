@@ -2,7 +2,7 @@
   "username": "Anna-Maria",
   "birthday": "2015-05-18",
   "theme": "minecraft",
-  "variant": "dark",
+  "variant": "light",
   "alarm": {
     "enabled": false,
     "time": "07:00",
@@ -19,5 +19,8 @@
   },
   "auto_theme_enabled": true,
   "light_sensor_threshold": 3,
-  "volume": 100
+  "volume": 90,
+  "birth_day": "01",
+  "birth_month": "01",
+  "birth_year": "2000"
 }
