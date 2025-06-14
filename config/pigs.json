@@ -19,7 +19,7 @@
     "water": {
       "label": "Water",
       "max_hours": 8,
-      "last_reset": "2025-06-14T02:19:02.542775",
+      "last_reset": "2025-06-14T05:38:49.131606",
       "description": "Fresh water for drinking",
       "icon": "💧",
       "color": [
@@ -32,7 +32,7 @@
     "food": {
       "label": "Food",
       "max_hours": 6,
-      "last_reset": "2025-06-14T02:19:03.059813",
+      "last_reset": "2025-06-14T05:38:48.641410",
       "description": "Hay, pellets, and vegetables",
       "icon": "🥕",
       "color": [
@@ -45,7 +45,7 @@
     "clean": {
       "label": "Cleaning",
       "max_hours": 12,
-      "last_reset": "2025-06-12T23:40:55.267820",
+      "last_reset": "2025-06-14T05:38:49.695348",
       "description": "Cage cleaning and maintenance",
       "icon": "🧽",
       "color": [

@@ -82,7 +82,7 @@ class VolumeControlService:
         
         # Button state tracking для дебаунсинга
         self._last_button_time = {VOLUME_UP_PIN: 0, VOLUME_DOWN_PIN: 0}
-        self._last_button_state = {VOLUME_UP_PIN: True, VOLUME_DOWN_PIN: True}
+        self._last_button_state = {VOLUME_UP_PIN: 1, VOLUME_DOWN_PIN: 1}
         
         # Callback events
         self._volume_change_callback = None
@@ -97,7 +97,14 @@ class VolumeControlService:
         self._init_usb_audio_system()
         self._init_gpio_system()
         
+        
         logger.info(f"VolumeControlService initialization complete")
+        if self.gpio_available:
+            logger.info("🔘 GPIO available - auto-starting button monitoring")
+            self.start()
+        else:
+            logger.info("🔘 GPIO not available - starting in software-only mode")
+            self.running = True
 
     def _init_usb_audio_system(self):
         """ИСПРАВЛЕНО: Инициализация USB аудио системы с детальным логированием"""
@@ -247,25 +254,34 @@ class VolumeControlService:
             self._current_volume = 50
 
     def _init_gpio_system(self):
-        """ИСПРАВЛЕНО: Инициализация GPIO с proper cleanup"""
+        """🔥 ИСПРАВЛЕННАЯ инициализация GPIO с дополнительной диагностикой"""
         self.gpio_available = False
         
-        # Пытаемся инициализировать GPIO
+        # Пытаемся инициализировать lgpio (приоритет для Pi 5)
         if LGPIO_AVAILABLE:
             try:
                 self.gpio_handle = lgpio.gpiochip_open(0)
                 if self.gpio_handle >= 0:
-                    # Настраиваем пины как входы с подтяжкой
+                    # Настраиваем пины как входы с подтяжкой вверх
                     lgpio.gpio_claim_input(self.gpio_handle, VOLUME_UP_PIN, lgpio.SET_PULL_UP)
                     lgpio.gpio_claim_input(self.gpio_handle, VOLUME_DOWN_PIN, lgpio.SET_PULL_UP)
                     
+                    # 🔥 НОВОЕ: Тестовое чтение для проверки работоспособности
+                    test_up = lgpio.gpio_read(self.gpio_handle, VOLUME_UP_PIN)
+                    test_down = lgpio.gpio_read(self.gpio_handle, VOLUME_DOWN_PIN)
+                    logger.info(f"🔍 GPIO test read - UP: {test_up}, DOWN: {test_down}")
+                    
+                    # 🔥 НОВОЕ: Инициализируем состояния реальными значениями
+                    self._last_button_state[VOLUME_UP_PIN] = test_up
+                    self._last_button_state[VOLUME_DOWN_PIN] = test_down
+                    
                     self.gpio_lib = "lgpio"
                     self.gpio_available = True
-                    logger.info("GPIO initialized with lgpio")
+                    logger.info("✅ GPIO initialized with lgpio")
                     return
                     
             except Exception as e:
-                logger.warning(f"lgpio initialization failed: {e}")
+                logger.warning(f"❌ lgpio initialization failed: {e}")
                 if self.gpio_handle is not None and self.gpio_handle >= 0:
                     try:
                         lgpio.gpiochip_close(self.gpio_handle)
@@ -273,21 +289,32 @@ class VolumeControlService:
                         pass
                     self.gpio_handle = None
         
+        # Fallback на RPi.GPIO
         if RPI_GPIO_AVAILABLE:
             try:
                 RPi_GPIO.setmode(RPi_GPIO.BCM)
                 RPi_GPIO.setup(VOLUME_UP_PIN, RPi_GPIO.IN, pull_up_down=RPi_GPIO.PUD_UP)
                 RPi_GPIO.setup(VOLUME_DOWN_PIN, RPi_GPIO.IN, pull_up_down=RPi_GPIO.PUD_UP)
                 
+                # 🔥 НОВОЕ: Тестовое чтение
+                test_up = RPi_GPIO.input(VOLUME_UP_PIN)
+                test_down = RPi_GPIO.input(VOLUME_DOWN_PIN)
+                logger.info(f"🔍 GPIO test read - UP: {test_up}, DOWN: {test_down}")
+                
+                # Инициализируем состояния
+                self._last_button_state[VOLUME_UP_PIN] = test_up
+                self._last_button_state[VOLUME_DOWN_PIN] = test_down
+                
                 self.gpio_lib = "RPi.GPIO"
                 self.gpio_available = True
-                logger.info("GPIO initialized with RPi.GPIO")
+                logger.info("✅ GPIO initialized with RPi.GPIO")
                 return
                 
             except Exception as e:
-                logger.warning(f"RPi.GPIO initialization failed: {e}")
+                logger.warning(f"❌ RPi.GPIO initialization failed: {e}")
         
-        logger.warning("GPIO not available - hardware buttons disabled")
+        logger.warning("⚠️ GPIO not available - hardware buttons disabled")
+
 
     def start(self):
         """Запуск сервиса мониторинга кнопок"""
@@ -359,25 +386,47 @@ class VolumeControlService:
             logger.error(f"Error in GPIO cleanup: {e}")
 
     def _monitor_buttons(self):
-        """Мониторинг нажатий кнопок громкости"""
-        logger.info("Button monitoring started")
+        """🔥 УЛУЧШЕННЫЙ мониторинг кнопок с дополнительной диагностикой"""
+        logger.info("🔘 Button monitoring started")
+        
+        # 🔥 НОВОЕ: Счетчик для периодической диагностики
+        diagnostic_counter = 0
         
         while self.running and not self._stop_event.is_set():
             try:
                 self._check_volume_buttons()
-                time.sleep(0.05)  # 50ms polling
                 
+                # 🔥 НОВОЕ: Каждые 10 секунд выводим состояние кнопок (только в debug режиме)
+                diagnostic_counter += 1
+                if diagnostic_counter >= 200:  # 200 * 50ms = 10 секунд
+                    try:
+                        if self.gpio_lib == "lgpio":
+                            up_current = lgpio.gpio_read(self.gpio_handle, VOLUME_UP_PIN)
+                            down_current = lgpio.gpio_read(self.gpio_handle, VOLUME_DOWN_PIN)
+                        elif self.gpio_lib == "RPi.GPIO":
+                            up_current = RPi_GPIO.input(VOLUME_UP_PIN)
+                            down_current = RPi_GPIO.input(VOLUME_DOWN_PIN)
+                        else:
+                            up_current = down_current = "N/A"
+                        
+                        logger.debug(f"🔘 Button states - UP: {up_current}, DOWN: {down_current}")
+                        diagnostic_counter = 0
+                    except Exception as diag_e:
+                        logger.debug(f"Diagnostic read failed: {diag_e}")
+                
+                time.sleep(0.05)  # 50ms polling rate
+                    
             except Exception as e:
-                logger.error(f"Error in button monitoring: {e}")
+                logger.error(f"❌ Error in button monitoring: {e}")
                 time.sleep(0.1)
         
-        logger.info("Button monitoring stopped")
+        logger.info("🔘 Button monitoring stopped")
 
     def _check_volume_buttons(self):
-        """Проверка состояния кнопок громкости с дебаунсингом"""
+        """🔥 ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ проверка состояния кнопок с правильной логикой"""
         current_time = time.time()
         
-        # Читаем состояние пинов
+        # Читаем текущее состояние пинов
         try:
             if self.gpio_lib == "lgpio":
                 up_state = lgpio.gpio_read(self.gpio_handle, VOLUME_UP_PIN)
@@ -391,25 +440,33 @@ class VolumeControlService:
             logger.error(f"Error reading GPIO: {e}")
             return
         
-        # Проверяем кнопку Volume Up
-        if (not up_state and self._last_button_state[VOLUME_UP_PIN] and 
+        # 🔥 ИСПРАВЛЕНО: Проверяем переход состояния (edge detection)
+        # При pull-up резисторах: не нажата=1, нажата=0
+        # Реагируем только на переход от 1 к 0 (нажатие)
+        
+        # Volume Up - проверка нажатия
+        if (up_state == 0 and 
+            self._last_button_state[VOLUME_UP_PIN] == 1 and 
             current_time - self._last_button_time[VOLUME_UP_PIN] > DEBOUNCE_TIME):
             
             self._last_button_time[VOLUME_UP_PIN] = current_time
             self.volume_up_manual()
-            logger.debug("Volume up button pressed")
+            logger.info("🔊 Volume up button pressed (GPIO)")
         
-        # Проверяем кнопку Volume Down
-        if (not down_state and self._last_button_state[VOLUME_DOWN_PIN] and 
+        # Volume Down - проверка нажатия  
+        if (down_state == 0 and 
+            self._last_button_state[VOLUME_DOWN_PIN] == 1 and
             current_time - self._last_button_time[VOLUME_DOWN_PIN] > DEBOUNCE_TIME):
             
             self._last_button_time[VOLUME_DOWN_PIN] = current_time
             self.volume_down_manual()
-            logger.debug("Volume down button pressed")
+            logger.info("🔉 Volume down button pressed (GPIO)")
         
-        # Сохраняем состояние кнопок
+        # 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем предыдущие состояния ПОСЛЕ проверки
         self._last_button_state[VOLUME_UP_PIN] = up_state
         self._last_button_state[VOLUME_DOWN_PIN] = down_state
+
+
 
     def get_volume(self):
         """Получение текущей громкости"""
