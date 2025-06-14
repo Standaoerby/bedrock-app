@@ -1,14 +1,15 @@
 # app/theme_manager.py
-# ПОЛНЫЙ ИСПРАВЛЕННЫЙ ФАЙЛ с защитой от циклических рекурсий
+# 🔥 ПОЛНОСТЬЮ ИСПРАВЛЕННЫЙ ФАЙЛ с устранением всех багов
 
 import os
 import json
 from app.logger import app_logger as logger
+from app.event_bus import event_bus
 
 
 class ThemeManager:
     """
-    Менеджер тем с защитой от циклических рекурсий.
+    🔥 ИСПРАВЛЕННЫЙ менеджер тем с защитой от циклических рекурсий.
     Отвечает за загрузку, хранение и отдачу ресурсов темы:
     цвета, изображения, шрифты, иконки, оверлеи, звуки и т.д.
     """
@@ -26,6 +27,9 @@ class ThemeManager:
         # 🔥 ЗАЩИТА ОТ ЦИКЛИЧЕСКИХ РЕКУРСИЙ
         self._loading_in_progress = False
         self._notification_disabled = False
+        
+        # 🔥 НОВОЕ: Кэширование ресурсов для производительности
+        self._resource_cache = {}
         
         # Дефолтная тема для предотвращения ошибок
         self.default_theme = {
@@ -86,7 +90,7 @@ class ThemeManager:
         return self.load(theme_name, variant)
 
     def load(self, theme_name, variant="light"):
-        """🔥 ОСНОВНОЙ МЕТОД: Загрузка темы с защитой от циклов"""
+        """🔥 ИСПРАВЛЕННЫЙ ОСНОВНОЙ МЕТОД: Загрузка темы с защитой от циклов"""
         try:
             # 🔥 ЗАЩИТА ОТ ЦИКЛИЧЕСКОЙ РЕКУРСИИ
             if self._loading_in_progress:
@@ -113,6 +117,9 @@ class ThemeManager:
             self.current_theme = theme_name  # Совместимость
             self.current_variant = variant   # Совместимость
             
+            # 🔥 ОЧИЩАЕМ КЭШ при смене темы
+            self._clear_resource_cache()
+            
             # Загружаем данные темы
             success = self._load_theme_data(theme_name, variant)
             
@@ -128,6 +135,7 @@ class ThemeManager:
                 self.variant = old_variant
                 self.current_theme = old_theme
                 self.current_variant = old_variant
+                logger.error(f"Failed to load theme {theme_name}/{variant}, rolled back")
             
             return success
             
@@ -156,6 +164,7 @@ class ThemeManager:
             self._loading_in_progress = False
             self._notification_disabled = False
             self.theme_data = {}
+            self._clear_resource_cache()
             return self.load(theme_name, variant)
         return False
 
@@ -196,199 +205,174 @@ class ThemeManager:
         return merged
 
     def _notify_theme_changed(self):
-        """🔥 УВЕДОМЛЕНИЕ О СМЕНЕ ТЕМЫ с защитой от циклов"""
+        """🔥 ИСПРАВЛЕННОЕ УВЕДОМЛЕНИЕ О СМЕНЕ ТЕМЫ с защитой от циклов"""
         try:
-            # Дополнительная защита
-            if self._loading_in_progress:
-                logger.debug("Skipping theme notification - loading in progress")
+            if self._notification_disabled:
+                logger.debug("Theme notification disabled, skipping event")
                 return
                 
-            from app.event_bus import event_bus
+            # 🔥 ЕДИНСТВЕННАЯ точка публикации события с указанием источника
             event_bus.publish("theme_changed", {
                 "theme": self.theme_name,
                 "variant": self.variant,
-                "source": "theme_manager"  # 🔥 УКАЗЫВАЕМ ИСТОЧНИК для предотвращения циклов
+                "source": "theme_manager"  # 🔥 КРИТИЧНО: указываем источник
             })
-            logger.debug(f"Theme change event published: {self.theme_name}/{self.variant}")
+            
+            # Также публикуем отдельное событие для варианта
+            event_bus.publish("variant_changed", {
+                "variant": self.variant,
+                "source": "theme_manager"
+            })
+            
+            logger.info(f"🎨 Theme changed event published: {self.theme_name}/{self.variant}")
+            
         except Exception as e:
             logger.error(f"Error notifying theme change: {e}")
 
     # ================================================
-    # МЕТОДЫ ПОЛУЧЕНИЯ РЕСУРСОВ ТЕМЫ
+    # МЕТОДЫ ПОЛУЧЕНИЯ РЕСУРСОВ С КЭШИРОВАНИЕМ
     # ================================================
 
-    def get_color(self, name, fallback="#ffffff"):
-        """Получить hex-цвет по имени"""
-        try:
-            color = self.theme_data.get("colors", {}).get(name)
-            if color:
-                return color
-            return fallback
-        except Exception:
-            return fallback
+    def _clear_resource_cache(self):
+        """🔥 НОВОЕ: Очистка кэша ресурсов"""
+        self._resource_cache.clear()
+        logger.debug("Resource cache cleared")
 
-    def get_rgba(self, name, fallback="#ffffff"):
-        """Получить цвет в формате RGBA для Kivy (tuple 0..1)"""
-        try:
-            from kivy.utils import get_color_from_hex
-            hex_color = self.get_color(name, fallback)
-            
-            # Проверяем валидность
-            if not isinstance(hex_color, str):
-                logger.warning(f"Color {name} is not a string: {hex_color}, using fallback")
-                hex_color = fallback
+    def get_color(self, color_name, fallback="#FFFFFF"):
+        """Получить цвет в HEX формате с кэшированием"""
+        cache_key = f"color_{color_name}_{self.theme_name}_{self.variant}"
+        
+        if cache_key not in self._resource_cache:
+            try:
+                color_value = self.theme_data.get("colors", {}).get(color_name, fallback)
+                self._resource_cache[cache_key] = color_value
+            except Exception as e:
+                logger.warning(f"Error getting color {color_name}: {e}")
+                self._resource_cache[cache_key] = fallback
                 
-            if not hex_color.startswith('#'):
-                logger.warning(f"Color {name} invalid format: {hex_color}, using fallback")
-                hex_color = fallback
-                
-            return get_color_from_hex(hex_color)
-        except Exception as e:
-            logger.error(f"Error getting RGBA color {name}: {e}")
-            return [1, 1, 1, 1]
+        return self._resource_cache[cache_key]
 
-    def get_param(self, name, fallback=None):
-        """Получить параметр темы из любой секции"""
+    def get_rgba(self, color_name, fallback=(1, 1, 1, 1)):
+        """Получить цвет в RGBA формате с кэшированием"""
+        cache_key = f"rgba_{color_name}_{self.theme_name}_{self.variant}"
+        
+        if cache_key not in self._resource_cache:
+            try:
+                hex_color = self.get_color(color_name)
+                rgba = self._hex_to_rgba(hex_color)
+                self._resource_cache[cache_key] = rgba
+            except Exception as e:
+                logger.warning(f"Error converting color {color_name} to RGBA: {e}")
+                self._resource_cache[cache_key] = fallback
+                
+        return self._resource_cache[cache_key]
+
+    def get_param(self, param_name, fallback=None):
+        """Получить параметр темы (размеры, отступы и т.д.)"""
         try:
             # Ищем в разных секциях
-            for section_name, section_data in self.theme_data.items():
-                if isinstance(section_data, dict) and name in section_data:
-                    return section_data[name]
+            for section in ["menu", "layout", "params"]:
+                if section in self.theme_data:
+                    value = self.theme_data[section].get(param_name)
+                    if value is not None:
+                        return value
             return fallback
-        except Exception:
-            return fallback
-
-    def get_font(self, name, fallback=""):
-        """Получить путь к шрифту или пустую строку для дефолта"""
-        try:
-            font_file = self.theme_data.get("fonts", {}).get(name)
-            
-            # Если шрифт не задан, возвращаем пустую строку (дефолтный шрифт)
-            if not font_file:
-                return ""
-            
-            if not self.theme_name:
-                logger.warning("Theme not loaded, using default font")
-                return ""
-            
-            # Проверяем полный путь vs относительный
-            if os.path.sep in font_file or '/' in font_file:
-                path = font_file
-            else:
-                # Шрифты лежат в папке темы, НЕ в папке варианта
-                path = os.path.join(self.themes_dir, self.theme_name, "fonts", font_file)
-            
-            path = os.path.normpath(path)
-                
-            if not os.path.isfile(path):
-                logger.warning(f"Font not found: {path}, using default")
-                return ""  # Пустая строка = дефолтный шрифт Kivy
-                
-            return path
         except Exception as e:
-            logger.error(f"Error getting font {name}: {e}")
-            return ""
+            logger.warning(f"Error getting param {param_name}: {e}")
+            return fallback
 
-    def get_image(self, name):
+    def get_font(self, font_name, fallback=""):
+        """Получить шрифт"""
+        try:
+            font_path = self.theme_data.get("fonts", {}).get(font_name, fallback)
+            if font_path and font_path != "":
+                # Если указан относительный путь, делаем его абсолютным
+                if not os.path.isabs(font_path):
+                    theme_font_dir = os.path.join(self.themes_dir, self.theme_name, "fonts")
+                    full_path = os.path.join(theme_font_dir, font_path)
+                    if os.path.isfile(full_path):
+                        return full_path
+                    else:
+                        logger.warning(f"Font file not found: {full_path}")
+                        return fallback
+                return font_path
+            return fallback
+        except Exception as e:
+            logger.warning(f"Error getting font {font_name}: {e}")
+            return fallback
+
+    def get_image(self, image_name, fallback=""):
         """Получить путь к изображению"""
         try:
-            img_file = self.theme_data.get("images", {}).get(name)
-            if not img_file:
-                # Фолбэк: имя файла совпадает с именем
-                img_file = f"{name}.png"
-            
-            if not self.theme_name or not self.variant:
-                logger.warning("Theme not loaded, using fallback")
-                return ""
-            
-            # Проверяем полный путь vs относительный
-            if os.path.sep in img_file or '/' in img_file:
-                path = img_file
-            else:
-                # Изображения лежат в папке варианта
-                path = os.path.join(self.themes_dir, self.theme_name, self.variant, img_file)
-            
-            path = os.path.normpath(path)
-                
-            if not os.path.isfile(path):
-                logger.warning(f"Image not found: {path}, trying fallback")
-                # Фолбэк на дефолтный фон
-                fallback_path = os.path.join(
-                    self.themes_dir, self.theme_name, self.variant, "background.png"
-                )
-                fallback_path = os.path.normpath(fallback_path)
-                if os.path.isfile(fallback_path):
-                    return fallback_path
-                else:
-                    logger.warning(f"Fallback image also not found: {fallback_path}")
-                    return ""
-            return path
+            image_path = self.theme_data.get("images", {}).get(image_name, fallback)
+            if image_path and image_path != "":
+                # Если указан относительный путь, делаем его абсолютным
+                if not os.path.isabs(image_path):
+                    theme_images_dir = os.path.join(self.themes_dir, self.theme_name, self.variant, "images")
+                    full_path = os.path.join(theme_images_dir, image_path)
+                    if os.path.isfile(full_path):
+                        return full_path
+                    else:
+                        logger.warning(f"Image file not found: {full_path}")
+                        return fallback
+                return image_path
+            return fallback
         except Exception as e:
-            logger.error(f"Error getting image {name}: {e}")
-            return ""
+            logger.warning(f"Error getting image {image_name}: {e}")
+            return fallback
 
     def get_overlay(self, page_name):
-        """Получить путь к overlay-файлу для страницы"""
-        try:
-            overlay_name = f"overlay_{page_name}.png"
-            if not self.theme_name or not self.variant:
-                return ""
-                
-            path = os.path.join(self.themes_dir, self.theme_name, self.variant, overlay_name)
-            path = os.path.normpath(path)
-            
-            if os.path.isfile(path):
-                return path
-            
-            # Фолбэк: overlay_default.png
-            fallback = os.path.join(
-                self.themes_dir, self.theme_name, self.variant, "overlay_default.png"
-            )
-            fallback = os.path.normpath(fallback)
-            if os.path.isfile(fallback):
-                return fallback
-            return ""
-        except Exception as e:
-            logger.error(f"Error getting overlay {page_name}: {e}")
-            return ""
+        """Получить оверлей для страницы"""
+        return self.get_image(f"overlay_{page_name}", self.get_image("overlay_default"))
 
-    def get_sound(self, name):
-        """Получить путь к звуковому файлу"""
+    def get_sound(self, sound_name, fallback=""):
+        """Получить путь к звуку"""
         try:
-            sound_file = self.theme_data.get("sounds", {}).get(name)
-            if not sound_file:
-                sound_file = f"{name}.ogg"
+            sound_path = self.theme_data.get("sounds", {}).get(sound_name, fallback)
+            if sound_path and sound_path != "":
+                # Если указан относительный путь, делаем его абсолютным
+                if not os.path.isabs(sound_path):
+                    theme_sounds_dir = os.path.join(self.themes_dir, self.theme_name, "sounds")
+                    full_path = os.path.join(theme_sounds_dir, sound_path)
+                    if os.path.isfile(full_path):
+                        return full_path
+                    else:
+                        logger.warning(f"Sound file not found: {full_path}")
+                        return fallback
+                return sound_path
+            return fallback
+        except Exception as e:
+            logger.warning(f"Error getting sound {sound_name}: {e}")
+            return fallback
+
+    # ================================================
+    # УТИЛИТЫ И ДИАГНОСТИКА
+    # ================================================
+
+    def _hex_to_rgba(self, hex_color):
+        """Конвертировать HEX в RGBA"""
+        try:
+            if hex_color.startswith('#'):
+                hex_color = hex_color[1:]
             
-            if not self.theme_name:
-                return ""
-            
-            # Проверяем полный путь vs относительный
-            if os.path.sep in sound_file or '/' in sound_file:
-                path = sound_file
+            if len(hex_color) == 6:
+                r = int(hex_color[0:2], 16) / 255.0
+                g = int(hex_color[2:4], 16) / 255.0
+                b = int(hex_color[4:6], 16) / 255.0
+                return (r, g, b, 1.0)
             else:
-                # Звуки лежат в папке темы, НЕ в папке варианта
-                path = os.path.join(self.themes_dir, self.theme_name, "sounds", sound_file)
-            
-            path = os.path.normpath(path)
-                
-            if not os.path.isfile(path):
-                logger.warning(f"Sound not found: {path}")
-                return ""
-            return path
+                logger.warning(f"Invalid hex color format: #{hex_color}")
+                return (1.0, 1.0, 1.0, 1.0)
         except Exception as e:
-            logger.error(f"Error getting sound {name}: {e}")
-            return ""
-
-    # ================================================
-    # ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
-    # ================================================
+            logger.error(f"Error converting hex to RGBA: {e}")
+            return (1.0, 1.0, 1.0, 1.0)
 
     def is_loaded(self):
         """Проверить, загружена ли тема"""
-        return self.theme_name is not None and self.variant is not None
+        return self.theme_name is not None and self.variant is not None and bool(self.theme_data)
 
     def diagnose_state(self):
-        """Диагностика состояния ThemeManager"""
+        """🔥 НОВОЕ: Диагностика состояния ThemeManager для отладки"""
         return {
             "theme_name": self.theme_name,
             "variant": self.variant,
@@ -402,8 +386,51 @@ class ThemeManager:
             "colors_count": len(self.theme_data.get("colors", {})),
             "fonts_count": len(self.theme_data.get("fonts", {})),
             "images_count": len(self.theme_data.get("images", {})),
-            "sounds_count": len(self.theme_data.get("sounds", {}))
+            "sounds_count": len(self.theme_data.get("sounds", {})),
+            "cache_size": len(self._resource_cache)
         }
+
+    def force_refresh_all_screens(self):
+        """🔥 ИСПРАВЛЕНО: Принудительное обновление всех экранов с проверками"""
+        try:
+            from kivy.app import App
+            from kivy.clock import Clock
+            
+            app = App.get_running_app()
+            if not app:
+                logger.warning("Cannot access running app for screen refresh")
+                return
+                
+            # 🔥 ИСПРАВЛЕНО: Множественные способы доступа к screen_manager
+            sm = None
+            
+            # Способ 1: Через app.root.screen_manager
+            if hasattr(app, 'root') and app.root:
+                if hasattr(app.root, 'screen_manager') and app.root.screen_manager:
+                    sm = app.root.screen_manager
+                # Способ 2: Через app.root.ids.sm (KV файл)
+                elif hasattr(app.root, 'ids') and 'sm' in app.root.ids:
+                    sm = app.root.ids.sm
+                    
+            if sm and hasattr(sm, 'screens') and sm.screens:
+                refresh_count = 0
+                for screen in sm.screens:
+                    if hasattr(screen, 'refresh_theme'):
+                        Clock.schedule_once(
+                            lambda dt, s=screen: s.refresh_theme(), 0.1
+                        )
+                        refresh_count += 1
+                        
+                logger.info(f"Force refresh scheduled for {refresh_count} screens")
+            else:
+                logger.warning("Cannot access screen manager or no screens available")
+                # 🔥 НОВОЕ: Публикуем событие как fallback
+                event_bus.publish("theme_force_refresh", {
+                    "source": "theme_manager_fallback"
+                })
+                
+        except Exception as e:
+            logger.error(f"Error force refreshing screens: {e}")
 
 
 # ================================================
@@ -420,7 +447,7 @@ def get_theme_manager():
 
 
 def validate_theme_manager_module():
-    """Валидация модуля ThemeManager для отладки"""
+    """🔥 НОВОЕ: Валидация модуля ThemeManager для отладки"""
     try:
         tm = ThemeManager()
         
@@ -429,7 +456,7 @@ def validate_theme_manager_module():
             'load_theme', 'load', 'load_silently', 'force_reload',
             'get_color', 'get_rgba', 'get_param', 'get_font', 
             'get_image', 'get_overlay', 'get_sound',
-            'is_loaded', 'diagnose_state'
+            'is_loaded', 'diagnose_state', 'force_refresh_all_screens'
         ]
         
         for method in required_methods:
@@ -438,6 +465,7 @@ def validate_theme_manager_module():
         # Проверяем защиту от циклов
         assert hasattr(tm, '_loading_in_progress'), "_loading_in_progress flag missing"
         assert hasattr(tm, '_notification_disabled'), "_notification_disabled flag missing"
+        assert hasattr(tm, '_resource_cache'), "_resource_cache missing"
         
         print("✅ ThemeManager module validation passed")
         return True

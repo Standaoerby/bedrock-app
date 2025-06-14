@@ -33,6 +33,7 @@ class ScheduleScreen(Screen):
         # Подписка на события
         event_bus.subscribe("language_changed", self.refresh_text)
         event_bus.subscribe("theme_changed", self.refresh_theme)
+        event_bus.subscribe("theme_force_refresh", self.refresh_theme)
         self._update_events = []
 
     def on_pre_enter(self, *args):

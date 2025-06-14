@@ -80,9 +80,9 @@ class HomeScreen(Screen):
         
         # Подписка на события
         event_bus.subscribe("theme_changed", self.refresh_theme)
-        event_bus.subscribe("language_changed", self.refresh_text)
-        # ИСПРАВЛЕНО: Подписка на события изменения настроек будильника
+        event_bus.subscribe("language_changed", self.refresh_text)        
         event_bus.subscribe("alarm_settings_changed", self._on_alarm_settings_changed)
+        event_bus.subscribe("theme_force_refresh", self.refresh_theme)
         
         logger.info("HomeScreen initialized with optimizations")
 

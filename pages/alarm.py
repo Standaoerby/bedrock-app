@@ -49,6 +49,7 @@ class AlarmScreen(Screen):
         # Подписка на события
         event_bus.subscribe("theme_changed", self._on_theme_changed_delayed)
         event_bus.subscribe("language_changed", self.refresh_text)
+        event_bus.subscribe("theme_force_refresh", self.refresh_theme)
 
     def on_pre_enter(self, *args):
         """Вызывается при входе на экран"""
