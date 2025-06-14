@@ -145,88 +145,93 @@ class HomeScreen(Screen):
         except Exception as e:
             logger.error(f"Error updating time: {e}")
 
+# pages/home.py - ИСПРАВЛЕНИЯ для метода update_weather
+# Заменяем существующий метод update_weather на этот:
+
     def update_weather(self, *args):
-        """ОПТИМИЗИРОВАННОЕ обновление погоды"""
+        """🔥 ИСПРАВЛЕННОЕ обновление погоды с проверкой готовности сервиса"""
         try:
             app = App.get_running_app()
             
-            if hasattr(app, 'weather_service') and app.weather_service:
-                weather_data = app.weather_service.get_weather()
-                
-                if weather_data:
-                    # Текущая погода
-                    current = weather_data.get("current", {})
-                    self.weather_now_temp = f"{current.get('temperature', 20)}°"
-                    self.weather_now_condition = current.get('condition', 'Unknown')
-                    self.current_temp_value = current.get('temperature', 20)
-                    
-                    # Прогноз на 5 часов
-                    forecast = weather_data.get("forecast_5h", {})
-                    self.weather_5h_temp = f"{forecast.get('temperature', 18)}°"
-                    self.weather_5h_condition = forecast.get('condition', 'Unknown')
-                    self.forecast_temp_value = forecast.get('temperature', 18)
-                    
-                    # Тренд температуры
-                    self.temp_trend = self.forecast_temp_value - self.current_temp_value
-                    if self.temp_trend > 0:
-                        self.weather_trend_arrow = "↗"
-                    elif self.temp_trend < 0:
-                        self.weather_trend_arrow = "↘"
-                    else:
-                        self.weather_trend_arrow = "→"
-                    
-                    # Время прогноза (локализованное)
-                    self.weather_5h_in_text = self._get_localized_text("in_5h", "in 5h")
-                    
-                    logger.debug(f"Weather updated: {self.weather_now_temp} -> {self.weather_5h_temp}")
-                else:
-                    self._set_weather_no_data()
-            else:
-                self._set_weather_service_offline()
+            # 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Проверяем готовность weather_service
+            if not hasattr(app, 'weather_service') or not app.weather_service:
+                # Сервис еще не инициализирован - планируем повторную проверку
+                self._set_weather_service_loading()
+                Clock.schedule_once(lambda dt: self.update_weather(), 2.0)  # Проверяем через 2 сек
+                logger.debug("Weather service not ready, scheduled retry in 2s")
+                return
             
-            # ОПТИМИЗАЦИЯ: Планируем ОДНО обновление темы только при изменении
-            self._schedule_single_theme_refresh()
+            # Сервис готов - получаем данные
+            weather_data = app.weather_service.get_weather()
+            
+            if weather_data:
+                # Текущая погода
+                current = weather_data.get("current", {})
+                self.weather_now_temp = f"{current.get('temperature', 20)}°"
+                self.weather_now_condition = current.get('condition', 'Unknown')
+                self.current_temp_value = current.get('temperature', 20)
                 
+                # Прогноз на 5 часов
+                forecast = weather_data.get("forecast_5h", {})
+                self.weather_5h_temp = f"{forecast.get('temperature', 18)}°"
+                self.weather_5h_condition = forecast.get('condition', 'Unknown')
+                self.forecast_temp_value = forecast.get('temperature', 18)
+                
+                # Тренд температуры
+                self.temp_trend = self.forecast_temp_value - self.current_temp_value
+                if self.temp_trend > 0:
+                    self.weather_trend_arrow = "↗"
+                elif self.temp_trend < 0:
+                    self.weather_trend_arrow = "↘"
+                else:
+                    self.weather_trend_arrow = "→"
+                
+                # Время прогноза (локализованное)
+                self.weather_5h_in_text = self._get_localized_text("in_5h", "in 5h")
+                
+                logger.debug(f"Weather updated: {self.weather_now_temp} -> {self.weather_5h_temp}")
+            else:
+                self._set_weather_no_data()
+            
         except Exception as e:
             logger.error(f"Error updating weather: {e}")
-            self._set_weather_error()
+            self._set_weather_service_offline()
+
+    def _set_weather_service_loading(self):
+        """🔥 НОВЫЙ МЕТОД: Устанавливает состояние "загрузка сервиса погоды" """
+        self.weather_now_temp = "..."
+        self.weather_now_condition = "Loading..."
+        self.weather_5h_temp = "..."
+        self.weather_5h_condition = "Starting..."
+        self.weather_trend_arrow = "⏳"
+        self.weather_5h_in_text = "Please wait"
+        self.current_temp_value = 20
+        self.forecast_temp_value = 20
+        self.temp_trend = 0
 
     def _set_weather_no_data(self):
-        """Установка значений когда нет данных погоды"""
+        """Устанавливает состояние "нет данных о погоде" """
         self.weather_now_temp = "--°"
-        self.weather_now_condition = "No data"
-        self.weather_5h_temp = "--°"  
-        self.weather_5h_condition = "No data"
-        self.weather_5h_in_text = ""
-        self.weather_trend_arrow = "→"
+        self.weather_now_condition = "No Data"
+        self.weather_5h_temp = "--°"
+        self.weather_5h_condition = "No Data"
+        self.weather_trend_arrow = "?"
+        self.weather_5h_in_text = self._get_localized_text("in_5h", "in 5h")
         self.current_temp_value = 20
         self.forecast_temp_value = 20
         self.temp_trend = 0
 
     def _set_weather_service_offline(self):
-        """Установка значений когда сервис недоступен"""
-        self.weather_now_temp = "--°"
-        self.weather_now_condition = "Service offline"
-        self.weather_5h_temp = "--°"
-        self.weather_5h_condition = "Service offline"
-        self.weather_5h_in_text = ""
-        self.weather_trend_arrow = "→"
+        """Устанавливает состояние "сервис погоды недоступен" """
+        self.weather_now_temp = "Error"
+        self.weather_now_condition = "Service Offline"
+        self.weather_5h_temp = "Error"
+        self.weather_5h_condition = "Service Offline"
+        self.weather_trend_arrow = "✗"
+        self.weather_5h_in_text = "Try again later"
         self.current_temp_value = 20
         self.forecast_temp_value = 20
         self.temp_trend = 0
-
-    def _set_weather_error(self):
-        """Установка значений при ошибке"""
-        self.weather_now_temp = "--°"
-        self.weather_now_condition = "Error"
-        self.weather_5h_temp = "--°"
-        self.weather_5h_condition = "Error"
-        self.weather_5h_in_text = ""
-        self.weather_trend_arrow = "→"
-        self.current_temp_value = 20
-        self.forecast_temp_value = 20
-        self.temp_trend = 0
-
     # ========================================
     # ОПТИМИЗИРОВАННЫЕ МЕТОДЫ БУДИЛЬНИКА
     # ========================================

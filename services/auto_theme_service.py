@@ -217,8 +217,11 @@ class AutoThemeService:
         except Exception as e:
             logger.error(f"Error scheduling theme switch: {e}")
             
+# services/auto_theme_service.py - ИСПРАВЛЕНИЕ РЕАЛЬНОГО метода
+# Заменить существующий метод:
+
     def _do_switch_theme_on_main_thread(self, variant):
-        """🚨 ИСПРАВЛЕНО: Выполнение переключения темы в главном потоке БЕЗ дублирования логов"""
+        """🔥 ИСПРАВЛЕННОЕ выполнение переключения темы - БЕЗ дублирующих событий"""
         try:
             app = App.get_running_app()
             if app and hasattr(app, 'theme_manager'):
@@ -230,21 +233,18 @@ class AutoThemeService:
                 if current_variant == variant:
                     return  # Тема уже установлена
                 
-                # Переключаем вариант темы (в главном потоке)
+                # 🔥 ИСПРАВЛЕНИЕ: Используем load_theme(), БЕЗ дополнительной публикации события
                 app.theme_manager.load_theme(current_theme, variant)
                 
                 # Обновляем конфиг пользователя
                 if hasattr(app, 'user_config'):
                     app.user_config.set('variant', variant)
                 
-                # 🚨 ИСПРАВЛЕНО: Публикуем событие в главном потоке БЕЗ дополнительного логирования
-                event_bus.publish("theme_changed", {
-                    "theme": current_theme,
-                    "variant": variant,
-                    "source": "auto_theme_service"
-                })
+                # 🔥 УБИРАЕМ ДУБЛИРУЮЩУЮ ПУБЛИКАЦИЮ:
+                # event_bus.publish("theme_changed", {...})
+                # Событие уже публикуется автоматически из load_theme() -> load()!
                 
-                # 🚨 ИСПРАВЛЕНО: НЕ логируем здесь - логирование уже произошло в _check_light_level
+                logger.debug(f"Auto-theme switched to {variant} variant")
                 
             else:
                 logger.error("Cannot switch theme - ThemeManager not available")

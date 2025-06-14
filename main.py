@@ -835,27 +835,48 @@ class BedrockApp(App):
     # EVENT HANDLERS
     # ================================
 
+    # main.py - ИСПРАВЛЕНИЕ РЕАЛЬНЫХ обработчиков событий
+    # Заменить существующие методы:
+
     def _on_theme_changed(self, event_data):
-        """Обработчик смены темы"""
+        """🔥 ИСПРАВЛЕННЫЙ обработчик смены темы - БЕЗ ПОВТОРНОГО ВЫЗОВА load_theme"""
         try:
             theme = event_data.get("theme")
-            if theme and self.theme_manager:
-                current_variant = self.theme_manager.current_variant
-                self.theme_manager.load_theme(theme, current_variant)
+            source = event_data.get("source", "unknown")
+            
+            # 🔥 ЗАЩИТА ОТ ЦИКЛОВ: НЕ перезагружаем тему если событие от theme_manager
+            if source == "theme_manager":
+                logger.debug(f"Skipping theme reload - event from theme_manager itself")
+                # Только сохраняем в конфиг
+                if theme and self.user_config:
+                    self.user_config.set("theme", theme)
+                return
+                
+            # 🔥 ТОЛЬКО сохраняем в конфиг, НЕ перезагружаем тему  
+            if theme and self.user_config:
                 self.user_config.set("theme", theme)
-                logger.info(f"Theme changed to: {theme}")
+                logger.info(f"Theme config updated: {theme}")
         except Exception as e:
             logger.error(f"Error handling theme change: {e}")
 
     def _on_variant_changed(self, event_data):
-        """Обработчик смены варианта темы"""
+        """🔥 ИСПРАВЛЕННЫЙ обработчик смены варианта темы - БЕЗ ПОВТОРНОГО ВЫЗОВА load_theme"""
         try:
             variant = event_data.get("variant")
-            if variant and self.theme_manager:
-                current_theme = self.theme_manager.current_theme
-                self.theme_manager.load_theme(current_theme, variant)
+            source = event_data.get("source", "unknown")
+            
+            # 🔥 ЗАЩИТА ОТ ЦИКЛОВ: НЕ перезагружаем тему если событие от theme_manager
+            if source == "theme_manager":
+                logger.debug(f"Skipping variant reload - event from theme_manager itself")
+                # Только сохраняем в конфиг
+                if variant and self.user_config:
+                    self.user_config.set("variant", variant)
+                return
+                
+            # 🔥 ТОЛЬКО сохраняем в конфиг, НЕ перезагружаем тему
+            if variant and self.user_config:
                 self.user_config.set("variant", variant)
-                logger.info(f"Variant changed to: {variant}")
+                logger.info(f"Variant config updated: {variant}")
         except Exception as e:
             logger.error(f"Error handling variant change: {e}")
 

@@ -599,8 +599,9 @@ class SettingsScreen(Screen):
             logger.error(f"Error updating sensor status: {e}")
             self.current_light_status = "Status Error"
 
-    # МЕТОДЫ ОБРАБОТКИ СОБЫТИЙ UI - вызываются из SelectButton
-    
+# pages/settings.py - ИСПРАВЛЕНИЕ РЕАЛЬНЫХ методов
+# Заменить существующие методы:
+
     def on_theme_select(self, theme_name):
         """Выбор темы - вызывается из ThemeSelectButton"""
         # ИСПРАВЛЕНО: Проверяем активность селектора темы
@@ -617,10 +618,11 @@ class SettingsScreen(Screen):
             
             self.current_theme = theme_name
             
-            # Применяем тему
+            # 🔥 ИСПРАВЛЕНИЕ: УБИРАЕМ дублирующую публикацию события!
             if hasattr(app, 'theme_manager'):
                 app.theme_manager.load(theme_name, self.current_variant)
-                event_bus.publish("theme_changed", {"theme": theme_name, "variant": self.current_variant})
+                # УБРАНО: event_bus.publish("theme_changed", {"theme": theme_name, "variant": self.current_variant})
+                # Событие уже публикуется автоматически из load()!
             
             logger.info(f"Theme changed to: {theme_name}")
 
@@ -634,10 +636,11 @@ class SettingsScreen(Screen):
             
             self.current_variant = variant
             
-            # Применяем вариант темы
+            # 🔥 ИСПРАВЛЕНИЕ: УБИРАЕМ дублирующую публикацию события!
             if hasattr(app, 'theme_manager'):
                 app.theme_manager.load(self.current_theme, variant)
-                event_bus.publish("theme_changed", {"theme": self.current_theme, "variant": variant})
+                # УБРАНО: event_bus.publish("theme_changed", {"theme": self.current_theme, "variant": variant})
+                # Событие уже публикуется автоматически из load()!
             
             logger.info(f"Theme variant changed to: {variant}")
 
