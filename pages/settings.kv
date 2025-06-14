@@ -2,6 +2,8 @@
 #:import dp kivy.metrics.dp
 #:import ThemeSelectButton widgets.select_button.ThemeSelectButton
 #:import LanguageSelectButton widgets.select_button.LanguageSelectButton
+#:import VariantSelectButton widgets.select_button.VariantSelectButton
+
 
 <SettingsScreen>:
     name: "settings"
@@ -89,7 +91,7 @@
                             valign: 'middle'
                             text_size: self.size
                         
-                        ThemeSelectButton:
+                        VariantSelectButton:
                             id: variant_select_button        # 🔥 ТОЧНОЕ название  
                             text: root.current_variant
                             values: root.variant_list

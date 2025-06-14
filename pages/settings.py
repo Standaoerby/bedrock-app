@@ -213,6 +213,29 @@ class SettingsScreen(Screen):
                 event_bus.publish("language_changed", {"language": language})
             
             logger.info(f"Language changed to: {language}")
+    def _validate_theme_selectors(self):
+        """🔥 НОВОЕ: Валидация селекторов тем"""
+        try:
+            if not hasattr(self, 'ids'):
+                logger.error("❌ Settings screen missing ids")
+                return False
+                
+            variant_button = self.ids.get('variant_select_button')
+            
+            if variant_button:
+                button_type = type(variant_button).__name__
+                if button_type != 'VariantSelectButton':
+                    logger.error(f"❌ variant_select_button wrong type: {button_type}")
+                    logger.error("❌ This causes theme path errors like themes/dark/light/theme.json")
+                    return False
+                    
+            logger.info("✅ Theme selectors validation passed")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Error validating theme selectors: {e}")
+            return False
+
 
     def _on_theme_changed_delayed(self, *args):
         """🔥 ИСПРАВЛЕННАЯ асинхронная обработка смены темы"""
@@ -648,6 +671,9 @@ class SettingsScreen(Screen):
     def _setup_select_buttons(self):
         """🔧 ИСПРАВЛЕННАЯ версия настройки кнопок выбора"""
         try:
+            if not self._validate_theme_selectors():
+                logger.error("❌ Theme selectors validation failed - check KV file!")
+                return
             if not hasattr(self, 'ids'):
                 logger.warning("Settings screen missing ids")
                 return

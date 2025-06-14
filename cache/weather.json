@@ -1,14 +1,14 @@
 {
   "current": {
-    "time": "2025-06-14T05:45",
+    "time": "2025-06-14T06:00",
     "temperature": 18.0,
-    "condition": "Cloudy",
+    "condition": "Slight Rain Showers",
     "precipitation_probability": 65
   },
   "forecast_5h": {
-    "temperature": 18.0,
-    "condition": "Slight Rain Showers",
-    "precipitation_probability": 18
+    "temperature": 18.2,
+    "condition": "Cloudy",
+    "precipitation_probability": 13
   },
   "weekly_forecast": [
     {
@@ -68,5 +68,5 @@
       "precipitation_probability": 13
     }
   ],
-  "updated": "2025-06-14T05:54:24.023301"
+  "updated": "2025-06-14T06:10:27.485336"
 }
