@@ -1,10 +1,12 @@
 {
   "alarm": {
-    "time": "23:44",
+    "time": "23:42",
     "enabled": false,
     "repeat": [
       "Sun",
-      "Sat"
+      "Sat",
+      "Mon",
+      "Tue"
     ],
     "ringtone": "Bathtime In Clerkenwell.mp3",
     "fadein": true

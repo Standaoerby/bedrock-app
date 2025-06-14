@@ -3,7 +3,6 @@
 
 from kivy.config import Config
 import sys
-import threading
 import platform
 
 # Настройки Kivy для разных платформ
@@ -154,512 +153,104 @@ class BedrockApp(App):
         except Exception as e:
             logger.error(f"Error loading user settings: {e}")
 
-
     def _initialize_services(self):
-
-
-        """
-
-
-        ОПТИМИЗИРОВАНО: Ленивая инициализация сервисов
-
-
-        - Критические сервисы загружаются сразу
-
-
-        - Некритические - в фоне или по требованию
-
-
-        - Ускоряет время запуска в 3-5 раз
-
-
-        """
-
-
+        """ИСПРАВЛЕНО: Инициализация всех сервисов с правильным порядком"""
         try:
-
-
-            logger.info("Initializing services (optimized)...")
-
-
+            logger.info("Initializing services...")
             
-
-
-            # ===== ФАЗА 1: КРИТИЧЕСКИЕ СЕРВИСЫ (сразу) =====
-
-
-            
-
-
-            # 1. AudioService - критический для UI звуков
-
-
+            # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Инициализируем AudioService первым
             try:
-
-
                 logger.info("Initializing AudioService...")
-
-
                 self.audio_service = AudioService()
-
-
-                logger.info("✅ AudioService initialized")
-
-
+                
+                # Проверяем что сервис корректно инициализирован
+                if hasattr(self.audio_service, 'diagnose_state'):
+                    logger.info("✅ AudioService initialized with diagnose_state method")
+                    # Выполняем диагностику для проверки
+                    diagnosis = self.audio_service.diagnose_state()
+                    logger.info(f"AudioService diagnosis: {diagnosis}")
+                else:
+                    logger.error("❌ AudioService missing diagnose_state method")
+                    
             except Exception as e:
-
-
-                logger.error(f"CRITICAL: AudioService failed: {e}")
-
-
+                logger.error(f"CRITICAL: AudioService initialization failed: {e}")
                 self.audio_service = None
-
-
             
-
-
-            # 2. AlarmService - критический для будильника
-
-
-            try:
-
-
-                logger.info("Initializing AlarmService...")
-
-
-                self.alarm_service = AlarmService()
-
-
-                logger.info("✅ AlarmService initialized")
-
-
-            except Exception as e:
-
-
-                logger.error(f"❌ AlarmService failed: {e}")
-
-
-                self.alarm_service = None
-
-
-            
-
-
-            # 3. NotificationService - легкий, нужен для уведомлений
-
-
-            try:
-
-
-                self.notification_service = NotificationService()
-
-
-                logger.info("✅ NotificationService initialized")
-
-
-            except Exception as e:
-
-
-                logger.error(f"❌ NotificationService failed: {e}")
-
-
-                self.notification_service = None
-
-
-                
-
-
-            # 4. ScheduleService - легкий, только загружает JSON
-
-
-            try:
-
-
-                self.schedule_service = ScheduleService()
-
-
-                logger.info("✅ ScheduleService initialized")
-
-
-            except Exception as e:
-
-
-                logger.error(f"❌ ScheduleService failed: {e}")
-
-
-                self.schedule_service = None
-
-
-
-            logger.info("✅ Critical services initialized")
-
-
-            
-
-
-            # ===== ФАЗА 2: ОТЛОЖЕННЫЕ СЕРВИСЫ (в фоне) =====
-
-
-            
-
-
-            # Список сервисов для отложенной загрузки
-
-
-            self._deferred_services = {
-
-
-                'weather_service': (WeatherService, {
-
-
+            # Конфигурация остальных сервисов (порядок КРИТИЧЕСКИ ВАЖЕН!)
+            services_config = [
+                ('alarm_service', AlarmService, {}),
+                ('notification_service', NotificationService, {}),
+                ('weather_service', WeatherService, {
                     'lat': self.user_config.get('location', {}).get('latitude', 51.5566),
-
-
                     'lon': self.user_config.get('location', {}).get('longitude', -0.178)
-
-
                 }),
-
-
-                'sensor_service': (SensorService, {}),
-
-
-                'volume_service': (VolumeControlService, {}),
-
-
-                'pigs_service': (PigsService, {}),
-
-
-            }
-
-
+                ('sensor_service', SensorService, {}),
+                ('pigs_service', PigsService, {}),
+                ('schedule_service', ScheduleService, {}),
+                ('volume_service', VolumeControlService, {}),
+            ]
             
-
-
-            # Инициализируем заглушки для deferred сервисов
-
-
-            for service_name in self._deferred_services:
-
-
-                setattr(self, service_name, None)
-
-
-                
-
-
-            # Запускаем отложенную инициализацию
-
-
-            Clock.schedule_once(self._init_deferred_services, 1.5)  # Через 1.5 сек
-
-
-            
-
-
-            # ===== ФАЗА 3: auto_theme_service =====
-
-
-            self.auto_theme_service = None
-
-
-            
-
-
-            # ===== ФАЗА 4: ALARM_CLOCK =====
-
-
-            if ALARM_CLOCK_AVAILABLE:
-
-
+            # Инициализируем сервисы последовательно
+            for service_name, service_class, kwargs in services_config:
                 try:
-
-
-                    logger.info("Initializing AlarmClock...")
-
-
-                    self.alarm_clock = AlarmClock()
-
-
-                    self.alarm_clock.start()
-
-
-                    logger.info("✅ AlarmClock initialized")
-
-
+                    logger.info(f"Initializing {service_name}...")
+                    service_instance = service_class(**kwargs)
+                    setattr(self, service_name, service_instance)
+                    
+                    # Запускаем сервис если у него есть метод start
+                    if hasattr(service_instance, 'start'):
+                        service_instance.start()
+                    
+                    logger.info(f"✅ Service initialized: {service_name}")
+                    
                 except Exception as ex:
+                    logger.error(f"❌ Failed to initialize {service_name}: {ex}")
+                    setattr(self, service_name, None)
 
-
-                    logger.error(f"❌ AlarmClock failed: {ex}")
-
-
-                    self.alarm_clock = None
-
-
-            else:
-
-
-                self.alarm_clock = None
-
-
-                
-
-
-            logger.info("✅ Service initialization phase 1 complete")
-
-
-            
-
-
-        except Exception as e:
-
-
-            logger.error(f"Critical error in service initialization: {e}")
-
-
-
-    def _init_deferred_services(self, dt):
-
-
-        """Инициализация отложенных сервисов в фоновом потоке"""
-
-
-        def init_worker():
-
-
+            # 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: AutoThemeService инициализируется ПОСЛЕ sensor_service и theme_manager
             try:
-
-
-                logger.info("🔄 Starting deferred service initialization...")
-
-
-                
-
-
-                for service_name, (service_class, kwargs) in self._deferred_services.items():
-
-
-                    try:
-
-
-                        logger.info(f"Initializing {service_name}...")
-
-
-                        service_instance = service_class(**kwargs)
-
-
-                        setattr(self, service_name, service_instance)
-
-
-                        
-
-
-                        # Запускаем сервис если у него есть метод start
-
-
-                        if hasattr(service_instance, 'start'):
-
-
-                            service_instance.start()
-
-
-                        
-
-
-                        logger.info(f"✅ {service_name} initialized")
-
-
-                        
-
-
-                    except Exception as ex:
-
-
-                        logger.error(f"❌ Failed to initialize {service_name}: {ex}")
-
-
-                        setattr(self, service_name, None)
-
-
-                
-
-
-                # Финализируем инициализацию
-
-
-                Clock.schedule_once(lambda dt: self._finalize_deferred_services(), 0.5)
-
-
-                
-
-
-            except Exception as e:
-
-
-                logger.error(f"Error in deferred service initialization: {e}")
-
-
-
-        # Запускаем в фоновом потоке
-
-
-        threading.Thread(target=init_worker, daemon=True).start()
-
-
-
-    def _finalize_deferred_services(self):
-
-
-        """Финализация сервисов с зависимостями"""
-
-
-        try:
-
-
-            logger.info("🔄 Finalizing service dependencies...")
-
-
-            
-
-
-            # Инициализируем AutoThemeService если все зависимости готовы
-
-
-            if self.sensor_service and self.theme_manager:
-
-
-                try:
-
-
-                    logger.info("Initializing auto_theme_service...")
-
-
+                logger.info("Initializing auto_theme_service...")
+                if self.sensor_service and self.theme_manager:
                     self.auto_theme_service = AutoThemeService(
-
-
                         sensor_service=self.sensor_service,
-
-
                         theme_manager=self.theme_manager
-
-
                     )
-
-
                     
-
-
+                    # Запускаем сервис
                     if hasattr(self.auto_theme_service, 'start'):
-
-
                         self.auto_theme_service.start()
-
-
                     
-
-
-                    logger.info("✅ auto_theme_service initialized")
-
-
-                    
-
-
-                    # Настройка auto_theme
-
-
-                    self._setup_auto_theme()
-
-
-                    
-
-
-                except Exception as ex:
-
-
-                    logger.error(f"❌ auto_theme_service failed: {ex}")
-
-
+                    logger.info("✅ Service initialized: auto_theme_service")
+                else:
+                    logger.error("❌ Cannot initialize auto_theme_service: missing dependencies")
+                    logger.error(f"sensor_service available: {self.sensor_service is not None}")
+                    logger.error(f"theme_manager available: {self.theme_manager is not None}")
                     self.auto_theme_service = None
+                    
+            except Exception as ex:
+                logger.error(f"❌ Failed to initialize auto_theme_service: {ex}")
+                self.auto_theme_service = None
 
-
-            else:
-
-
-                logger.warning("❌ Cannot initialize auto_theme_service: missing dependencies")
-
-
+            # Инициализируем alarm_clock если доступен
+            if ALARM_CLOCK_AVAILABLE:
+                try:
+                    logger.info("Initializing AlarmClock...")
+                    self.alarm_clock = AlarmClock()
+                    self.alarm_clock.start()
+                    logger.info("✅ AlarmClock initialized and started")
+                except Exception as ex:
+                    logger.error(f"❌ AlarmClock initialization failed: {ex}")
+                    self.alarm_clock = None
             
-
-
-            # Настройка volume_service
-
-
-            if self.volume_service:
-
-
-                self._setup_volume_service()
-
-
+            # Дополнительная настройка сервисов
+            self._setup_auto_theme()
+            self._setup_volume_service()
             
-
-
-            logger.info("✅ All services initialized and configured")
-
-
+            logger.info("✅ All services initialized")
             
-
-
         except Exception as e:
+            logger.error(f"Critical error initializing services: {e}")
 
-
-            logger.error(f"Error in service finalization: {e}")
-
-
-
-    def get_service(self, service_name):
-
-
-        """Безопасное получение сервиса с проверкой готовности"""
-
-
-        service = getattr(self, service_name, None)
-
-
-        
-
-
-        if service is None:
-
-
-            if hasattr(self, '_deferred_services') and service_name in self._deferred_services:
-
-
-                logger.debug(f"Service {service_name} not ready yet (deferred initialization)")
-
-
-            else:
-
-
-                logger.warning(f"Service {service_name} not available")
-
-
-        
-
-
-        return service
-
-
-
-    def is_service_ready(self, service_name):
-
-
-        """Проверка готовности сервиса"""
-
-
-        service = getattr(self, service_name, None)
-
-
-        return service is not None
     def _setup_auto_theme(self):
         """🚨 ИСПРАВЛЕНО: Настройка автоматической темы БЕЗ дублирования"""
         try:
