@@ -19,7 +19,7 @@
   },
   "auto_theme_enabled": true,
   "light_sensor_threshold": 3,
-  "volume": 60,
+  "volume": 30,
   "birth_day": "01",
   "birth_month": "01",
   "birth_year": "2000"

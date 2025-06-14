@@ -9,7 +9,6 @@ pygame
 
 # Raspberry Pi GPIO libraries
 rpi-lgpio
-RPi.GPIO
 
 # I2C и сенсоры (оставляем если есть другие датчики)
 smbus2

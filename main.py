@@ -20,6 +20,7 @@ else:
 
 from kivy.app import App
 from kivy.lang import Builder
+import time
 from kivy.clock import Clock
 
 # Импорты страниц
@@ -366,70 +367,67 @@ class BedrockApp(App):
     def _setup_auto_theme(self):
         """🔥 ПОЛНОСТЬЮ ПЕРЕПИСАННАЯ настройка автоматической темы"""
         try:
-            # 🔥 ИСПРАВЛЕНО: Проверяем наличие всех зависимостей
-            if not (hasattr(self, 'auto_theme_service') and self.auto_theme_service):
-                logger.warning("❌ AutoThemeService not available for setup")
-                return
-                
-            if not (hasattr(self, 'sensor_service') and self.sensor_service):
-                logger.warning("❌ SensorService not available for auto-theme")
-                return
-                
-            if not (hasattr(self, 'theme_manager') and self.theme_manager):
-                logger.warning("❌ ThemeManager not available for auto-theme")
+            # Проверяем наличие всех зависимостей
+            if not all([
+                hasattr(self, 'auto_theme_service') and self.auto_theme_service,
+                hasattr(self, 'sensor_service') and self.sensor_service,
+                hasattr(self, 'theme_manager') and self.theme_manager
+            ]):
+                logger.warning("❌ Auto-theme dependencies not available")
                 return
             
-            # Получаем настройки из конфига
+            # Получаем настройки
             threshold = self.user_config.get("light_sensor_threshold", 3) 
             auto_enabled = self.user_config.get("auto_theme_enabled", False)
             
             logger.info(f"🌓 Auto-theme setup: enabled={auto_enabled}, threshold={threshold}s")
             
             if auto_enabled:
-                try:
-                    # 🔥 ИСПРАВЛЕНО: Правильная последовательность настройки
-                    
-                    # 1. Проверяем доступность сенсора
-                    sensor_available = getattr(self.sensor_service, 'sensor_available', False)
-                    if not sensor_available:
-                        logger.warning("❌ Light sensor not available - auto-theme disabled")
-                        self.user_config.set("auto_theme_enabled", False)
-                        return
-                    
-                    # 2. Калибруем сенсор с новыми настройками
-                    logger.info(f"🔧 Calibrating auto-theme sensor (threshold: {threshold}s)")
+                # 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Форсируем проверку физических сенсоров
+                logger.info("🔍 Forcing physical sensor check...")
+                if hasattr(self.auto_theme_service, '_force_physical_sensor_check'):
+                    self.auto_theme_service._force_physical_sensor_check()
+                
+                # Проверяем результат
+                sensor_available = getattr(self.sensor_service, 'sensor_available', False)
+                gpio_available = getattr(self.sensor_service, 'gpio_available', False)
+                using_mock = getattr(self.sensor_service, 'using_mock_sensors', True)
+                
+                logger.info(f"🔍 Final sensor status: I2C={sensor_available}, GPIO={gpio_available}, Mock={using_mock}")
+                
+                if using_mock and not (sensor_available or gpio_available):
+                    logger.warning("❌ No physical sensors - auto-theme will use time-based fallback")
+                    # Не отключаем полностью, позволяем работать с fallback логикой
+                
+                # Калибруем и запускаем
+                if hasattr(self.auto_theme_service, 'calibrate_sensor'):
                     self.auto_theme_service.calibrate_sensor(threshold)
-                    
-                    # 3. Тестируем чтение сенсора
-                    try:
+                
+                # Тестируем чтение
+                try:
+                    if hasattr(self.sensor_service, 'read_light_sensor'):
                         sensor_reading = self.sensor_service.read_light_sensor()
-                        logger.info(f"🔍 Light sensor test reading: {sensor_reading}")
-                    except Exception as sensor_error:
-                        logger.error(f"❌ Light sensor test failed: {sensor_error}")
-                        self.user_config.set("auto_theme_enabled", False)
-                        return
-                    
-                    # 4. Запускаем мониторинг (если еще не запущен)
+                        logger.info(f"🔍 Light sensor test: {sensor_reading}")
+                    else:
+                        logger.info("🔍 Direct sensor reading not available - using service methods")
+                except Exception as e:
+                    logger.warning(f"⚠️ Sensor test failed: {e} - continuing with fallback")
+                
+                # Запускаем мониторинг (если еще не запущен)
+                if not getattr(self.auto_theme_service, 'monitoring', False):
                     if hasattr(self.auto_theme_service, 'start'):
                         self.auto_theme_service.start()
-                    
-                    # 5. Делаем первичную проверку через 3 секунды
-                    Clock.schedule_once(self._delayed_auto_theme_check, 3.0)
-                    
-                    logger.info("✅ Auto-theme fully configured and started")
-                    
-                except Exception as setup_error:
-                    logger.error(f"❌ Auto-theme setup failed: {setup_error}")
-                    # Отключаем автотему при критической ошибке
-                    self.user_config.set("auto_theme_enabled", False)
-                    self.auto_theme_service = None
+                
+                # Делаем первичную проверку через 3 секунды
+                Clock.schedule_once(self._delayed_auto_theme_check, 3.0)
+                
+                mode = "Physical" if not using_mock else "Fallback"
+                logger.info(f"✅ Auto-theme activated with {mode} sensors")
             else:
-                logger.info("🌓 Auto-theme disabled by user configuration")
+                logger.info("Auto-theme disabled by user")
                 
         except Exception as e:
-            logger.error(f"❌ Critical error in auto-theme setup: {e}")
-            # Аварийное отключение
-            self.user_config.set("auto_theme_enabled", False)
+            logger.error(f"❌ Error setting up auto-theme: {e}")
 
     def _initial_auto_theme_check(self):
         """ИСПРАВЛЕНО: Первичная проверка автотемы"""
@@ -459,10 +457,6 @@ class BedrockApp(App):
                     logger.error("❌ Auto-theme service not running")
                     return
                     
-                if not status.get('sensor_available', False):
-                    logger.error("❌ Light sensor not available")
-                    return
-                    
             except Exception as status_error:
                 logger.error(f"❌ Failed to get auto-theme status: {status_error}")
                 return
@@ -470,7 +464,8 @@ class BedrockApp(App):
             # Принудительная проверка освещения
             try:
                 logger.info("🔍 Forcing initial light check...")
-                self.auto_theme_service.force_check()
+                if hasattr(self.auto_theme_service, 'force_check'):
+                    self.auto_theme_service.force_check()
                 logger.info("✅ Initial auto-theme check completed successfully")
                 
                 # Планируем следующую диагностику через 30 секунд
@@ -481,7 +476,6 @@ class BedrockApp(App):
                 
         except Exception as e:
             logger.error(f"❌ Error in delayed auto-theme check: {e}")
-
 
     def _periodic_auto_theme_check(self, dt):
         """🔥 НОВОЕ: Периодическая проверка работоспособности автотемы"""
@@ -501,13 +495,31 @@ class BedrockApp(App):
                 
         except Exception as e:
             logger.error(f"❌ Error in periodic auto-theme check: {e}")
+
     def _setup_volume_service(self):
-        """ИСПРАВЛЕНО: Настройка сервиса громкости"""
+        """🔥 ИСПРАВЛЕНО: Настройка сервиса громкости с проверкой thread"""
         try:
             if hasattr(self, 'volume_service') and self.volume_service:
                 # Проверяем доступность GPIO
                 status = self.volume_service.get_status()
                 logger.info(f"Volume service status: {status}")
+                
+                # 🔥 НОВОЕ: Проверяем thread monitoring
+                if status.get('gpio_available') and not status.get('thread_alive'):
+                    logger.warning("⚠️ GPIO available but thread not alive - attempting restart")
+                    try:
+                        self.volume_service.stop()
+                        time.sleep(0.5)
+                        self.volume_service.start()
+                        
+                        # Повторная проверка
+                        updated_status = self.volume_service.get_status()
+                        if updated_status.get('thread_alive'):
+                            logger.info("✅ Volume service thread restarted successfully")
+                        else:
+                            logger.error("❌ Volume service thread restart failed")
+                    except Exception as restart_e:
+                        logger.error(f"❌ Volume service restart error: {restart_e}")
                 
                 # Устанавливаем громкость из конфига
                 saved_volume = self.user_config.get("volume", 50)
@@ -601,90 +613,85 @@ class BedrockApp(App):
                 logger.info(f"✅ {service_name}: Available")
             else:
                 logger.warning(f"⚠️ {service_name}: Not available")
+
     def _finalize_deferred_services(self):
-        """🔥 ИСПРАВЛЕННАЯ финализация сервисов с зависимостями"""
-        try:
-            logger.info("🔄 Finalizing service dependencies...")
-            
-            # 🔥 ИСПРАВЛЕНО: Инициализируем AutoThemeService только если все зависимости готовы
-            if self.sensor_service and self.theme_manager:
-                try:
-                    logger.info("🌓 Initializing auto_theme_service...")
-                    
-                    # 🔥 НОВОЕ: Дополнительная проверка готовности сенсора
-                    sensor_status = getattr(self.sensor_service, 'sensor_available', False)
-                    if not sensor_status:
-                        logger.warning("❌ Sensor not ready - using mock mode for auto-theme")
-                    
-                    # Импортируем и создаем AutoThemeService
-                    from services.auto_theme_service import AutoThemeService
-                    self.auto_theme_service = AutoThemeService(
-                        sensor_service=self.sensor_service,
-                        theme_manager=self.theme_manager
-                    )
-                    
-                    # 🔥 ИСПРАВЛЕНО: Запускаем сервис перед настройкой
-                    if hasattr(self.auto_theme_service, 'start'):
-                        self.auto_theme_service.start()
-                        logger.info("🌓 AutoThemeService started")
-                    
-                    logger.info("✅ auto_theme_service initialized")
-                    
-                    # 🔥 ИСПРАВЛЕНО: Настройка auto_theme через отложенный вызов
-                    Clock.schedule_once(lambda dt: self._setup_auto_theme(), 1.0)
-                    
-                except Exception as ex:
-                    logger.error(f"❌ auto_theme_service failed: {ex}")
-                    self.auto_theme_service = None
-            else:
-                missing_deps = []
-                if not self.sensor_service:
-                    missing_deps.append("sensor_service")
-                if not self.theme_manager:
-                    missing_deps.append("theme_manager")
+            """🔥 ИСПРАВЛЕННАЯ финализация сервисов с зависимостями"""
+            try:
+                logger.info("🔄 Finalizing service dependencies...")
                 
-                logger.warning(f"❌ Cannot initialize auto_theme_service: missing {', '.join(missing_deps)}")
-            
-            # 🔥 ИСПРАВЛЕНО: Настройка volume_service
-            if hasattr(self, 'volume_service') and self.volume_service:
-                self._setup_volume_service()
-            
-            logger.info("✅ All services initialized and configured")
-            
-            # 🔥 НОВОЕ: Запускаем общую диагностику системы
-            Clock.schedule_once(lambda dt: self._system_health_check(), 5.0)
-            
-        except Exception as e:
-            logger.error(f"❌ Error in service finalization: {e}")
+                # 🔥 ИСПРАВЛЕНО: Правильная инициализация AutoThemeService
+                if self.sensor_service and self.theme_manager:
+                    try:
+                        logger.info("🌓 Initializing auto_theme_service...")
+                        
+                        # 🔥 КРИТИЧНО: Правильные аргументы constructor
+                        from services.auto_theme_service import AutoThemeService
+                        self.auto_theme_service = AutoThemeService(
+                            sensor_service=self.sensor_service,
+                            theme_manager=self.theme_manager  # НЕ threshold_seconds!
+                        )
+                        
+                        # Запускаем сервис
+                        if hasattr(self.auto_theme_service, 'start'):
+                            self.auto_theme_service.start()
+                            logger.info("🌓 AutoThemeService started")
+                        
+                        logger.info("✅ auto_theme_service initialized")
+                        
+                        # 🔥 ИСПРАВЛЕНО: Настройка auto_theme через отложенный вызов
+                        Clock.schedule_once(lambda dt: self._setup_auto_theme(), 2.0)
+                        
+                    except Exception as ex:
+                        logger.error(f"❌ auto_theme_service failed: {ex}")
+                        self.auto_theme_service = None
+                else:
+                    missing_deps = []
+                    if not self.sensor_service:
+                        missing_deps.append("sensor_service")
+                    if not self.theme_manager:
+                        missing_deps.append("theme_manager")
+                    
+                    logger.warning(f"❌ Cannot initialize auto_theme_service: missing {', '.join(missing_deps)}")
+                
+                # 🔥 ИСПРАВЛЕНО: Настройка volume_service
+                if hasattr(self, 'volume_service') and self.volume_service:
+                    self._setup_volume_service()
+                
+                logger.info("✅ All services initialized and configured")
+                
+                # 🔥 НОВОЕ: Запускаем общую диагностику системы
+                Clock.schedule_once(lambda dt: self._system_health_check(), 5.0)
+                
+            except Exception as e:
+                logger.error(f"❌ Error in service finalization: {e}")
 
 
     def _perform_initial_diagnostics(self):
-        """НОВОЕ: Начальная диагностика системы"""
+        """🔥 ИСПРАВЛЕНО: Улучшенная начальная диагностика"""
         try:
             logger.info("🔧 === INITIAL SYSTEM DIAGNOSTICS ===")
             
-            # Диагностика AudioService
-            if self.audio_service:
+            # AudioService диагностика
+            if hasattr(self, 'audio_service') and self.audio_service:
                 try:
-                    diag = self.audio_service.diagnose_state()
-                    logger.info(f"AudioService diagnosis: {diag}")
+                    audio_status = self.audio_service.diagnose_state()
+                    logger.info(f"[AudioService diagnosis] {audio_status}")
                 except Exception as e:
                     logger.error(f"AudioService diagnosis failed: {e}")
             
-            # Диагностика VolumeService
-            if self.volume_service:
+            # VolumeService диагностика  
+            if hasattr(self, 'volume_service') and self.volume_service:
                 try:
-                    status = self.volume_service.get_status()
-                    logger.info(f"VolumeService status: {status}")
+                    volume_status = self.volume_service.get_status()
+                    logger.info(f"[VolumeService status] {volume_status}")
                 except Exception as e:
                     logger.error(f"VolumeService diagnosis failed: {e}")
             
-            # Диагностика SensorService
-            if self.sensor_service:
+            # SensorService диагностика
+            if hasattr(self, 'sensor_service') and self.sensor_service:
                 try:
-                    if hasattr(self.sensor_service, 'get_status'):
-                        status = self.sensor_service.get_status()
-                        logger.info(f"SensorService status: {status}")
+                    sensor_status = self.sensor_service.get_status()
+                    logger.info(f"[SensorService status] {sensor_status}")
                 except Exception as e:
                     logger.error(f"SensorService diagnosis failed: {e}")
             
@@ -692,6 +699,7 @@ class BedrockApp(App):
             
         except Exception as e:
             logger.error(f"Error in initial diagnostics: {e}")
+
     def _system_health_check(self):
         """🔥 НОВОЕ: Проверка здоровья всей системы"""
         try:

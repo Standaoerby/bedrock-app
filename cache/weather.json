@@ -1,7 +1,7 @@
 {
   "current": {
-    "time": "2025-06-14T06:00",
-    "temperature": 18.0,
+    "time": "2025-06-14T06:45",
+    "temperature": 18.2,
     "condition": "Slight Rain Showers",
     "precipitation_probability": 65
   },
@@ -68,5 +68,5 @@
       "precipitation_probability": 13
     }
   ],
-  "updated": "2025-06-14T06:10:27.485336"
+  "updated": "2025-06-14T06:45:27.154880"
 }
