@@ -1,6 +1,11 @@
 # widgets/base_screen.py
 """
-Базовый класс для всех страниц приложения с централизованным управлением темами
+ИСПРАВЛЕННЫЙ базовый класс для всех страниц приложения с централизованным управлением темами
+ИСПРАВЛЕНИЯ:
+✅ Убраны неправильные вызовы get_image() с двумя параметрами
+✅ Исправлена логика обновления overlay изображений  
+✅ Убраны дублирования с RootWidget
+✅ Консистентная архитектура
 """
 
 from kivy.uix.screenmanager import Screen
@@ -138,11 +143,12 @@ class BaseScreen(Screen):
             'button': {
                 'background_normal': tm.get_image("button_bg"),
                 'background_down': tm.get_image("button_bg_active"),
+                'font_name': tm.get_font("main"),
                 'color': tm.get_rgba("text")
             },
             
-            # Overlay изображения
-            'overlay_image': {'source': tm.get_image("overlay_" + self.name, "overlay_default")},
+            # ИСПРАВЛЕНО: Overlay изображения - правильный вызов get_image()
+            'overlay_image': {'source': self._get_overlay_image(tm)},
         }
         
         # Применяем стили к элементам
@@ -152,6 +158,28 @@ class BaseScreen(Screen):
                 for prop, value in styles.items():
                     if hasattr(widget, prop) and value:
                         setattr(widget, prop, value)
+
+    def _get_overlay_image(self, tm):
+        """ИСПРАВЛЕНО: Правильное получение overlay изображения"""
+        try:
+            # Сначала пробуем получить специфичный overlay для экрана
+            overlay_name = f"overlay_{self.name}"
+            overlay_path = tm.get_image(overlay_name)
+            
+            if overlay_path:
+                return overlay_path
+            
+            # Если не найден, используем дефолтный
+            default_overlay = tm.get_image("overlay_default")
+            if default_overlay:
+                return default_overlay
+                
+            # Если и дефолтный не найден, используем фон
+            return tm.get_image("background")
+            
+        except Exception as e:
+            logger.debug(f"Error getting overlay image: {e}")
+            return ""
 
     def _update_all_children(self, widget, tm):
         """Рекурсивное обновление всех дочерних виджетов"""
@@ -168,7 +196,7 @@ class BaseScreen(Screen):
             logger.debug(f"Minor error updating widget {widget}: {e}")
 
     def _update_single_widget(self, widget, tm):
-        """Обновление одного виджета в соответствии с темой"""
+        """ИСПРАВЛЕНО: Обновление одного виджета в соответствии с темой"""
         try:
             widget_class = widget.__class__.__name__
             
@@ -199,13 +227,14 @@ class BaseScreen(Screen):
                 if hasattr(widget, 'color'):
                     widget.color = tm.get_rgba("text")
             
-            # Image виджеты с overlay
+            # ИСПРАВЛЕНО: Image виджеты с overlay - правильная логика
             elif 'Image' in widget_class and hasattr(widget, 'source'):
                 source = getattr(widget, 'source', '')
-                if 'overlay' in source:
+                # Проверяем, является ли это overlay изображением
+                if 'overlay' in source or (hasattr(widget, 'id') and 'overlay' in str(getattr(widget, 'id', ''))):
                     # Обновляем overlay для текущей страницы
-                    new_source = tm.get_image("overlay_" + self.name, "overlay_default")
-                    if new_source != source:
+                    new_source = self._get_overlay_image(tm)
+                    if new_source and new_source != source:
                         widget.source = new_source
                         
         except Exception as e:
@@ -243,106 +272,38 @@ class BaseScreen(Screen):
         Основной метод обновления локализованных текстов.
         Переопределите в дочерних классах для специфичных обновлений.
         """
-        try:
-            app = App.get_running_app()
-            if not hasattr(app, 'localizer') or not app.localizer:
-                return
-                
-            # Вызываем пользовательскую логику обновления текстов
-            self.on_text_refresh(app.localizer)
-            
-            logger.debug(f"Text refreshed for {self.__class__.__name__}")
-            
-        except Exception as e:
-            logger.error(f"Error refreshing text in {self.__class__.__name__}: {e}")
-
-    def on_text_refresh(self, localizer):
-        """
-        Переопределяемый метод для обновления локализованных текстов.
-        
-        Args:
-            localizer: Объект локализатора для получения переводов
-        """
-        pass
-
-    # ======================================
-    # LIFECYCLE МЕТОДЫ
-    # ======================================
-
-    def on_pre_enter(self, *args):
-        """Вызывается при входе на экран"""
-        try:
-            logger.info(f"Entering {self.__class__.__name__}")
-            
-            # Принудительно обновляем тему и тексты при входе
-            Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
-            Clock.schedule_once(lambda dt: self.refresh_text(), 0.2)
-            
-            # Вызываем пользовательскую логику
-            self.on_screen_enter()
-            
-        except Exception as e:
-            logger.error(f"Error in on_pre_enter for {self.__class__.__name__}: {e}")
-
-    def on_pre_leave(self, *args):
-        """Вызывается при выходе с экрана"""
-        try:
-            # Вызываем пользовательскую логику
-            self.on_screen_leave()
-            
-            logger.debug(f"Leaving {self.__class__.__name__}")
-            
-        except Exception as e:
-            logger.error(f"Error in on_pre_leave for {self.__class__.__name__}: {e}")
-
-    def on_screen_enter(self):
-        """Переопределяемый метод для входа на экран"""
-        pass
-
-    def on_screen_leave(self):
-        """Переопределяемый метод для выхода с экрана"""
         pass
 
     # ======================================
     # УТИЛИТЫ
     # ======================================
 
-    def get_localizer(self):
-        """Безопасное получение локализатора"""
+    def _get_localized_text(self, key, default):
+        """Получение локализованного текста с fallback"""
         try:
             app = App.get_running_app()
             if hasattr(app, 'localizer') and app.localizer:
-                return app.localizer
-            return None
+                return app.localizer.get(key, default)
         except Exception as e:
-            logger.error(f"Error getting localizer: {e}")
-            return None
-
-    def tr(self, key, default=""):
-        """Быстрый перевод текста"""
-        localizer = self.get_localizer()
-        if localizer:
-            return localizer.tr(key, default)
+            logger.debug(f"Error getting localized text: {e}")
         return default
 
     def clear_theme_cache(self):
-        """Очистка кэша темы для принудительного обновления"""
+        """Очистка кэша тем (для принудительного обновления)"""
         try:
-            # Удаляем флаги обновления у всех виджетов
-            self._clear_theme_flags(self)
-            # Планируем обновление
-            self._schedule_theme_refresh()
+            # Сбрасываем флаги theme_updated у всех виджетов
+            self._clear_theme_cache_recursive(self)
         except Exception as e:
-            logger.error(f"Error clearing theme cache: {e}")
+            logger.debug(f"Error clearing theme cache: {e}")
 
-    def _clear_theme_flags(self, widget):
-        """Рекурсивная очистка флагов темы"""
+    def _clear_theme_cache_recursive(self, widget):
+        """Рекурсивная очистка кэша тем"""
         try:
             if hasattr(widget, '_theme_updated'):
                 delattr(widget, '_theme_updated')
             
             if hasattr(widget, 'children'):
                 for child in widget.children:
-                    self._clear_theme_flags(child)
+                    self._clear_theme_cache_recursive(child)
         except Exception as e:
-            logger.debug(f"Minor error clearing theme flags: {e}")
+            logger.debug(f"Minor error clearing theme cache for widget: {e}")

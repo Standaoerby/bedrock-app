@@ -1,7 +1,11 @@
 # widgets/root_widget.py
 """
-УЛУЧШЕННЫЙ RootWidget с централизованным управлением темами
-Содержит логику для принудительного обновления всех экранов
+ИСПРАВЛЕННЫЙ RootWidget с централизованным управлением темами
+ИСПРАВЛЕНИЯ:
+✅ Гарантированная инициализация _screen_cache  
+✅ Убраны дублирования методов
+✅ Консистентность с BaseScreen
+✅ Улучшенная обработка ошибок
 """
 
 from kivy.properties import StringProperty
@@ -14,7 +18,7 @@ from app.logger import app_logger as logger
 
 class RootWidget(FloatLayout):
     """
-    Улучшенный корневой виджет с централизованным управлением темами.
+    Корневой виджет с централизованным управлением темами.
     Координирует обновление темы для всех экранов приложения.
     """
     
@@ -23,19 +27,25 @@ class RootWidget(FloatLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
-        # Подписка на события
-        event_bus.subscribe("theme_changed", self.on_global_theme_changed)
-        event_bus.subscribe("language_changed", self.on_global_language_changed)
-        
-        # Менеджер экранов
+        # ИСПРАВЛЕНО: Гарантированная инициализация всех атрибутов
         self.screen_manager = None
+        self._screen_cache = {}  # Обязательно инициализируем сразу!
         
         # Флаги для предотвращения дублирования обновлений
         self._theme_update_in_progress = False
         self._language_update_in_progress = False
         
-        # Кэш всех экранов для быстрого доступа
-        self._screen_cache = {}
+        # Подписка на события
+        self._subscribe_to_events()
+
+    def _subscribe_to_events(self):
+        """Подписка на глобальные события"""
+        try:
+            event_bus.subscribe("theme_changed", self.on_global_theme_changed)
+            event_bus.subscribe("language_changed", self.on_global_language_changed)
+            logger.debug("RootWidget subscribed to global events")
+        except Exception as e:
+            logger.error(f"Error subscribing to events in RootWidget: {e}")
 
     def on_kv_post(self, base_widget):
         """Вызывается после загрузки KV файла"""
@@ -54,23 +64,37 @@ class RootWidget(FloatLayout):
             logger.error(f"Error in RootWidget on_kv_post: {e}")
 
     def _cache_all_screens(self):
-        """Кэширование всех экранов для быстрого доступа"""
+        """ИСПРАВЛЕНО: Кэширование всех экранов для быстрого доступа"""
         try:
+            # Убеждаемся, что _screen_cache инициализирован
+            if not hasattr(self, '_screen_cache'):
+                self._screen_cache = {}
+                
             if self.screen_manager and hasattr(self.screen_manager, 'screens'):
+                self._screen_cache.clear()  # Очищаем перед заполнением
+                
                 for screen in self.screen_manager.screens:
-                    self._screen_cache[screen.name] = screen
+                    if hasattr(screen, 'name'):
+                        self._screen_cache[screen.name] = screen
+                        
                 logger.debug(f"Cached {len(self._screen_cache)} screens")
+            else:
+                logger.warning("Screen manager or screens not available for caching")
+                
         except Exception as e:
             logger.error(f"Error caching screens: {e}")
+            # Обеспечиваем, что _screen_cache всегда существует
+            if not hasattr(self, '_screen_cache'):
+                self._screen_cache = {}
 
     # ======================================
     # НАВИГАЦИЯ МЕЖДУ ЭКРАНАМИ
     # ======================================
 
     def switch_screen(self, page_name):
-        """Улучшенное переключение экрана с обработкой ошибок"""
+        """Переключение экрана с обработкой ошибок"""
         try:
-            # Метод 1: Используем screen_manager атрибут
+            # Используем screen_manager
             if self.screen_manager:
                 self.screen_manager.current = page_name
                 self.current_page = page_name
@@ -84,7 +108,7 @@ class RootWidget(FloatLayout):
                 logger.debug(f"Switched to screen: {page_name}")
                 return True
                 
-            # Метод 2: Используем ids.sm
+            # Альтернативный способ через ids
             elif hasattr(self, 'ids') and 'sm' in self.ids:
                 self.ids.sm.current = page_name
                 self.current_page = page_name
@@ -94,10 +118,7 @@ class RootWidget(FloatLayout):
                     self.screen_manager = self.ids.sm
                     self._cache_all_screens()
                 
-                # Обновляем overlay для новой страницы
                 self._update_overlay()
-                
-                # Убеждаемся, что новый экран имеет актуальную тему
                 self._ensure_screen_theme_updated(page_name)
                 
                 logger.debug(f"Switched to screen: {page_name} via ids.sm")
@@ -113,6 +134,10 @@ class RootWidget(FloatLayout):
     def _ensure_screen_theme_updated(self, screen_name):
         """Убеждаемся, что экран имеет актуальную тему"""
         try:
+            # Убеждаемся, что _screen_cache существует
+            if not hasattr(self, '_screen_cache'):
+                self._screen_cache = {}
+                
             screen = self._screen_cache.get(screen_name)
             if screen and hasattr(screen, 'refresh_theme'):
                 # Планируем обновление темы для экрана с небольшой задержкой
@@ -125,7 +150,7 @@ class RootWidget(FloatLayout):
         try:
             tm = self.get_theme_manager()
             if tm and tm.is_loaded() and hasattr(self, 'ids') and 'overlay_image' in self.ids:
-                new_overlay = tm.get_image("overlay_" + self.current_page)
+                new_overlay = tm.get_image(f"overlay_{self.current_page}")
                 if new_overlay and new_overlay != self.ids.overlay_image.source:
                     self.ids.overlay_image.source = new_overlay
                     logger.debug(f"Updated overlay for page: {self.current_page}")
@@ -204,8 +229,12 @@ class RootWidget(FloatLayout):
             logger.error(f"Error updating root theme: {e}")
 
     def _update_all_screens_theme(self):
-        """Обновление темы для всех экранов"""
+        """ИСПРАВЛЕНО: Обновление темы для всех экранов"""
         try:
+            # Убеждаемся, что _screen_cache существует
+            if not hasattr(self, '_screen_cache'):
+                self._screen_cache = {}
+                
             updated_count = 0
             
             # Проходим по всем кэшированным экранам
@@ -228,11 +257,11 @@ class RootWidget(FloatLayout):
             logger.error(f"Error updating all screens theme: {e}")
 
     def _update_special_widgets_theme(self):
-        """Обновление темы для специальных виджетов (меню, overlay и т.д.)"""
+        """Обновление темы для специальных виджетов"""
         try:
             # Обновляем верхнее меню
-            if hasattr(self, 'ids') and 'top_menu' in self.ids:
-                menu = self.ids.top_menu
+            if hasattr(self, 'ids') and 'topmenu' in self.ids:
+                menu = self.ids.topmenu
                 if hasattr(menu, 'refresh_theme'):
                     Clock.schedule_once(lambda dt: menu.refresh_theme(), 0.2)
             
@@ -247,27 +276,8 @@ class RootWidget(FloatLayout):
         except Exception as e:
             logger.error(f"Error updating special widgets theme: {e}")
 
-    def force_refresh_all_themes(self):
-        """Принудительное обновление темы для всех компонентов"""
-        try:
-            logger.info("Force refreshing all themes")
-            
-            # Сбрасываем флаг, если он застрял
-            self._theme_update_in_progress = False
-            
-            # Очищаем кэш тем у всех экранов
-            for screen in self._screen_cache.values():
-                if hasattr(screen, 'clear_theme_cache'):
-                    screen.clear_theme_cache()
-            
-            # Запускаем обновление
-            self.on_global_theme_changed()
-            
-        except Exception as e:
-            logger.error(f"Error force refreshing themes: {e}")
-
     # ======================================
-    # ЦЕНТРАЛИЗОВАННОЕ УПРАВЛЕНИЕ ЛОКАЛИЗАЦИЕЙ
+    # УПРАВЛЕНИЕ ЯЗЫКОМ
     # ======================================
 
     def on_global_language_changed(self, *args):
@@ -290,14 +300,17 @@ class RootWidget(FloatLayout):
     def _execute_global_language_update(self, dt):
         """Выполнение глобального обновления языка"""
         try:
+            # Убеждаемся, что _screen_cache существует
+            if not hasattr(self, '_screen_cache'):
+                self._screen_cache = {}
+                
             updated_count = 0
             
             # Обновляем все экраны
             for screen_name, screen in self._screen_cache.items():
                 try:
                     if hasattr(screen, 'refresh_text'):
-                        # Планируем обновление с небольшой задержкой
-                        delay = updated_count * 0.03
+                        delay = updated_count * 0.05
                         Clock.schedule_once(
                             lambda dt, s=screen: s.refresh_text(),
                             delay
@@ -320,8 +333,8 @@ class RootWidget(FloatLayout):
         """Обновление языка для специальных виджетов"""
         try:
             # Обновляем верхнее меню
-            if hasattr(self, 'ids') and 'top_menu' in self.ids:
-                menu = self.ids.top_menu
+            if hasattr(self, 'ids') and 'topmenu' in self.ids:
+                menu = self.ids.topmenu
                 if hasattr(menu, 'refresh_text'):
                     Clock.schedule_once(lambda dt: menu.refresh_text(), 0.1)
                     
@@ -334,17 +347,48 @@ class RootWidget(FloatLayout):
 
     def get_screen_by_name(self, screen_name):
         """Получение экрана по имени"""
+        if not hasattr(self, '_screen_cache'):
+            self._screen_cache = {}
         return self._screen_cache.get(screen_name)
 
     def get_current_screen(self):
         """Получение текущего активного экрана"""
+        if not hasattr(self, '_screen_cache'):
+            self._screen_cache = {}
         return self._screen_cache.get(self.current_page)
+
+    def force_refresh_all_themes(self):
+        """Принудительное обновление темы для всех компонентов"""
+        try:
+            logger.info("Force refreshing all themes")
+            
+            # Сбрасываем флаг, если он застрял
+            self._theme_update_in_progress = False
+            
+            # Убеждаемся, что _screen_cache существует
+            if not hasattr(self, '_screen_cache'):
+                self._screen_cache = {}
+            
+            # Очищаем кэш тем у всех экранов
+            for screen in self._screen_cache.values():
+                if hasattr(screen, 'clear_theme_cache'):
+                    screen.clear_theme_cache()
+            
+            # Запускаем обновление
+            self.on_global_theme_changed()
+            
+        except Exception as e:
+            logger.error(f"Error force refreshing themes: {e}")
 
     def diagnose_theme_state(self):
         """Диагностика состояния тем для отладки"""
         try:
             tm = self.get_theme_manager()
             current_screen = self.get_current_screen()
+            
+            # Убеждаемся, что _screen_cache существует
+            if not hasattr(self, '_screen_cache'):
+                self._screen_cache = {}
             
             info = {
                 "theme_manager_available": tm is not None,
@@ -373,6 +417,10 @@ class RootWidget(FloatLayout):
             # Сбрасываем все флаги
             self._theme_update_in_progress = False
             self._language_update_in_progress = False
+            
+            # Убеждаемся, что _screen_cache существует
+            if not hasattr(self, '_screen_cache'):
+                self._screen_cache = {}
             
             # Принудительно обновляем всё
             self.force_refresh_all_themes()
