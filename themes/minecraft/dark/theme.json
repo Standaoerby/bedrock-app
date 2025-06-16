@@ -21,7 +21,8 @@
   },
   "fonts": {
     "main": "Minecraftia-Regular.ttf",
-    "title": "Minecraftia-Regular.ttf"
+    "title": "Minecraftia-Regular.ttf",
+    "clock": "Minecraftia-Regular.ttf" 
   },
   "images": {
     "background": "background.png",
