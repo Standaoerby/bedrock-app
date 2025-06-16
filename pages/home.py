@@ -576,6 +576,8 @@ class HomeScreen(BaseScreen):
                 # Используем метод toggle из alarm_service
                 success = app.alarm_service.toggle()
                 if success:
+                    if hasattr(app, 'audio_service') and app.audio_service:
+                        app.audio_service.play_sound("confirm")
                     # Принудительно обновляем отображение
                     self._cached_alarm_data = None  # Сбрасываем кэш
                     self.update_alarm_status()
