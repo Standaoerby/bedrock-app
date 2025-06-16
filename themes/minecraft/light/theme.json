@@ -10,9 +10,14 @@
     "text_accent": "#3CB371",
     "text_accent_2": "#FFD700",
     "clock_main": "#F9F6F2",
+    "clock_shadow": "#00000080",
     "menu_color": "#25252580",
     "menu_button_text": "#F9F6F2",
-    "menu_button_text_active": "#FFD700"
+    "menu_button_text_active": "#FFD700",
+    "error": "#FF6B6B",
+    "warning": "#FFD93D",
+    "info": "#6BCF7F", 
+    "success": "#3CB371"
   },
   "menu": {
     "menu_button_height": 48,

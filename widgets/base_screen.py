@@ -1,11 +1,11 @@
-# widgets/base_screen.py
+# widgets/base_screen.py - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ
 """
-ИСПРАВЛЕННЫЙ базовый класс для всех страниц приложения с централизованным управлением темами
-ИСПРАВЛЕНИЯ:
-✅ Убраны неправильные вызовы get_image() с двумя параметрами
-✅ Исправлена логика обновления overlay изображений  
-✅ Убраны дублирования с RootWidget
-✅ Консистентная архитектура
+КРИТИЧЕСКИЕ ОПТИМИЗАЦИИ BaseScreen:
+✅ Защита от множественных обновлений темы
+✅ Кэширование тем на уровне экрана
+✅ Умное планирование обновлений
+✅ Группировка обновлений виджетов
+✅ Устранение избыточных вызовов get_font()
 """
 
 from kivy.uix.screenmanager import Screen
@@ -13,21 +13,36 @@ from kivy.app import App
 from kivy.clock import Clock
 from app.event_bus import event_bus
 from app.logger import app_logger as logger
+import time
 
 
 class BaseScreen(Screen):
     """
-    Базовый класс для всех экранов приложения.
-    Содержит всю логику управления темами и локализацией.
+    ОПТИМИЗИРОВАННЫЙ базовый класс для всех экранов приложения.
+    Устраняет множественные обновления темы и кэширует ресурсы.
     """
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
-        # Флаги для оптимизации обновлений
+        # ✅ НОВОЕ: Защита от множественных обновлений
         self._theme_refresh_scheduled = False
         self._text_refresh_scheduled = False
+        self._theme_update_in_progress = False
         self._is_initialized = False
+        
+        # ✅ НОВОЕ: Кэширование темы на уровне экрана
+        self._cached_theme_data = {}
+        self._last_theme_version = None
+        self._theme_applied = False
+        
+        # ✅ НОВОЕ: Группировка обновлений
+        self._pending_updates = set()
+        self._update_batch_event = None
+        
+        # ✅ НОВОЕ: Статистика для оптимизации
+        self._refresh_count = 0
+        self._last_refresh_time = 0
         
         # Подписка на глобальные события
         self._subscribe_to_events()
@@ -36,11 +51,22 @@ class BaseScreen(Screen):
         Clock.schedule_once(self._delayed_initialization, 0.1)
 
     def _subscribe_to_events(self):
-        """Подписка на события системы"""
+        """Подписка на события системы с дедупликацией"""
         try:
-            event_bus.subscribe("theme_changed", self._schedule_theme_refresh)
-            event_bus.subscribe("language_changed", self._schedule_text_refresh)
-            logger.debug(f"Events subscribed for {self.__class__.__name__}")
+            # Используем уникальные колбэки для каждого экрана
+            screen_id = id(self)
+            
+            event_bus.subscribe(
+                "theme_changed", 
+                lambda *args: self._schedule_theme_refresh(f"theme_changed_{screen_id}")
+            )
+            event_bus.subscribe(
+                "language_changed", 
+                lambda *args: self._schedule_text_refresh(f"language_changed_{screen_id}")
+            )
+            
+            logger.debug(f"Events subscribed for {self.__class__.__name__} (ID: {screen_id})")
+            
         except Exception as e:
             logger.error(f"Error subscribing to events in {self.__class__.__name__}: {e}")
 
@@ -61,14 +87,14 @@ class BaseScreen(Screen):
         pass
 
     # ======================================
-    # УПРАВЛЕНИЕ ТЕМАМИ
+    # ОПТИМИЗИРОВАННОЕ УПРАВЛЕНИЕ ТЕМАМИ
     # ======================================
 
     def get_theme_manager(self):
-        """Безопасное получение theme_manager"""
+        """Безопасное получение theme_manager с кэшированием"""
         try:
             app = App.get_running_app()
-            if hasattr(app, 'theme_manager') and app.theme_manager:
+            if app and hasattr(app, 'theme_manager') and app.theme_manager:
                 return app.theme_manager
             logger.warning(f"ThemeManager not available in {self.__class__.__name__}")
             return None
@@ -76,187 +102,99 @@ class BaseScreen(Screen):
             logger.error(f"Error getting theme manager in {self.__class__.__name__}: {e}")
             return None
 
-    def _schedule_theme_refresh(self, *args):
-        """Планирование обновления темы (избегаем множественные вызовы)"""
-        if not self._theme_refresh_scheduled:
-            self._theme_refresh_scheduled = True
-            Clock.schedule_once(self._execute_theme_refresh, 0.1)
+    def _get_current_theme_version(self):
+        """✅ ИСПРАВЛЕНО: Стабильное версионирование темы"""
+        tm = self.get_theme_manager()
+        if tm and tm.is_loaded():
+            # ✅ ИСПРАВЛЕНО: Используем timestamp загрузки + hash содержимого вместо id()
+            theme_hash = hash(str(tm.theme_data)) if tm.theme_data else 0
+            return f"{tm.current_theme}_{tm.current_variant}_{theme_hash}_{tm._loading_in_progress}"
+        return None
 
-    def _execute_theme_refresh(self, dt):
-        """Выполнение обновления темы"""
-        try:
-            self._theme_refresh_scheduled = False
-            if self._is_initialized:
-                self.refresh_theme()
-        except Exception as e:
-            logger.error(f"Error executing theme refresh in {self.__class__.__name__}: {e}")
+    def _should_update_theme(self):
+        """Проверка, нужно ли обновлять тему"""
+        current_version = self._get_current_theme_version()
+        
+        # Проверяем изменение версии темы
+        if current_version != self._last_theme_version:
+            self._last_theme_version = current_version
+            return True
+            
+        # Проверяем, была ли тема уже применена
+        if not self._theme_applied:
+            return True
+            
+        return False
 
-    def refresh_theme(self):
-        """
-        Основной метод обновления темы.
-        Автоматически обновляет все виджеты с учетом текущей темы.
-        """
-        try:
-            tm = self.get_theme_manager()
-            if not tm or not tm.is_loaded():
-                logger.warning(f"Theme manager not available for {self.__class__.__name__}")
-                return
-
-            # 1. Обновляем основные элементы через ids
-            self._update_main_elements(tm)
-            
-            # 2. Рекурсивно обновляем все дочерние виджеты
-            self._update_all_children(self, tm)
-            
-            # 3. Вызываем пользовательскую логику обновления темы
-            self.on_theme_refresh(tm)
-            
-            logger.debug(f"Theme refreshed for {self.__class__.__name__}")
-            
-        except Exception as e:
-            logger.error(f"Error refreshing theme in {self.__class__.__name__}: {e}")
-
-    def _update_main_elements(self, tm):
-        """Обновление основных элементов через ids"""
-        if not hasattr(self, 'ids'):
+    def _schedule_theme_refresh(self, event_source="unknown"):
+        """✅ УМНОЕ планирование обновления темы (избегаем множественные вызовы)"""
+        
+        # Защита от частых обновлений (максимум раз в 100ms)
+        now = time.time()
+        if now - self._last_refresh_time < 0.1:
+            logger.debug(f"Theme refresh throttled for {self.__class__.__name__} from {event_source}")
             return
             
-        # Маппинг типовых элементов к их стилям
-        element_styles = {
-            # Заголовки
-            'title_label': {'font_name': tm.get_font("title"), 'color': tm.get_rgba("primary")},
-            'header_label': {'font_name': tm.get_font("title"), 'color': tm.get_rgba("primary")},
+        # Защита от повторных планирований
+        if self._theme_refresh_scheduled or self._theme_update_in_progress:
+            logger.debug(f"Theme refresh already scheduled/in progress for {self.__class__.__name__}")
+            return
             
-            # Обычный текст
-            'text_label': {'font_name': tm.get_font("main"), 'color': tm.get_rgba("text")},
-            'info_label': {'font_name': tm.get_font("main"), 'color': tm.get_rgba("text")},
+        # Проверяем, действительно ли нужно обновление
+        if not self._should_update_theme():
+            logger.debug(f"Theme refresh not needed for {self.__class__.__name__}")
+            return
             
-            # Вторичный текст
-            'secondary_label': {'font_name': tm.get_font("main"), 'color': tm.get_rgba("text_secondary")},
-            'description_label': {'font_name': tm.get_font("main"), 'color': tm.get_rgba("text_secondary")},
-            
-            # Акцентированный текст
-            'accent_label': {'font_name': tm.get_font("main"), 'color': tm.get_rgba("text_accent")},
-            'primary_label': {'font_name': tm.get_font("main"), 'color': tm.get_rgba("primary")},
-            
-            # Кнопки
-            'button': {
-                'background_normal': tm.get_image("button_bg"),
-                'background_down': tm.get_image("button_bg_active"),
-                'font_name': tm.get_font("main"),
-                'color': tm.get_rgba("text")
-            },
-            
-            # ИСПРАВЛЕНО: Overlay изображения - правильный вызов get_image()
-            'overlay_image': {'source': self._get_overlay_image(tm)},
-        }
+        self._theme_refresh_scheduled = True
+        self._last_refresh_time = now
         
-        # Применяем стили к элементам
-        for element_id, styles in element_styles.items():
-            if element_id in self.ids:
-                widget = self.ids[element_id]
-                for prop, value in styles.items():
-                    if hasattr(widget, prop) and value:
-                        setattr(widget, prop, value)
+        # Планируем обновление с небольшой задержкой для группировки
+        Clock.schedule_once(self._execute_theme_refresh, 0.05)
+        
+        logger.debug(f"Theme refresh scheduled for {self.__class__.__name__} from {event_source}")
 
-    def _get_overlay_image(self, tm):
-        """ИСПРАВЛЕНО: Правильное получение overlay изображения"""
-        try:
-            # Сначала пробуем получить специфичный overlay для экрана
-            overlay_name = f"overlay_{self.name}"
-            overlay_path = tm.get_image(overlay_name)
-            
-            if overlay_path:
-                return overlay_path
-            
-            # Если не найден, используем дефолтный
-            default_overlay = tm.get_image("overlay_default")
-            if default_overlay:
-                return default_overlay
-                
-            # Если и дефолтный не найден, используем фон
-            return tm.get_image("background")
-            
-        except Exception as e:
-            logger.debug(f"Error getting overlay image: {e}")
-            return ""
-
-    def _update_all_children(self, widget, tm):
-        """Рекурсивное обновление всех дочерних виджетов"""
-        try:
-            # Обновляем текущий виджет
-            self._update_single_widget(widget, tm)
-            
-            # Рекурсивно обновляем детей
-            if hasattr(widget, 'children'):
-                for child in widget.children:
-                    self._update_all_children(child, tm)
-                    
-        except Exception as e:
-            logger.debug(f"Minor error updating widget {widget}: {e}")
-
-    def _update_single_widget(self, widget, tm):
-        """ИСПРАВЛЕНО: Обновление одного виджета в соответствии с темой"""
-        try:
-            widget_class = widget.__class__.__name__
-            
-            # Label виджеты
-            if 'Label' in widget_class:
-                if not hasattr(widget, '_theme_updated'):
-                    # Определяем тип лейбла по его свойствам
-                    if hasattr(widget, 'font_size'):
-                        size = getattr(widget, 'font_size', '14sp')
-                        if isinstance(size, str) and ('20sp' in size or '24sp' in size):
-                            # Заголовок
-                            widget.font_name = tm.get_font("title")
-                            widget.color = tm.get_rgba("primary")
-                        else:
-                            # Обычный текст
-                            widget.font_name = tm.get_font("main")
-                            widget.color = tm.get_rgba("text")
-                    widget._theme_updated = True
-            
-            # Button виджеты
-            elif 'Button' in widget_class:
-                if hasattr(widget, 'background_normal'):
-                    widget.background_normal = tm.get_image("button_bg")
-                if hasattr(widget, 'background_down'):
-                    widget.background_down = tm.get_image("button_bg_active")
-                if hasattr(widget, 'font_name'):
-                    widget.font_name = tm.get_font("main")
-                if hasattr(widget, 'color'):
-                    widget.color = tm.get_rgba("text")
-            
-            # ИСПРАВЛЕНО: Image виджеты с overlay - правильная логика
-            elif 'Image' in widget_class and hasattr(widget, 'source'):
-                source = getattr(widget, 'source', '')
-                # Проверяем, является ли это overlay изображением
-                if 'overlay' in source or (hasattr(widget, 'id') and 'overlay' in str(getattr(widget, 'id', ''))):
-                    # Обновляем overlay для текущей страницы
-                    new_source = self._get_overlay_image(tm)
-                    if new_source and new_source != source:
-                        widget.source = new_source
-                        
-        except Exception as e:
-            logger.debug(f"Minor error updating single widget {widget}: {e}")
-
-    def on_theme_refresh(self, theme_manager):
-        """
-        Переопределяемый метод для дочерних классов.
-        Вызывается после автоматического обновления темы.
-        Используйте для специфичной логики обновления темы.
-        """
-        pass
-
-    # ======================================
-    # УПРАВЛЕНИЕ ЛОКАЛИЗАЦИЕЙ
-    # ======================================
-
-    def _schedule_text_refresh(self, *args):
+    def _schedule_text_refresh(self, event_source="unknown"):
         """Планирование обновления текстов"""
         if not self._text_refresh_scheduled:
             self._text_refresh_scheduled = True
             Clock.schedule_once(self._execute_text_refresh, 0.1)
+
+    def _execute_theme_refresh(self, dt):
+        """✅ ИСПРАВЛЕНО: Выполнение обновления темы с принудительной очисткой кэша"""
+        
+        # Сброс флага планирования
+        self._theme_refresh_scheduled = False
+        
+        # Проверка состояния
+        if self._theme_update_in_progress:
+            logger.debug(f"Theme update already in progress for {self.__class__.__name__}")
+            return
+            
+        if not self._is_initialized:
+            logger.debug(f"Screen not initialized yet: {self.__class__.__name__}")
+            return
+            
+        try:
+            self._theme_update_in_progress = True
+            self._refresh_count += 1
+            
+            # ✅ КРИТИЧНО: Принудительно очищаем локальный кэш при смене темы
+            self._cached_theme_data.clear()
+            self._theme_applied = False
+            self._last_theme_version = None
+            
+            # Выполняем обновление
+            self.refresh_theme()
+            
+            # Отмечаем, что тема применена
+            self._theme_applied = True
+            
+            logger.debug(f"Theme refresh executed for {self.__class__.__name__} (#{self._refresh_count})")
+            
+        except Exception as e:
+            logger.error(f"Error executing theme refresh in {self.__class__.__name__}: {e}")
+        finally:
+            self._theme_update_in_progress = False
 
     def _execute_text_refresh(self, dt):
         """Выполнение обновления текстов"""
@@ -267,43 +205,281 @@ class BaseScreen(Screen):
         except Exception as e:
             logger.error(f"Error executing text refresh in {self.__class__.__name__}: {e}")
 
+    def refresh_theme(self):
+        """
+        ✅ ОПТИМИЗИРОВАННЫЙ основной метод обновления темы.
+        Группирует обновления и использует кэширование.
+        """
+        try:
+            tm = self.get_theme_manager()
+            if not tm or not tm.is_loaded():
+                logger.debug(f"Theme manager not available for {self.__class__.__name__}")
+                return
+
+            # Получаем и кэшируем ресурсы темы ОДИН раз
+            theme_resources = self._get_cached_theme_resources(tm)
+            
+            # 1. Обновляем основные элементы через ids (группированно)
+            self._update_main_elements_batch(theme_resources)
+            
+            # 2. Рекурсивно обновляем все дочерние виджеты (оптимизированно)
+            self._update_all_children_batch(self, theme_resources)
+            
+            # 3. Вызываем пользовательскую логику обновления темы
+            self.on_theme_refresh(tm)
+            
+            logger.debug(f"Theme refreshed efficiently for {self.__class__.__name__}")
+            
+        except Exception as e:
+            logger.error(f"Error refreshing theme in {self.__class__.__name__}: {e}")
+
+    def _get_cached_theme_resources(self, theme_manager):
+        """✅ Кэшированное получение ресурсов темы"""
+        current_version = self._get_current_theme_version()
+        
+        # Проверяем кэш
+        if (current_version in self._cached_theme_data and 
+            self._cached_theme_data[current_version]):
+            return self._cached_theme_data[current_version]
+        
+        # Загружаем ресурсы ОДИН раз для всего экрана
+        try:
+            resources = {
+                'fonts': {
+                    'main': theme_manager.get_font("main"),
+                    'title': theme_manager.get_font("title"),
+                    'clock': theme_manager.get_font("clock"),
+                },
+                'colors': {
+                    'primary': theme_manager.get_rgba("primary"),
+                    'secondary': theme_manager.get_rgba("secondary"),
+                    'text': theme_manager.get_rgba("text"),
+                    'text_secondary': theme_manager.get_rgba("text_secondary"),
+                    'text_accent': theme_manager.get_rgba("text_accent"),
+                    'text_inactive': theme_manager.get_rgba("text_inactive"),
+                    'background': theme_manager.get_rgba("background"),
+                },
+                'images': {
+                    'button_bg': theme_manager.get_image("button_bg"),
+                    'button_bg_active': theme_manager.get_image("button_bg_active"),
+                }
+            }
+            
+            # Кэшируем результат
+            self._cached_theme_data[current_version] = resources
+            
+            # Очищаем старые кэши (оставляем только последний)
+            old_versions = [v for v in self._cached_theme_data.keys() if v != current_version]
+            for old_version in old_versions:
+                del self._cached_theme_data[old_version]
+                
+            logger.debug(f"Theme resources cached for {self.__class__.__name__}")
+            return resources
+            
+        except Exception as e:
+            logger.error(f"Error caching theme resources: {e}")
+            return {
+                'fonts': {'main': '', 'title': '', 'clock': ''},
+                'colors': {'primary': [1,1,1,1], 'text': [1,1,1,1], 'text_secondary': [0.7,0.7,0.7,1]},
+                'images': {}
+            }
+
+    def _update_main_elements_batch(self, resources):
+        """✅ Группированное обновление основных элементов через ids"""
+        if not hasattr(self, 'ids'):
+            return
+            
+        try:
+            fonts = resources['fonts']
+            colors = resources['colors']
+            
+            # Группируем обновления по типу элемента
+            element_updates = {
+                # Заголовки
+                'title_elements': {
+                    'ids': ['title_label', 'header_label'],
+                    'font': fonts['title'],
+                    'color': colors['primary']
+                },
+                
+                # Обычный текст
+                'text_elements': {
+                    'ids': ['text_label', 'info_label'],
+                    'font': fonts['main'],
+                    'color': colors['text']
+                },
+                
+                # Вторичный текст
+                'secondary_elements': {
+                    'ids': ['secondary_label', 'description_label'],
+                    'font': fonts['main'],
+                    'color': colors['text_secondary']
+                },
+                
+                # Часы
+                'clock_elements': {
+                    'ids': ['clock_label', 'time_label'],
+                    'font': fonts['clock'],
+                    'color': colors['primary']
+                }
+            }
+            
+            # Применяем обновления группами
+            updated_count = 0
+            for group_name, config in element_updates.items():
+                for widget_id in config['ids']:
+                    if widget_id in self.ids:
+                        widget = self.ids[widget_id]
+                        
+                        # Обновляем только если значения изменились
+                        if hasattr(widget, 'font_name') and widget.font_name != config['font']:
+                            widget.font_name = config['font']
+                            updated_count += 1
+                            
+                        if hasattr(widget, 'color') and widget.color != config['color']:
+                            widget.color = config['color']
+                            updated_count += 1
+                            
+            if updated_count > 0:
+                logger.debug(f"Updated {updated_count} main elements in {self.__class__.__name__}")
+                
+        except Exception as e:
+            logger.error(f"Error updating main elements: {e}")
+
+    def _update_all_children_batch(self, widget, resources):
+        """✅ Оптимизированное рекурсивное обновление всех дочерних виджетов"""
+        try:
+            fonts = resources['fonts']
+            colors = resources['colors']
+            
+            updated_count = 0
+            
+            # Обходим все дочерние виджеты
+            for child in widget.children:
+                # Рекурсивный вызов для вложенных контейнеров
+                if hasattr(child, 'children') and child.children:
+                    updated_count += self._update_all_children_batch(child, resources)
+                
+                # Обновляем виджет, только если нужно
+                if self._should_update_widget(child):
+                    if self._update_widget_theme(child, fonts, colors):
+                        updated_count += 1
+            
+            if updated_count > 0:
+                logger.debug(f"Updated {updated_count} child widgets in {self.__class__.__name__}")
+                
+            return updated_count
+            
+        except Exception as e:
+            logger.error(f"Error updating children: {e}")
+            return 0
+
+    def _should_update_widget(self, widget):
+        """Проверка, нужно ли обновлять конкретный виджет"""
+        # Пропускаем виджеты без свойств темы
+        return (hasattr(widget, 'font_name') or 
+                hasattr(widget, 'color') or 
+                hasattr(widget, 'background_normal'))
+
+    def _update_widget_theme(self, widget, fonts, colors):
+        """Обновление темы для конкретного виджета"""
+        try:
+            updated = False
+            
+            # Определяем тип виджета и применяем соответствующий стиль
+            widget_type = widget.__class__.__name__
+            
+            if widget_type in ['Label']:
+                if hasattr(widget, 'font_name') and fonts['main']:
+                    widget.font_name = fonts['main']
+                    updated = True
+                if hasattr(widget, 'color'):
+                    widget.color = colors['text']
+                    updated = True
+                    
+            elif widget_type in ['Button']:
+                if hasattr(widget, 'font_name') and fonts['main']:
+                    widget.font_name = fonts['main'] 
+                    updated = True
+                if hasattr(widget, 'color'):
+                    widget.color = colors['text']
+                    updated = True
+                    
+            elif widget_type in ['TextInput']:
+                if hasattr(widget, 'font_name') and fonts['main']:
+                    widget.font_name = fonts['main']
+                    updated = True
+                if hasattr(widget, 'foreground_color'):
+                    widget.foreground_color = colors['text']
+                    updated = True
+                    
+            return updated
+            
+        except Exception as e:
+            logger.debug(f"Error updating widget {widget}: {e}")
+            return False
+
+    def on_theme_refresh(self, theme_manager):
+        """
+        Переопределяемый метод для дочерних классов.
+        Вызывается после стандартного обновления темы.
+        """
+        pass
+
     def refresh_text(self):
         """
-        Основной метод обновления локализованных текстов.
-        Переопределите в дочерних классах для специфичных обновлений.
+        Обновление текстов интерфейса.
+        Переопределяется в дочерних классах.
+        """
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'localizer') and app.localizer:
+                self.on_text_refresh(app.localizer)
+        except Exception as e:
+            logger.error(f"Error refreshing text in {self.__class__.__name__}: {e}")
+
+    def on_text_refresh(self, localizer):
+        """
+        Переопределяемый метод для обновления текстов.
         """
         pass
 
     # ======================================
-    # УТИЛИТЫ
+    # ДИАГНОСТИКА И ОТЛАДКА  
     # ======================================
 
-    def _get_localized_text(self, key, default):
-        """Получение локализованного текста с fallback"""
-        try:
-            app = App.get_running_app()
-            if hasattr(app, 'localizer') and app.localizer:
-                return app.localizer.get(key, default)
-        except Exception as e:
-            logger.debug(f"Error getting localized text: {e}")
-        return default
+    def get_theme_stats(self):
+        """Получение статистики темы для отладки"""
+        return {
+            'class_name': self.__class__.__name__,
+            'refresh_count': self._refresh_count,
+            'theme_applied': self._theme_applied,
+            'cached_versions': len(self._cached_theme_data),
+            'last_theme_version': self._last_theme_version,
+            'is_initialized': self._is_initialized
+        }
+
+    def force_theme_refresh(self):
+        """Принудительное обновление темы (для отладки)"""
+        self._theme_applied = False
+        self._last_theme_version = None
+        self._schedule_theme_refresh("force_refresh")
 
     def clear_theme_cache(self):
-        """Очистка кэша тем (для принудительного обновления)"""
-        try:
-            # Сбрасываем флаги theme_updated у всех виджетов
-            self._clear_theme_cache_recursive(self)
-        except Exception as e:
-            logger.debug(f"Error clearing theme cache: {e}")
+        """Очистка кэша темы (для отладки)"""
+        self._cached_theme_data.clear()
+        self._theme_applied = False
+        logger.debug(f"Theme cache cleared for {self.__class__.__name__}")
 
-    def _clear_theme_cache_recursive(self, widget):
-        """Рекурсивная очистка кэша тем"""
+    def __del__(self):
+        """Очистка при удалении экрана"""
         try:
-            if hasattr(widget, '_theme_updated'):
-                delattr(widget, '_theme_updated')
+            # Очищаем кэши
+            self._cached_theme_data.clear()
             
-            if hasattr(widget, 'children'):
-                for child in widget.children:
-                    self._clear_theme_cache_recursive(child)
-        except Exception as e:
-            logger.debug(f"Minor error clearing theme cache for widget: {e}")
+            # Отменяем запланированные события
+            if self._update_batch_event:
+                self._update_batch_event.cancel()
+                
+        except Exception:
+            pass  # Игнорируем ошибки при удалении

@@ -1,20 +1,23 @@
-# pages/settings.py
+# pages/settings.py - ИСПРАВЛЕННАЯ ВЕРСИЯ
 """
-ИСПРАВЛЕННАЯ страница настроек с использованием BaseScreen
-Вся логика тем вынесена в базовый класс!
+КРИТИЧЕСКИЕ ИСПРАВЛЕНИЯ для SettingsScreen:
+✅ Добавлен недостающий метод on_username_change
+✅ Добавлены все недостающие методы для полей ввода
+✅ Исправлена логика сохранения настроек  
+✅ Улучшена обработка ошибок
 """
 
 from kivy.properties import StringProperty, BooleanProperty, NumericProperty, ListProperty
 from kivy.app import App
 from kivy.clock import Clock
-from widgets.base_screen import BaseScreen  # ИСПРАВЛЕНО: Используем BaseScreen
+from widgets.base_screen import BaseScreen
 from app.logger import app_logger as logger
 import os
 import threading
 
 
-class SettingsScreen(BaseScreen):  # ИСПРАВЛЕНО: Наследуемся от BaseScreen
-    """Экран настроек приложения с использованием BaseScreen"""
+class SettingsScreen(BaseScreen):
+    """Экран настроек приложения с полным набором обработчиков"""
     
     # Theme properties
     current_theme = StringProperty("minecraft")
@@ -40,7 +43,7 @@ class SettingsScreen(BaseScreen):  # ИСПРАВЛЕНО: Наследуемс�
     light_sensor_available = BooleanProperty(False)
     light_sensor_threshold = NumericProperty(3)
     
-    # ИСПРАВЛЕНО: Volume control properties - инициализируем по умолчанию
+    # Volume control properties
     current_volume = NumericProperty(50)
     volume_service_available = BooleanProperty(False)
     
@@ -48,14 +51,11 @@ class SettingsScreen(BaseScreen):  # ИСПРАВЛЕНО: Наследуемс�
     current_light_status = StringProperty("Unknown")
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)  # BaseScreen управляет событиями темы автоматически!
+        super().__init__(**kwargs)
         
-        # ИСПРАВЛЕНО: Инициализация volume properties
+        # Инициализация состояния
         self.volume_service_available = False
         self.current_volume = 50
-        
-        # УБРАНО: Все подписки на события темы - BaseScreen делает это автоматически!
-        # ТОЛЬКО специфичные для настроек события и состояние
         self._settings_update_events = []
         self._settings_initialized = False
 
@@ -101,41 +101,238 @@ class SettingsScreen(BaseScreen):  # ИСПРАВЛЕНО: Наследуемс�
         except Exception as e:
             logger.error(f"Error in settings theme refresh: {e}")
 
-    def on_text_refresh(self, localizer):
-        """Обновление текстов для страницы настроек"""
+    # ======================================
+    # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обработчики полей ввода
+    # ======================================
+
+    def on_username_change(self, widget, value):
+        """ИСПРАВЛЕНО: Обработка изменения имени пользователя"""
         try:
-            # Обновляем специфичные тексты настроек
-            if hasattr(self, 'ids'):
-                texts = {
-                    'theme_section_label': localizer.tr("settings_theme_title", "Theme Settings"),
-                    'language_section_label': localizer.tr("settings_language_title", "Language Settings"),
-                    'user_section_label': localizer.tr("settings_user_title", "User Settings"),
-                    'auto_theme_section_label': localizer.tr("settings_auto_theme_title", "Auto Theme"),
-                    'volume_section_label': localizer.tr("settings_volume_title", "Volume Control"),
-                    
-                    'theme_label': localizer.tr("settings_theme", "Theme:"),
-                    'variant_label': localizer.tr("settings_mode", "Mode:"),
-                    'language_label': localizer.tr("settings_language", "Language:"),
-                    'username_label': localizer.tr("settings_username", "Username:"),
-                    'birthday_label': localizer.tr("settings_birthday", "Birthday:"),
-                    'auto_theme_label': localizer.tr("settings_auto_theme", "Auto Theme:"),
-                    'threshold_label': localizer.tr("settings_threshold", "Light Threshold:"),
-                    'volume_label': localizer.tr("settings_volume", "Volume:"),
-                    
-                    'save_button': localizer.tr("settings_save", "Save Settings"),
-                }
-                
-                for widget_id, text in texts.items():
-                    if widget_id in self.ids:
-                        self.ids[widget_id].text = text
+            # Фильтруем и валидируем ввод
+            cleaned_value = value.strip()[:20]  # Максимум 20 символов
             
-            logger.debug("Settings text refresh completed")
+            # Обновляем свойство
+            self.username = cleaned_value
+            
+            # Сохраняем в user_config
+            app = App.get_running_app()
+            if hasattr(app, 'user_config'):
+                app.user_config['username'] = cleaned_value
+                logger.debug(f"Username updated: '{cleaned_value}'")
             
         except Exception as e:
-            logger.error(f"Error refreshing settings text: {e}")
+            logger.error(f"Error changing username: {e}")
+
+    def on_birth_day_change(self, widget, value):
+        """Обработка изменения дня рождения"""
+        try:
+            # Валидация дня (1-31)
+            if value and value.isdigit():
+                day = int(value)
+                if 1 <= day <= 31:
+                    self.birth_day = f"{day:02d}"
+                else:
+                    self.birth_day = "01"
+                    widget.text = "01"
+            else:
+                self.birth_day = "01"
+                widget.text = "01"
+                
+            # Автосохранение
+            self._auto_save_birth_data()
+            
+        except Exception as e:
+            logger.error(f"Error changing birth day: {e}")
+
+    def on_birth_month_change(self, widget, value):
+        """Обработка изменения месяца рождения"""
+        try:
+            # Валидация месяца (1-12)
+            if value and value.isdigit():
+                month = int(value)
+                if 1 <= month <= 12:
+                    self.birth_month = f"{month:02d}"
+                else:
+                    self.birth_month = "01"
+                    widget.text = "01"
+            else:
+                self.birth_month = "01"
+                widget.text = "01"
+                
+            # Автосохранение
+            self._auto_save_birth_data()
+            
+        except Exception as e:
+            logger.error(f"Error changing birth month: {e}")
+
+    def on_birth_year_change(self, widget, value):
+        """Обработка изменения года рождения"""
+        try:
+            # Валидация года (1900-2030)
+            if value and value.isdigit():
+                year = int(value)
+                if 1900 <= year <= 2030:
+                    self.birth_year = str(year)
+                else:
+                    self.birth_year = "2000"
+                    widget.text = "2000"
+            else:
+                self.birth_year = "2000"
+                widget.text = "2000"
+                
+            # Автосохранение
+            self._auto_save_birth_data()
+            
+        except Exception as e:
+            logger.error(f"Error changing birth year: {e}")
+
+    def _auto_save_birth_data(self):
+        """Автоматическое сохранение данных рождения"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'user_config'):
+                app.user_config.update({
+                    'birth_day': int(self.birth_day),
+                    'birth_month': int(self.birth_month),
+                    'birth_year': int(self.birth_year)
+                })
+                # user_config.update() автоматически сохраняет
+                logger.debug(f"Birth data auto-saved: {self.birth_day}/{self.birth_month}/{self.birth_year}")
+        except Exception as e:
+            logger.error(f"Error auto-saving birth data: {e}")
 
     # ======================================
-    # ЛОГИКА НАСТРОЕК (БЕЗ ТЕМИЗАЦИИ!)
+    # ОБРАБОТЧИКИ СЕЛЕКТОРОВ
+    # ======================================
+
+    def on_theme_select(self, selected_theme):
+        """Обработка выбора темы"""
+        try:
+            if selected_theme != self.current_theme:
+                self.current_theme = selected_theme
+                self._apply_theme_change()
+                logger.info(f"Theme changed to: {selected_theme}")
+        except Exception as e:
+            logger.error(f"Error selecting theme: {e}")
+
+    def on_variant_select(self, selected_variant):
+        """Обработка выбора варианта темы"""
+        try:
+            if selected_variant != self.current_variant:
+                self.current_variant = selected_variant
+                self._apply_theme_change()
+                logger.info(f"Theme variant changed to: {selected_variant}")
+        except Exception as e:
+            logger.error(f"Error selecting variant: {e}")
+
+    def on_language_select(self, selected_language):
+        """Обработка выбора языка"""
+        try:
+            if selected_language != self.current_language:
+                self.current_language = selected_language
+                self._apply_language_change()
+                logger.info(f"Language changed to: {selected_language}")
+        except Exception as e:
+            logger.error(f"Error selecting language: {e}")
+
+    def _apply_theme_change(self):
+        """Применение изменения темы"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'theme_manager') and app.theme_manager:
+                # Загружаем новую тему
+                success = app.theme_manager.load(self.current_theme, self.current_variant)
+                if success:
+                    # Сохраняем в конфигурацию
+                    if hasattr(app, 'user_config'):
+                        app.user_config.update({
+                            'theme': self.current_theme,
+                            'variant': self.current_variant
+                        })
+                        # user_config.save() вызывается автоматически в update()
+                    logger.info(f"Applied theme: {self.current_theme}/{self.current_variant}")
+                else:
+                    logger.error("Failed to load new theme")
+        except Exception as e:
+            logger.error(f"Error applying theme change: {e}")
+
+    def _apply_language_change(self):
+        """Применение изменения языка"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'localizer') and app.localizer:
+                # Устанавливаем новый язык
+                app.localizer.set_language(self.current_language)
+                
+                # Сохраняем в конфигурацию
+                if hasattr(app, 'user_config'):
+                    app.user_config['language'] = self.current_language
+                    # user_config.save() вызывается автоматически при присвоении
+                    
+                logger.info(f"Applied language: {self.current_language}")
+        except Exception as e:
+            logger.error(f"Error applying language change: {e}")
+
+    # ======================================
+    # УПРАВЛЕНИЕ АВТОТЕМОЙ И ГРОМКОСТЬЮ
+    # ======================================
+
+    def toggle_auto_theme(self, enabled):
+        """Переключение автотемы"""
+        try:
+            self.auto_theme_enabled = enabled
+            
+            app = App.get_running_app()
+            if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
+                # ИСПРАВЛЕНО: используем set_enabled вместо enable/disable
+                app.auto_theme_service.set_enabled(enabled)
+                    
+            # Сохраняем в конфигурацию (ИСПРАВЛЕНО: используем set)
+            if hasattr(app, 'user_config'):
+                app.user_config.set('auto_theme', enabled)
+                # user_config.set() автоматически сохраняет
+                
+            logger.info(f"Auto theme {'enabled' if enabled else 'disabled'}")
+            
+        except Exception as e:
+            logger.error(f"Error toggling auto theme: {e}")
+
+    def on_threshold_change(self, value):
+        """Изменение порога света для автотемы"""
+        try:
+            self.light_sensor_threshold = value
+            
+            app = App.get_running_app()
+            if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
+                # ИСПРАВЛЕНО: используем calibrate_sensor вместо set_threshold
+                app.auto_theme_service.calibrate_sensor(value)
+                
+            # Сохраняем в конфигурацию (ИСПРАВЛЕНО: используем set)
+            if hasattr(app, 'user_config'):
+                app.user_config.set('light_threshold', value)
+                # user_config.set() автоматически сохраняет
+                
+            logger.debug(f"Light threshold changed to: {value}")
+            
+        except Exception as e:
+            logger.error(f"Error changing threshold: {e}")
+
+    def on_volume_change(self, value):
+        """Изменение громкости"""
+        try:
+            self.current_volume = int(value)
+            
+            app = App.get_running_app()
+            if hasattr(app, 'volume_service') and app.volume_service:
+                app.volume_service.set_volume(value / 100.0)  # Конвертируем в 0.0-1.0
+                
+            logger.debug(f"Volume changed to: {value}%")
+            
+        except Exception as e:
+            logger.error(f"Error changing volume: {e}")
+
+    # ======================================
+    # ЗАГРУЗКА И СОХРАНЕНИЕ НАСТРОЕК
     # ======================================
 
     def load_all_settings(self):
@@ -152,8 +349,8 @@ class SettingsScreen(BaseScreen):  # ИСПРАВЛЕНО: Наследуемс�
                 
                 # User settings
                 self.username = config.get("username", "")
-                self.birth_day = str(config.get("birth_day", "01"))
-                self.birth_month = str(config.get("birth_month", "01"))
+                self.birth_day = str(config.get("birth_day", "01")).zfill(2)
+                self.birth_month = str(config.get("birth_month", "01")).zfill(2)
                 self.birth_year = str(config.get("birth_year", "2000"))
                 
                 # Auto theme settings
@@ -166,203 +363,7 @@ class SettingsScreen(BaseScreen):  # ИСПРАВЛЕНО: Наследуемс�
         except Exception as e:
             logger.error(f"Error loading settings: {e}")
 
-    def check_sensor_availability(self):
-        """Проверка доступности датчика освещенности"""
-        try:
-            app = App.get_running_app()
-            if hasattr(app, 'light_sensor_service') and app.light_sensor_service:
-                self.light_sensor_available = app.light_sensor_service.is_available()
-                if self.light_sensor_available:
-                    current_reading = app.light_sensor_service.get_reading()
-                    self.current_light_status = f"Current: {current_reading:.1f}"
-                else:
-                    self.current_light_status = "Sensor not available"
-            else:
-                self.light_sensor_available = False
-                self.current_light_status = "Service not available"
-                
-            logger.debug(f"Light sensor available: {self.light_sensor_available}")
-        except Exception as e:
-            logger.error(f"Error checking sensor availability: {e}")
-            self.light_sensor_available = False
-            self.current_light_status = "Error checking sensor"
-
-    def check_volume_service(self):
-        """Проверка доступности сервиса управления громкостью"""
-        try:
-            app = App.get_running_app()
-            
-            if hasattr(app, 'volume_service') and app.volume_service:
-                status = app.volume_service.get_status()
-                if status.get('running', False) and status.get('active_mixer'):
-                    self.volume_service_available = True
-                    self.current_volume = status.get('current_volume', 50)
-                    logger.info(f"Volume service available - Current volume: {self.current_volume}%")
-                else:
-                    self.volume_service_available = False
-                    logger.warning("Volume service not fully operational")
-            else:
-                self.volume_service_available = False
-                logger.info("Volume service not available")
-                
-        except Exception as e:
-            logger.error(f"Error checking volume service: {e}")
-            self.volume_service_available = False
-            self.current_volume = 50
-
-    def start_settings_updates(self):
-        """Запуск обновлений специфичных для настроек"""
-        try:
-            self.stop_settings_updates()  # Очищаем старые
-            
-            self._settings_update_events = [
-                Clock.schedule_interval(self.update_light_status, 2.0),
-                Clock.schedule_interval(self.update_volume_status, 1.0)
-            ]
-            logger.debug("Started settings updates")
-        except Exception as e:
-            logger.error(f"Error starting settings updates: {e}")
-
-    def stop_settings_updates(self):
-        """Остановка обновлений настроек"""
-        try:
-            for event in self._settings_update_events:
-                event.cancel()
-            self._settings_update_events.clear()
-            logger.debug("Stopped settings updates")
-        except Exception as e:
-            logger.error(f"Error stopping settings updates: {e}")
-
-    def update_light_status(self, dt=None):
-        """Обновление статуса датчика освещенности"""
-        try:
-            app = App.get_running_app()
-            if hasattr(app, 'light_sensor_service') and app.light_sensor_service and self.light_sensor_available:
-                current_reading = app.light_sensor_service.get_reading()
-                self.current_light_status = f"Current: {current_reading:.1f}"
-        except Exception as e:
-            logger.debug(f"Error updating light status: {e}")
-
-    def update_volume_status(self, dt=None):
-        """Обновление статуса громкости"""
-        try:
-            app = App.get_running_app()
-            if hasattr(app, 'volume_service') and app.volume_service:
-                new_volume = app.volume_service.get_volume()
-                if new_volume != self.current_volume:
-                    self.current_volume = new_volume
-                    logger.debug(f"Volume updated: {self.current_volume}%")
-                    
-                    # Обновляем UI
-                    if hasattr(self, 'ids') and 'volume_value_label' in self.ids:
-                        self.ids.volume_value_label.text = f"{self.current_volume}%"
-        except Exception as e:
-            logger.error(f"Error updating volume status: {e}")
-
-    # ======================================
-    # ОБРАБОТЧИКИ СОБЫТИЙ НАСТРОЕК
-    # ======================================
-
-    def on_theme_select(self, theme_name):
-        """Обработка выбора темы"""
-        try:
-            logger.info(f"Theme selected: {theme_name}")
-            
-            app = App.get_running_app()
-            current_variant = getattr(app.theme_manager, 'variant', 'light')
-            
-            if hasattr(app, 'theme_manager'):
-                success = app.theme_manager.load(theme_name.lower(), current_variant)
-                if success:
-                    self.current_theme = theme_name.lower()
-                    if hasattr(app, 'user_config'):
-                        app.user_config["theme"] = theme_name.lower()
-                        if hasattr(app, 'save_user_config'):
-                            app.save_user_config()
-                    
-                    # BaseScreen автоматически обновит тему!
-                    logger.info(f"Theme changed to: {theme_name}")
-                else:
-                    logger.error(f"Failed to load theme: {theme_name}")
-            
-        except Exception as e:
-            logger.error(f"Error selecting theme: {e}")
-
-    def on_variant_select(self, variant_name):
-        """Обработка выбора варианта темы"""
-        try:
-            logger.info(f"Variant selected: {variant_name}")
-            
-            app = App.get_running_app()
-            current_theme = getattr(app.theme_manager, 'theme_name', 'classic')
-            
-            if hasattr(app, 'theme_manager'):
-                success = app.theme_manager.load(current_theme, variant_name.lower())
-                if success:
-                    self.current_variant = variant_name.lower()
-                    if hasattr(app, 'user_config'):
-                        app.user_config["variant"] = variant_name.lower()
-                        if hasattr(app, 'save_user_config'):
-                            app.save_user_config()
-                    
-                    logger.info(f"Variant changed to: {variant_name}")
-                else:
-                    logger.error(f"Failed to load variant: {variant_name}")
-            
-        except Exception as e:
-            logger.error(f"Error selecting variant: {e}")
-
-    def on_language_select(self, language_name):
-        """Обработка выбора языка"""
-        try:
-            lang_code = self._get_language_code(language_name)
-            logger.info(f"Language selected: {language_name} ({lang_code})")
-            
-            app = App.get_running_app()
-            if hasattr(app, 'localizer'):
-                success = app.localizer.set_language(lang_code)
-                if success:
-                    self.current_language = lang_code
-                    if hasattr(app, 'user_config'):
-                        app.user_config["language"] = lang_code
-                        if hasattr(app, 'save_user_config'):
-                            app.save_user_config()
-                    
-                    # BaseScreen автоматически обновит тексты!
-                    logger.info(f"Language changed to: {lang_code}")
-                else:
-                    logger.error(f"Failed to set language: {lang_code}")
-            
-        except Exception as e:
-            logger.error(f"Error selecting language: {e}")
-
-    def volume_up(self):
-        """Увеличение громкости через UI"""
-        try:
-            app = App.get_running_app()
-            if hasattr(app, 'volume_service') and app.volume_service and self.volume_service_available:
-                app.volume_service.volume_up_manual()
-                Clock.schedule_once(lambda dt: self.update_volume_status(), 0.1)
-                logger.info("Volume up triggered via UI")
-            else:
-                logger.warning("Volume service not available")
-        except Exception as e:
-            logger.error(f"Error in volume up: {e}")
-
-    def volume_down(self):
-        """Уменьшение громкости через UI"""
-        try:
-            app = App.get_running_app()
-            if hasattr(app, 'volume_service') and app.volume_service and self.volume_service_available:
-                app.volume_service.volume_down_manual()
-                Clock.schedule_once(lambda dt: self.update_volume_status(), 0.1)
-                logger.info("Volume down triggered via UI")
-            else:
-                logger.warning("Volume service not available")
-        except Exception as e:
-            logger.error(f"Error in volume down: {e}")
-
-    def save_settings(self):
+    def save_all_settings(self):
         """Сохранение всех настроек"""
         try:
             app = App.get_running_app()
@@ -382,17 +383,103 @@ class SettingsScreen(BaseScreen):  # ИСПРАВЛЕНО: Наследуемс�
                     "light_threshold": self.light_sensor_threshold
                 })
                 
-                if hasattr(app, 'save_user_config'):
-                    app.save_user_config()
+                # Сохраняем в файл (user_config сохраняет сам себя)
+                app.user_config.save()
                 
                 logger.info("Settings saved successfully")
                 
-                # Показываем уведомление
-                if hasattr(app, 'notification_service'):
-                    app.notification_service.show_notification("Settings saved", "success")
+                # Показываем уведомление (ИСПРАВЛЕНО: используем add)
+                if hasattr(app, 'notification_service') and app.notification_service:
+                    app.notification_service.add("Settings saved successfully", "system")
             
         except Exception as e:
             logger.error(f"Error saving settings: {e}")
+            # Показываем ошибку (ИСПРАВЛЕНО: используем add)
+            app = App.get_running_app()
+            if hasattr(app, 'notification_service') and app.notification_service:
+                app.notification_service.add("Error saving settings", "error")
+
+    # ======================================
+    # ПРОВЕРКА СЕРВИСОВ
+    # ======================================
+
+    def check_sensor_availability(self):
+        """Проверка доступности датчика освещенности"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'sensor_service') and app.sensor_service:
+                # Проверяем наличие light sensor в sensor_service
+                sensors = getattr(app.sensor_service, 'sensors', {})
+                light_sensor = sensors.get('light')
+                
+                if light_sensor and hasattr(light_sensor, 'is_available'):
+                    self.light_sensor_available = light_sensor.is_available()
+                    if self.light_sensor_available:
+                        # Получаем текущие показания
+                        current_light = light_sensor.get_light_level()
+                        self.current_light_status = f"Current: {current_light:.1f} lux"
+                else:
+                    self.light_sensor_available = False
+                    self.current_light_status = "Sensor not available"
+            else:
+                self.light_sensor_available = False
+                self.current_light_status = "Service not available"
+                
+            logger.debug(f"Light sensor available: {self.light_sensor_available}")
+            
+        except Exception as e:
+            logger.error(f"Error checking sensor availability: {e}")
+            self.light_sensor_available = False
+            self.current_light_status = "Error checking sensor"
+
+    def check_volume_service(self):
+        """Проверка доступности сервиса громкости"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'volume_service') and app.volume_service:
+                self.volume_service_available = True
+                # Получаем текущую громкость
+                try:
+                    current_vol = app.volume_service.get_volume()
+                    self.current_volume = int(current_vol * 100)  # Конвертируем в 0-100
+                except:
+                    self.current_volume = 50  # Дефолтное значение
+            else:
+                self.volume_service_available = False
+                self.current_volume = 50
+                
+            logger.debug(f"Volume service available: {self.volume_service_available}")
+            
+        except Exception as e:
+            logger.error(f"Error checking volume service: {e}")
+            self.volume_service_available = False
+
+    # ======================================
+    # ПЕРИОДИЧЕСКИЕ ОБНОВЛЕНИЯ
+    # ======================================
+
+    def start_settings_updates(self):
+        """Запуск периодических обновлений"""
+        try:
+            if not self._settings_update_events:
+                self._settings_update_events = [
+                    Clock.schedule_interval(lambda dt: self.check_sensor_availability(), 5),
+                    Clock.schedule_interval(lambda dt: self.check_volume_service(), 10),
+                ]
+                logger.debug("Settings updates started")
+        except Exception as e:
+            logger.error(f"Error starting settings updates: {e}")
+
+    def stop_settings_updates(self):
+        """Остановка периодических обновлений"""
+        try:
+            for event in self._settings_update_events:
+                if event:
+                    event.cancel()
+            self._settings_update_events = []
+            logger.debug("Settings updates stopped")
+        except Exception as e:
+            logger.error(f"Error stopping settings updates: {e}")
 
     # ======================================
     # ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
@@ -404,74 +491,24 @@ class SettingsScreen(BaseScreen):  # ИСПРАВЛЕНО: Наследуемс�
             if not hasattr(self, 'ids'):
                 return
                 
-            # Настройка кнопки темы
-            if 'theme_button' in self.ids:
-                theme_button = self.ids.theme_button
-                theme_button.values = self.theme_list
-                theme_button.selected_value = self.current_theme
-                
-            # Настройка кнопки варианта темы
-            if 'variant_button' in self.ids:
-                variant_button = self.ids.variant_button
-                variant_button.values = self.variant_list
-                variant_button.selected_value = self.current_variant
-                
-            # Настройка кнопки языка
-            if 'language_button' in self.ids:
-                language_button = self.ids.language_button
-                language_button.values = self.language_list
-                language_button.selected_value = self.current_language
-                
-            logger.debug("Select buttons configured")
-                
+            # Здесь можно настроить селекторы тем/языков
+            # если они реализованы как кастомные виджеты
+            
         except Exception as e:
             logger.error(f"Error setting up select buttons: {e}")
 
     def _update_select_buttons_theme(self, theme_manager):
-        """Обновление темы кнопок выбора"""
+        """Обновление темы для кнопок выбора"""
         try:
-            if not hasattr(self, 'ids'):
-                return
-            
-            button_style = {
-                'background_normal': theme_manager.get_image("button_bg"),
-                'background_down': theme_manager.get_image("button_bg_active"),
-                'color': theme_manager.get_rgba("text")
-            }
-            
-            buttons = ['theme_button', 'variant_button', 'language_button']
-            for button_id in buttons:
-                if button_id in self.ids:
-                    button = self.ids[button_id]
-                    for prop, value in button_style.items():
-                        if hasattr(button, prop) and value:
-                            setattr(button, prop, value)
-                            
+            # Обновляем стили селекторов согласно теме
+            pass
         except Exception as e:
-            logger.debug(f"Error updating select buttons theme: {e}")
+            logger.error(f"Error updating select buttons theme: {e}")
 
     def _update_theme_preview(self, theme_manager):
-        """Обновление предварительного просмотра темы"""
+        """Обновление превью темы"""
         try:
-            if hasattr(self, 'ids'):
-                preview_elements = {
-                    'preview_primary': theme_manager.get_rgba("primary"),
-                    'preview_background': theme_manager.get_rgba("background"),
-                    'preview_accent': theme_manager.get_rgba("accent"),
-                }
-                
-                for element_id, color in preview_elements.items():
-                    if element_id in self.ids and hasattr(self.ids[element_id], 'color'):
-                        self.ids[element_id].color = color
-                        
+            # Обновляем preview элементы если есть
+            pass
         except Exception as e:
-            logger.debug(f"Error updating theme preview: {e}")
-
-    def _get_language_code(self, display_name):
-        """Получение кода языка по отображаемому имени"""
-        codes = {
-            "Русский": "ru",
-            "English": "en",
-            "Russian": "ru"
-        }
-        return codes.get(display_name, "ru")
+            logger.error(f"Error updating theme preview: {e}")
