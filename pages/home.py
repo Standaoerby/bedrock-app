@@ -314,15 +314,44 @@ class HomeScreen(BaseScreen):
             logger.error(f"Error setting welcome notification: {e}")
             self.notification_text = "Welcome to Bedrock 2.0!"
 
+    # ЗАМЕНИТЬ метод scroll_notification в pages/home.py:
+
     def scroll_notification(self):
-        """Прокрутка уведомлений"""
+        """УЛУЧШЕННАЯ прокрутка текста уведомлений"""
         try:
-            # Простая логика прокрутки
-            self.notification_scroll_x += 1
-            if self.notification_scroll_x > 200:  # Перезапуск прокрутки
-                self.notification_scroll_x = -100
+            if not hasattr(self, 'ids') or 'notification_text_label' not in self.ids:
+                return
+                
+            label = self.ids.notification_text_label
+            container = self.ids.get('notification_container')
+            
+            if not label or not container:
+                return
+                
+            # Получаем реальные размеры
+            text_width = label.texture_size[0] if label.texture_size[0] > 0 else 100
+            container_width = container.width if container.width > 0 else 400
+            
+            if text_width <= container_width:
+                # Текст помещается - центрируем
+                self.notification_scroll_x = (container_width - text_width) / 2
+            else:
+                # Текст не помещается - плавная прокрутка
+                scroll_speed = 50  # пикселей в секунду
+                
+                # Обновляем позицию
+                self.notification_scroll_x -= scroll_speed * 0.1  # 0.1 - интервал Clock
+                
+                # Сброс в начало при полной прокрутке
+                if self.notification_scroll_x < -(text_width + 50):  # +50 для паузы
+                    self.notification_scroll_x = container_width + 20  # +20 для появления
+                    
         except Exception as e:
             logger.error(f"Error scrolling notification: {e}")
+            # Простой fallback
+            self.notification_scroll_x += 1
+            if self.notification_scroll_x > 200:
+                self.notification_scroll_x = -100
 
     # ========================================
     # ЦВЕТОВАЯ ЛОГИКА
@@ -537,6 +566,26 @@ class HomeScreen(BaseScreen):
         except Exception as e:
             logger.error(f"Error getting localized text: {e}")
         return default
+
+    def toggle_alarm(self):
+        """Переключение состояния будильника через сервис"""
+        try:
+            app = App.get_running_app()
+            if hasattr(app, 'alarm_service') and app.alarm_service:
+                # Используем метод toggle из alarm_service
+                success = app.alarm_service.toggle()
+                if success:
+                    # Принудительно обновляем отображение
+                    self._cached_alarm_data = None  # Сбрасываем кэш
+                    self.update_alarm_status()
+                    logger.info("Alarm toggled successfully")
+                else:
+                    logger.warning("Failed to toggle alarm")
+            else:
+                logger.warning("Alarm service not available")
+                
+        except Exception as e:
+            logger.error(f"Error toggling alarm: {e}")
 
     # ========================================
     # ОТЛАДОЧНЫЕ МЕТОДЫ
