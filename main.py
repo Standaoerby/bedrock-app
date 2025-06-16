@@ -111,7 +111,7 @@ class BedrockApp(App):
             root = RootWidget()
             
             # 4. Инициализация сервисов (отложенная)
-            Clock.schedule_once(lambda dt: self._initialize_services(), 0.1)
+            self._initialize_services()
             
             logger.info("✅ Bedrock 2.0 initialized successfully")
             return root
@@ -180,8 +180,8 @@ class BedrockApp(App):
             # Основные сервисы
             self._initialize_core_services()
             
-            # Сервис с зависимостями (отложенно)
-            Clock.schedule_once(lambda dt: self._initialize_dependent_services(), 1.0)
+            # Сервис с зависимостями
+            self._initialize_dependent_services()
             
         except Exception as e:
             logger.error(f"Error initializing services: {e}")
@@ -213,30 +213,23 @@ class BedrockApp(App):
                 logger.warning(f"⚠️ notification_service not available: {e}")
                 self.notification_service = None
             
-            # ИСПРАВЛЕНО: Weather Service с координатами из user_config
+            # Weather Service с координатами из user_config -- ПОПРАВИТЬ НА РЕФАКТОРЕ
             try:
                 location = self.user_config.get("location", {})
-                lat = location.get("latitude")
-                lon = location.get("longitude")
+                lat = location.get("latitude", 51.5566)
+                lon = location.get("longitude", -0.178)
                 
-                if lat is not None and lon is not None:
-                    self.weather_service = WeatherService(lat=lat, lon=lon)
-                    logger.info(f"✅ weather_service initialized with coords: {lat}, {lon}")
-                else:
-                    # Используем дефолтные координаты (Лондон как в конфиге)
-                    self.weather_service = WeatherService(lat=51.5566, lon=-0.178)
-                    logger.info("✅ weather_service initialized with default coords (London)")
-                    
+                # Убеждаемся что координаты корректные числа
+                lat = float(lat) if lat is not None else 51.5566
+                lon = float(lon) if lon is not None else -0.178
+                
+                self.weather_service = WeatherService(lat=lat, lon=lon)
+                logger.info("✅ weather_service initialized")
+                
             except Exception as e:
-                logger.error(f"❌ weather_service initialization failed: {e}")
-                logger.info("🔧 Trying to initialize weather service with fallback coordinates...")
-                try:
-                    # Попытка с минимальными параметрами
-                    self.weather_service = WeatherService(lat=51.5566, lon=-0.178)
-                    logger.info("✅ weather_service initialized with fallback coords")
-                except Exception as e2:
-                    logger.warning(f"⚠️ weather_service not available: {e2}")
-                    self.weather_service = None
+                logger.error(f"❌ weather_service failed: {e}")
+                logger.info("🔧 Continuing without weather service...")
+                self.weather_service = None
             
             # Sensor Service
             try:

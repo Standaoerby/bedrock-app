@@ -223,7 +223,6 @@ class HomeScreen(BaseScreen):
     # ========================================
     # ОБНОВЛЕНИЕ БУДИЛЬНИКА
     # ========================================
-
     def update_alarm_status(self):
         """Обновление статуса будильника с кэшированием"""
         try:
@@ -234,28 +233,39 @@ class HomeScreen(BaseScreen):
                 return
             
             app = App.get_running_app()
-            if not hasattr(app, 'user_config'):
+            
+            # ИСПРАВЛЕНО: Используем alarm_service вместо user_config
+            if not hasattr(app, 'alarm_service') or not app.alarm_service:
+                logger.warning("Alarm service not available")
+                # Устанавливаем дефолтные значения
+                self.current_alarm_time = "--:--"
+                self.alarm_status_text = "OFF"
                 return
             
-            alarm_config = app.user_config.get("alarm", {})
+            # Получаем данные из alarm_service
+            alarm_data = app.alarm_service.get_alarm()
+            if not alarm_data:
+                self.current_alarm_time = "--:--"
+                self.alarm_status_text = "OFF"
+                return
             
             # Проверяем, изменились ли данные
-            if self._cached_alarm_data == alarm_config:
+            if self._cached_alarm_data == alarm_data:
                 return
             
-            self._cached_alarm_data = alarm_config.copy()
+            self._cached_alarm_data = alarm_data.copy()
             self._last_alarm_update = current_time
             
             # Обновляем данные будильника
-            if alarm_config.get("enabled", False):
-                alarm_time = alarm_config.get("time", "07:00")
+            if alarm_data.get("enabled", False):
+                alarm_time = alarm_data.get("time", "07:00")
                 self.current_alarm_time = alarm_time
                 self.alarm_status_text = "ON"
             else:
                 self.current_alarm_time = "--:--"
                 self.alarm_status_text = "OFF"
             
-            logger.debug("Alarm status updated")
+            logger.debug(f"Alarm status updated: {self.current_alarm_time} ({self.alarm_status_text})")
             
         except Exception as e:
             logger.error(f"Error updating alarm status: {e}")
@@ -264,8 +274,9 @@ class HomeScreen(BaseScreen):
         """Проверить, включен ли будильник"""
         try:
             app = App.get_running_app()
-            if hasattr(app, 'user_config'):
-                return app.user_config.get("alarm", {}).get("enabled", False)
+            if hasattr(app, 'alarm_service') and app.alarm_service:
+                alarm_data = app.alarm_service.get_alarm()
+                return alarm_data.get("enabled", False) if alarm_data else False
         except Exception as e:
             logger.error(f"Error checking alarm status: {e}")
         return False
