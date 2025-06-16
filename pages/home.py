@@ -287,9 +287,10 @@ class HomeScreen(BaseScreen):
             # Проверяем сервис уведомлений
             if hasattr(app, 'notification_service') and app.notification_service:
                 try:
-                    notifications = app.notification_service.get_current_notifications()
-                    if notifications:
-                        self.notification_text = " | ".join(notifications)
+                    last_notification = app.notification_service.get_last_notification()
+                
+                    if last_notification and last_notification.get("text"):
+                        self.notification_text = last_notification.get("text")
                     else:
                         self._set_welcome_notification()
                 except Exception as e:
