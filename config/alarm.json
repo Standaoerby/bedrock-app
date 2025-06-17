@@ -1,7 +1,7 @@
 {
   "alarm": {
-    "time": "23:44",
-    "enabled": false,
+    "time": "02:44",
+    "enabled": true,
     "repeat": [
       "Sun",
       "Sat"

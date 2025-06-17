@@ -232,18 +232,20 @@ class HomeScreen(Screen):
     # ========================================
 
     def update_alarm_status(self, *args):
-        """ОПТИМИЗИРОВАННОЕ обновление статуса будильника БЕЗ лагов"""
+        """ИСПРАВЛЕННОЕ обновление статуса будильника с принудительной синхронизацией"""
         try:
-            # DEBOUNCING - предотвращаем слишком частые обновления
             current_time = time.time()
-            if current_time - self._last_alarm_update < self._alarm_update_delay:
-                logger.debug("Alarm status update skipped due to debouncing")
+            
+            # Проверяем нужно ли обновление (debouncing)
+            if not self._alarm_data_changed and (current_time - self._last_alarm_update) < self._alarm_update_delay:
                 return
             
             self._last_alarm_update = current_time
+            self._alarm_data_changed = False
             
             app = App.get_running_app()
             
+            # ИСПРАВЛЕНО: Проверяем работает ли alarm_service
             if hasattr(app, 'alarm_service') and app.alarm_service:
                 alarm = app.alarm_service.get_alarm()
                 if alarm:
@@ -266,12 +268,28 @@ class HomeScreen(Screen):
                         
                         # Планируем ОДНО обновление темы только для будильника
                         self._schedule_single_theme_refresh()
+                        
+                    # НОВОЕ: Проверяем работает ли AlarmClock сервис
+                    alarm_clock_status = "Unknown"
+                    if hasattr(app, 'alarm_clock') and app.alarm_clock:
+                        if hasattr(app.alarm_clock, 'running'):
+                            alarm_clock_status = "Running" if app.alarm_clock.running else "Stopped"
+                        else:
+                            alarm_clock_status = "No status"
+                    else:
+                        alarm_clock_status = "Not initialized"
+                        logger.warning("AlarmClock service not available!")
+                    
+                    logger.debug(f"AlarmClock status: {alarm_clock_status}")
+                    
                 else:
                     # Нет конфигурации будильника
                     self._set_alarm_defaults()
+                    logger.warning("No alarm configuration found")
             else:
                 # Сервис недоступен
                 self._set_alarm_service_offline()
+                logger.warning("AlarmService not available")
                 
         except Exception as e:
             logger.error(f"Error updating alarm status: {e}")
@@ -641,17 +659,33 @@ class HomeScreen(Screen):
             logger.error(f"Error refreshing text: {e}")
 
     def _on_alarm_settings_changed(self, event_data):
-        """ИСПРАВЛЕНО: Обработчик изменения настроек будильника из других страниц"""
+        """ИСПРАВЛЕНО: Немедленная обработка изменений настроек будильника"""
         try:
-            logger.info("Alarm settings changed event received, refreshing status")
-            # Сбрасываем кэш и принудительно обновляем
+            logger.info("Alarm settings changed event received, forcing immediate refresh")
+            
+            # Сбрасываем весь кэш и принудительно обновляем
             self._alarm_data_changed = True
             self._cached_alarm_data = None
             self._last_alarm_update = 0
-            # Немедленное обновление статуса
+            
+            # НОВОЕ: Двойное обновление для гарантии
             self.update_alarm_status()
+            
+            # Планируем еще одно обновление через 1 секунду для перестраховки
+            Clock.schedule_once(lambda dt: self.update_alarm_status(), 1.0)
+            
+            logger.debug("Alarm status refresh completed")
+            
         except Exception as e:
             logger.error(f"Error handling alarm settings change: {e}")
+            
+    def force_alarm_status_refresh(self):
+        """НОВОЕ: Принудительное обновление статуса будильника"""
+        logger.info("Forcing alarm status refresh")
+        self._alarm_data_changed = True
+        self._cached_alarm_data = None
+        self._last_alarm_update = 0
+        self.update_alarm_status()
 
     # ========================================
     # УНИВЕРСАЛЬНЫЙ ПЛАНИРОВЩИК ОБНОВЛЕНИЙ
