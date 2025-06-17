@@ -193,6 +193,8 @@ class HomeScreen(BaseScreen):
             app = App.get_running_app()
             if not hasattr(app, 'weather_service') or not app.weather_service:
                 logger.warning("Weather service not available")
+                # Попробуем еще раз через секунду
+                Clock.schedule_once(lambda dt: self.update_weather(), 1)
                 return
 
             weather_service = app.weather_service
@@ -232,7 +234,7 @@ class HomeScreen(BaseScreen):
                 self.weather_trend_arrow = "→"
             
             logger.debug("Weather data updated")
-            
+
         except Exception as e:
             logger.error(f"Error updating weather: {e}")
 
@@ -253,9 +255,10 @@ class HomeScreen(BaseScreen):
             # ИСПРАВЛЕНО: Используем alarm_service вместо user_config
             if not hasattr(app, 'alarm_service') or not app.alarm_service:
                 logger.warning("Alarm service not available")
-                # Устанавливаем дефолтные значения
+                # Устанавливаем дефолтные значения и пробуем позже
                 self.current_alarm_time = "--:--"
                 self.alarm_status_text = "OFF"
+                Clock.schedule_once(lambda dt: self.update_alarm_status(), 1)
                 return
             
             # Получаем данные из alarm_service

@@ -219,6 +219,13 @@ class ThemeManager:
         finally:
             self._loading_in_progress = False
 
+    # ------------------------------------------------------------------
+    # Compatibility wrapper
+    # ------------------------------------------------------------------
+    def load_theme(self, theme_name, variant="light"):
+        """Alias for :func:`load` maintained for backward compatibility."""
+        return self.load(theme_name, variant)
+
     def _preload_common_resources(self):
         """Предзагрузка часто используемых ресурсов"""
         try:
