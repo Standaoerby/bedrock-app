@@ -207,6 +207,27 @@ class BedrockApp(App):
                     logger.error(f"❌ Failed to initialize {service_name}: {ex}")
                     setattr(self, service_name, None)
 
+            # 🚨 ДОБАВИТЬ ЭТО МЕЖДУ services_config и auto_theme_service:
+            try:
+                if ALARM_CLOCK_AVAILABLE and self.alarm_service:
+                    logger.info("Initializing AlarmClock...")
+                    self.alarm_clock = AlarmClock()
+                    
+                    # Запускаем alarm_clock
+                    self.alarm_clock.start()
+                    
+                    logger.info("✅ AlarmClock initialized and started")
+                else:
+                    if not ALARM_CLOCK_AVAILABLE:
+                        logger.warning("❌ AlarmClock not available (import error)")
+                    if not self.alarm_service:
+                        logger.warning("❌ AlarmClock not initialized - AlarmService missing")
+                    self.alarm_clock = None
+                    
+            except Exception as e:
+                logger.error(f"❌ Failed to initialize AlarmClock: {e}")
+                self.alarm_clock = None
+
             # 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: AutoThemeService инициализируется ПОСЛЕ sensor_service и theme_manager
             try:
                 logger.info("Initializing auto_theme_service...")
@@ -479,43 +500,41 @@ class BedrockApp(App):
             logger.error(f"Error handling volume change: {e}")
 
     def on_stop(self):
-        """ИСПРАВЛЕНО: Корректное завершение работы приложения"""
-        logger.info("Application stopping...")
-        self._running = False
-        
-        # Останавливаем все сервисы
-        services_to_stop = [
-            'alarm_clock', 'auto_theme_service', 'volume_service', 
-            'sensor_service', 'weather_service', 'pigs_service'
-        ]
-        
-        for service_name in services_to_stop:
-            service = getattr(self, service_name, None)
-            if service and hasattr(service, 'stop'):
-                try:
-                    service.stop()
-                    logger.info(f"Stopped {service_name}")
-                except Exception as e:
-                    logger.error(f"Error stopping {service_name}: {e}")
-        
-        # Останавливаем аудио
-        if self.audio_service and hasattr(self.audio_service, 'stop'):
-            try:
-                self.audio_service.stop()
-                logger.info("Stopped audio_service")
-            except Exception as e:
-                logger.error(f"Error stopping audio_service: {e}")
-        
-        # Сохраняем конфигурацию
+        """Корректная остановка всех сервисов при закрытии приложения"""
         try:
-            self.user_config.save()
-            logger.info("User config saved")
+            logger.info("Stopping application services...")
+            
+            # Останавливаем AlarmClock первым чтобы избежать popup при закрытии
+            if hasattr(self, 'alarm_clock') and self.alarm_clock:
+                try:
+                    self.alarm_clock.stop()
+                    logger.info("✅ AlarmClock stopped")
+                except Exception as e:
+                    logger.error(f"Error stopping AlarmClock: {e}")
+            
+            # Останавливаем остальные сервисы
+            services_to_stop = [
+                'auto_theme_service', 'volume_service', 'schedule_service',
+                'pigs_service', 'sensor_service', 'weather_service',
+                'notification_service', 'audio_service'
+            ]
+            
+            for service_name in services_to_stop:
+                if hasattr(self, service_name):
+                    service = getattr(self, service_name)
+                    if service and hasattr(service, 'stop'):
+                        try:
+                            service.stop()
+                            logger.info(f"✅ {service_name} stopped")
+                        except Exception as e:
+                            logger.error(f"Error stopping {service_name}: {e}")
+            
+            logger.info("Application shutdown completed")
+            
         except Exception as e:
-            logger.error(f"Error saving config: {e}")
+            logger.error(f"Error during application shutdown: {e}")
         
-        logger.info("Application stopped")
         return True
-
 
 if __name__ == "__main__":
     try:

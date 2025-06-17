@@ -18,7 +18,7 @@
   "care_items": {
     "water": {
       "label": "Water",
-      "max_hours": 8,
+      "max_hours": 48,
       "last_reset": "2025-06-12T23:40:54.124831",
       "description": "Fresh water for drinking",
       "icon": "💧",
@@ -31,7 +31,7 @@
     },
     "food": {
       "label": "Food",
-      "max_hours": 6,
+      "max_hours": 12,
       "last_reset": "2025-06-12T23:40:54.669372",
       "description": "Hay, pellets, and vegetables",
       "icon": "🥕",
@@ -44,7 +44,7 @@
     },
     "clean": {
       "label": "Cleaning",
-      "max_hours": 12,
+      "max_hours": 120,
       "last_reset": "2025-06-12T23:40:55.267820",
       "description": "Cage cleaning and maintenance",
       "icon": "🧽",

@@ -1,10 +1,15 @@
 {
   "alarm": {
-    "time": "03:12",
+    "time": "04:16",
     "enabled": true,
     "repeat": [
       "Sun",
-      "Sat"
+      "Sat",
+      "Fri",
+      "Thu",
+      "Wed",
+      "Tue",
+      "Mon"
     ],
     "ringtone": "Life Goes On.mp3",
     "fadein": true
