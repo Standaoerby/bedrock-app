@@ -302,18 +302,23 @@ class AlarmPopup(ModalView):
             if hasattr(app, 'theme_manager') and app.theme_manager:
                 # Пытаемся найти подходящий звук
                 for sound_name in ["notify", "error", "confirm"]:
-                    fallback_sound = app.theme_manager.get_sound(sound_name)
-                    if fallback_sound and os.path.exists(fallback_sound):
-                        logger.info(f"Playing fallback sound: {sound_name}")
+                    try:
+                        from app.sound_manager import sound_manager
                         
-                        if hasattr(app, 'audio_service') and app.audio_service:
-                            if hasattr(app.audio_service, 'play_async'):
-                                app.audio_service.play_async(fallback_sound)
-                            else:
-                                app.audio_service.play(fallback_sound)
-                        
-                        self._audio_playing = True
-                        break
+                        if sound_name == "notify":
+                            if sound_manager.play_notify():
+                                self._audio_playing = True
+                                break
+                        elif sound_name == "error":
+                            if sound_manager.play_error():
+                                self._audio_playing = True
+                                break
+                        elif sound_name == "confirm":
+                            if sound_manager.play_confirm():
+                                self._audio_playing = True
+                                break
+                    except Exception as e:
+                        logger.error(f"Error playing fallback sound '{sound_name}': {e}")
                 else:
                     logger.warning("No fallback sounds available")
             else:
@@ -323,18 +328,20 @@ class AlarmPopup(ModalView):
             logger.error(f"Error playing fallback sound: {e}")
     
     def _play_ui_sound(self, sound_name):
-        """Воспроизведение UI звука (клики, подтверждения)"""
+        """Воспроизведение UI звука через sound_manager"""
         try:
-            app = App.get_running_app()
-            if (hasattr(app, 'audio_service') and app.audio_service and 
-                hasattr(app, 'theme_manager') and app.theme_manager):
+            from app.sound_manager import sound_manager
+            
+            if sound_name == "click":
+                sound_manager.play_click()
+            elif sound_name == "confirm":
+                sound_manager.play_confirm()
+            elif sound_name == "error":
+                sound_manager.play_error()
+            else:
+                # Fallback для других звуков
+                sound_manager._play_sound(sound_name)
                 
-                sound_file = app.theme_manager.get_sound(sound_name)
-                if sound_file and os.path.exists(sound_file):
-                    if hasattr(app.audio_service, 'play_async'):
-                        app.audio_service.play_async(sound_file)
-                    else:
-                        app.audio_service.play(sound_file)
         except Exception as e:
             logger.error(f"Error playing UI sound '{sound_name}': {e}")
     

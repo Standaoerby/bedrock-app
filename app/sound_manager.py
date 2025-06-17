@@ -19,6 +19,17 @@ class SoundManager:
             
         self._last_click_time = current_time
         return self._play_sound("click")
+    def play_confirm(self, force=False):
+        """Воспроизведение звука подтверждения"""
+        return self._play_sound("confirm")
+
+    def play_error(self, force=False):
+        """Воспроизведение звука ошибки"""
+        return self._play_sound("error")
+
+    def play_notify(self, force=False):
+        """Воспроизведение звука уведомления"""
+        return self._play_sound("notify")
     
     def play_toggle(self, force=False):
         """Воспроизведение звука переключения"""

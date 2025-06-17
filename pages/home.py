@@ -369,18 +369,10 @@ class HomeScreen(Screen):
             logger.error(f"Error toggling alarm: {e}")
 
     def _play_toggle_sound(self):
-        """Воспроизведение звука переключения"""
+        """Воспроизведение звука переключения через sound_manager"""
         try:
-            app = App.get_running_app()
-            if hasattr(app, 'audio_service') and app.audio_service:
-                tm = self.get_theme_manager()
-                if tm:
-                    sound_file = tm.get_sound("click")
-                    if sound_file:
-                        if hasattr(app.audio_service, 'play_async'):
-                            app.audio_service.play_async(sound_file)
-                        else:
-                            app.audio_service.play(sound_file)
+            from app.sound_manager import sound_manager
+            sound_manager.play_toggle()
         except Exception as e:
             logger.error(f"Error playing toggle sound: {e}")
 

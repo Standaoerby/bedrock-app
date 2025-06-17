@@ -255,11 +255,11 @@ class PigsScreen(Screen):
             app = App.get_running_app()
             
             # Воспроизводим звук подтверждения
-            tm = self.get_theme_manager()
-            if hasattr(app, 'audio_service') and app.audio_service and tm:
-                sound_file = tm.get_sound("confirm")
-                if sound_file:
-                    app.audio_service.play_async(sound_file)
+            try:
+                from app.sound_manager import sound_manager
+                sound_manager.play_confirm()
+            except Exception as e:
+                logger.error(f"Error playing confirm sound: {e}")
             
             # Сбрасываем полосу в сервисе
             if hasattr(app, 'pigs_service') and app.pigs_service:
@@ -293,10 +293,11 @@ class PigsScreen(Screen):
             # Воспроизводим звук ошибки
             app = App.get_running_app()
             tm = self.get_theme_manager()
-            if hasattr(app, 'audio_service') and app.audio_service and tm:
-                sound_file = tm.get_sound("error")
-                if sound_file:
-                    app.audio_service.play_async(sound_file)
+            try:
+                from app.sound_manager import sound_manager
+                sound_manager.play_error()
+            except Exception as e:
+                logger.error(f"Error playing error sound: {e}")
 
     def refresh_theme(self, *args):
         """Обновление темы для всех элементов"""

@@ -567,35 +567,23 @@ class AlarmScreen(Screen):
         self._sound_playing = False
 
     def _play_sound(self, sound_name):
-        """ИСПРАВЛЕНО: Thread-safe воспроизведение системных звуков"""
-        def play_in_thread():
-            try:
-                app = App.get_running_app()
-                if hasattr(app, 'audio_service') and app.audio_service:
-                    audio_service = app.audio_service
-                    
-                    # Проверяем что mixer инициализирован
-                    if not audio_service.is_mixer_initialized():
-                        logger.debug(f"Cannot play sound '{sound_name}' - mixer not initialized")
-                        return
-                        
-                    if hasattr(app, 'theme_manager') and app.theme_manager:
-                        sound_path = app.theme_manager.get_sound(sound_name)
-                        if sound_path and os.path.exists(sound_path):
-                            # ИСПРАВЛЕНО: Используем play_async если доступен
-                            if hasattr(audio_service, 'play_async'):
-                                audio_service.play_async(sound_path)
-                            else:
-                                audio_service.play(sound_path)
-                        else:
-                            logger.debug(f"Sound file not found: {sound_name}")
-                            
-            except Exception as e:
-                logger.error(f"Error playing sound '{sound_name}': {e}")
-        
-        # ИСПРАВЛЕНО: Воспроизводим в отдельном потоке чтобы не блокировать UI
-        threading.Thread(target=play_in_thread, daemon=True).start()
-
+        """ИСПРАВЛЕНО: Использование sound_manager для UI звуков"""
+        try:
+            # Используем sound_manager для UI звуков
+            from app.sound_manager import sound_manager
+            
+            if sound_name == "click":
+                sound_manager.play_click()
+            elif sound_name == "error":
+                sound_manager.play_error()
+            elif sound_name == "confirm":
+                sound_manager.play_confirm()
+            else:
+                # Fallback для других звуков
+                sound_manager._play_sound(sound_name)
+                
+        except Exception as e:
+            logger.error(f"Error playing sound '{sound_name}': {e}")
     def _play_click_sound(self):
         """ИСПРАВЛЕНО: Воспроизведение звука клика с использованием sound_manager"""
         try:
