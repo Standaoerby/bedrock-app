@@ -62,7 +62,15 @@ class NotificationService:
         self.notifications = []
         self.save()
 
+    def get_current_notification(self):
+        """НОВЫЙ МЕТОД: Получение текущего активного уведомления"""
+        unread = self.list_unread()
+        if unread:
+            return unread[-1]  # Последнее непрочитанное
+        return self.get_last_notification()  # Или последнее вообще
+    
     def get_last_notification(self):
+        """Существующий метод"""
         if self.notifications:
             return self.notifications[-1]
         return None

@@ -163,23 +163,26 @@ class AudioService:
             return False
 
     def diagnose_state(self):
-        """ДОБАВЛЕНО: Диагностика состояния AudioService"""
+        """Диагностика состояния AudioService"""
         try:
             mixer_init = self.is_mixer_initialized()
             pygame_busy = mixer.music.get_busy() if mixer_init else False
             pygame_init = mixer.get_init() if mixer_init else None
             
+            # Только один лог INFO для общего статуса
             logger.info(f"🔧 === AUDIOSERVICE DIAGNOSIS v{self._service_version} ===")
-            logger.info(f"instance_id: {self._instance_id}")
-            logger.info(f"service_version: {self._service_version}")
-            logger.info(f"mixer_initialized: {mixer_init}")
-            logger.info(f"is_playing: {self.is_playing}")
-            logger.info(f"current_file: {self.current_file}")
-            logger.info(f"is_long_audio: {self.is_long_audio}")
-            logger.info(f"last_play_time: {self.last_play_time}")
-            logger.info(f"audio_device: {self.audio_device}")
-            logger.info(f"pygame mixer.get_busy(): {pygame_busy}")
-            logger.info(f"pygame mixer.get_init(): {pygame_init}")
+            
+            # Остальные детали в DEBUG
+            logger.debug(f"instance_id: {self._instance_id}")
+            logger.debug(f"service_version: {self._service_version}")
+            logger.debug(f"mixer_initialized: {mixer_init}")
+            logger.debug(f"is_playing: {self.is_playing}")
+            logger.debug(f"current_file: {self.current_file}")
+            logger.debug(f"is_long_audio: {self.is_long_audio}")
+            logger.debug(f"last_play_time: {self.last_play_time}")
+            logger.debug(f"audio_device: {self.audio_device}")
+            logger.debug(f"pygame mixer.get_busy(): {pygame_busy}")
+            logger.debug(f"pygame mixer.get_init(): {pygame_init}")
             
             return {
                 "instance_id": self._instance_id,
@@ -196,6 +199,7 @@ class AudioService:
         except Exception as e:
             logger.error(f"Error in diagnose_state: {e}")
             return {"error": str(e), "instance_id": self._instance_id}
+
 
     def verify_instance(self):
         """НОВОЕ: Верификация экземпляра AudioService"""
@@ -248,9 +252,6 @@ class AudioService:
                 # Определяем тип аудио для правильной обработки
                 file_size = os.path.getsize(filepath)
                 self.is_long_audio = file_size > 1024 * 1024  # Больше 1MB считаем длинным
-                
-                # 🚨 ИСПРАВЛЕНО: Перемещен debug лог в начало для предотвращения ошибки inspect
-                logger.info(f"AudioService.play() called: {filepath}, caller: {inspect.stack()[1].function}")
                 
                 logger.debug(f"Playing audio: {os.path.basename(filepath)}, "
                            f"fadein={fadein}, long_audio={self.is_long_audio}")

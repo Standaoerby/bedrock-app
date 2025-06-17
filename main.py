@@ -382,21 +382,21 @@ class BedrockApp(App):
                 logger.warning(f"⚠️ {service_name}: Not available")
 
     def _perform_initial_diagnostics(self):
-        """НОВОЕ: Выполнение начальной диагностики"""
+        """ИСПРАВЛЕНО: Выполнение начальной диагностики с меньшим логированием"""
         try:
             # Диагностика AudioService
             if self.audio_service and hasattr(self.audio_service, 'diagnose_state'):
-                logger.info("🔧 === INITIAL AUDIO DIAGNOSTICS ===")
+                logger.debug("🔧 === INITIAL AUDIO DIAGNOSTICS ===")
                 diagnosis = self.audio_service.diagnose_state()
                 for key, value in diagnosis.items():
-                    logger.info(f"Audio {key}: {value}")
+                    logger.debug(f"Audio {key}: {value}")
             
             # Диагностика VolumeService
             if self.volume_service and hasattr(self.volume_service, 'get_status'):
-                logger.info("🔧 === INITIAL VOLUME DIAGNOSTICS ===")
+                logger.debug("🔧 === INITIAL VOLUME DIAGNOSTICS ===")
                 status = self.volume_service.get_status()
                 for key, value in status.items():
-                    logger.info(f"Volume {key}: {value}")
+                    logger.debug(f"Volume {key}: {value}")
                     
         except Exception as e:
             logger.error(f"Error in initial diagnostics: {e}")

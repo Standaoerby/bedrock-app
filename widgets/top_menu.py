@@ -57,15 +57,10 @@ class TopMenu(BoxLayout):
             logger.error(f"Error selecting menu item {page_name}: {e}")
 
     def _play_click_sound(self):
-        """Отложенное воспроизведение звука клика"""
+        """ИСПРАВЛЕНО: Отложенное воспроизведение звука клика с защитой от дублирования"""
         try:
-            app = App.get_running_app()
-            tm = self.get_theme_manager()
-            if hasattr(app, 'audio_service') and app.audio_service and tm:
-                sound_file = tm.get_sound("click")
-                if sound_file:
-                    # Remove the priority parameter since AudioService doesn't support it
-                    app.audio_service.play(sound_file)
+            from app.sound_manager import sound_manager
+            sound_manager.play_click()
         except Exception as e:
             logger.error(f"Error playing click sound: {e}")
 
@@ -94,77 +89,53 @@ class TopMenu(BoxLayout):
             self._refresh_scheduled = False
             
             tm = self.get_theme_manager()
-            if not tm or not tm.is_loaded():
-                logger.warning("ThemeManager not loaded in TopMenu.refresh_theme")
+            if not tm:
                 return
             
-            # Получаем пути к ресурсам один раз
-            bg_normal = tm.get_image("menu_button_bg")
-            bg_active = tm.get_image("menu_button_bg_active")
-            font_path = tm.get_font("main")
-            color_normal = tm.get_rgba("menu_button_text")
-            color_active = tm.get_rgba("menu_button_text_active")
+            # Обновляем цвета меню
+            if hasattr(self, 'ids'):
+                for button_id in ['btn_home', 'btn_alarm', 'btn_schedule', 'btn_weather', 'btn_pigs', 'btn_settings']:
+                    if button_id in self.ids:
+                        button = self.ids[button_id]
+                        # Кнопки сами обновят свои цвета через KV файл
+                        # Тут можно принудительно обновить специфические свойства если нужно
+                        pass
             
-            # Обновляем все кнопки меню одним проходом
-            menu_buttons = ["btn_home", "btn_alarm", "btn_schedule", "btn_weather", "btn_pigs", "btn_settings"]
+            logger.debug("TopMenu theme refreshed")
             
-            for btn_id in menu_buttons:
-                if hasattr(self, 'ids') and btn_id in self.ids:
-                    btn = self.ids[btn_id]
-                    
-                    # Получаем имя экрана для этой кнопки
-                    screen_name = getattr(btn, 'screen_name', '')
-                    is_active = screen_name == self.current_page
-                    
-                    # Обновляем все свойства кнопки
-                    if hasattr(btn, 'background_normal') and bg_normal:
-                        btn.background_normal = bg_normal
-                    if hasattr(btn, 'background_down') and bg_active:
-                        btn.background_down = bg_active
-                    if hasattr(btn, 'color'):
-                        btn.color = color_active if is_active else color_normal
-                    if hasattr(btn, 'font_name') and font_path:
-                        btn.font_name = font_path
-            
-            logger.debug("Menu theme refreshed efficiently - responding to theme_changed event")
-                   
         except Exception as e:
             logger.error(f"Error in _do_refresh_theme: {e}")
-                
+
     def refresh_text(self, *args):
-        """Оптимизированное обновление локализованного текста"""
+        """Обновление локализованных текстов"""
         try:
             app = App.get_running_app()
-            if not hasattr(app, 'localizer') or not app.localizer:
-                return
-            
-            # Получаем все переводы одним вызовом
-            localizer = app.localizer
-            
-            # Маппинг кнопок к ключам локализации
-            button_texts = {
-                "btn_home": localizer.tr("menu_home", "Home"),
-                "btn_alarm": localizer.tr("menu_alarm", "Alarm"),
-                "btn_schedule": localizer.tr("menu_schedule", "School"),
-                "btn_weather": localizer.tr("menu_weather", "Weather"),
-                "btn_pigs": localizer.tr("menu_pigs", "Pigs"),
-                "btn_settings": localizer.tr("menu_settings", "Settings")
-            }
-            
-            # Обновляем тексты кнопок
-            for btn_id, text in button_texts.items():
-                if hasattr(self, 'ids') and btn_id in self.ids:
-                    self.ids[btn_id].text = text
-            
-            logger.debug("Menu texts refreshed")
+            if hasattr(app, 'localizer') and app.localizer:
+                # Обновляем тексты кнопок
+                if hasattr(self, 'ids'):
+                    button_texts = {
+                        'btn_home': app.localizer.tr("home", "Home"),
+                        'btn_alarm': app.localizer.tr("alarm", "Alarm"),
+                        'btn_schedule': app.localizer.tr("schedule", "Schedule"),
+                        'btn_weather': app.localizer.tr("weather", "Weather"),
+                        'btn_pigs': app.localizer.tr("pigs", "Pigs"),
+                        'btn_settings': app.localizer.tr("settings", "Settings")
+                    }
+                    
+                    for button_id, text in button_texts.items():
+                        if button_id in self.ids:
+                            self.ids[button_id].text = text
+                            
+            logger.debug("TopMenu text refreshed")
             
         except Exception as e:
-            logger.error(f"Error refreshing menu text: {e}")
+            logger.error(f"Error refreshing text: {e}")
 
-    def on_current_page(self, instance, value):
-        """Вызывается при изменении current_page"""
+    def set_active_page(self, page_name):
+        """Установка активной страницы без переключения"""
         try:
-            # Обновляем темы кнопок при смене страницы - отложенно
-            Clock.schedule_once(lambda dt: self.refresh_theme(), 0.05)
+            if self.current_page != page_name:
+                self.current_page = page_name
+                logger.debug(f"TopMenu active page set to: {page_name}")
         except Exception as e:
-            logger.error(f"Error in TopMenu.on_current_page: {e}")
+            logger.error(f"Error setting active page: {e}")

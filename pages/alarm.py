@@ -67,7 +67,7 @@ class AlarmScreen(Screen):
             logger.info(f"Toggle button debounce delay: {self._toggle_change_delay:.3f}s")
             
             # ДИАГНОСТИКА: Автоматическая проверка аудио-системы
-            Clock.schedule_once(lambda dt: self.diagnose_audio_system(), 1.0)
+            Clock.schedule_once(lambda dt: self.test_audio_system(), 1.0)
             event_bus.subscribe("alarm_changed", self._on_alarm_changed)
             self._initialized = True
         except Exception as e:
@@ -105,7 +105,7 @@ class AlarmScreen(Screen):
             return
             
         self._lock_time_buttons()
-        self._play_sound("click")
+        self._play_click_sound()
         try:
             hours, minutes = self.alarm_time.split(':')
             new_hour = (int(hours) + 1) % 24
@@ -123,7 +123,7 @@ class AlarmScreen(Screen):
             return
             
         self._lock_time_buttons()
-        self._play_sound("click")
+        self._play_click_sound()
         try:
             hours, minutes = self.alarm_time.split(':')
             new_hour = (int(hours) - 1) % 24
@@ -141,7 +141,7 @@ class AlarmScreen(Screen):
             return
             
         self._lock_time_buttons()
-        self._play_sound("click")
+        self._play_click_sound()
         try:
             hours, minutes = self.alarm_time.split(':')
             new_minute = (int(minutes) + 1) % 60
@@ -159,7 +159,7 @@ class AlarmScreen(Screen):
             return
             
         self._lock_time_buttons()
-        self._play_sound("click")
+        self._play_click_sound()
         try:
             hours, minutes = self.alarm_time.split(':')
             new_minute = (int(minutes) - 1) % 60
@@ -174,6 +174,7 @@ class AlarmScreen(Screen):
     # ========================================
     # ИСПРАВЛЕНО: Toggle методы соответствуют KV файлу
     # ========================================
+    
     def _on_alarm_changed(self, event_data):
         """НОВОЕ: Обработчик изменений настроек будильника из других источников"""
         try:
@@ -245,7 +246,7 @@ class AlarmScreen(Screen):
         self._lock_toggle_buttons()
         
         try:
-            self._play_sound("click")
+            self._play_click_sound()
             day = day.capitalize()
             
             # Создаем новый список для избежания проблем с привязкой
@@ -352,7 +353,7 @@ class AlarmScreen(Screen):
                 self._reset_play_button()
             
             # Воспроизводим звук клика
-            self._play_sound("click")
+            self._play_click_sound()
             
             # Обновляем выбранную мелодию
             old_ringtone = self.selected_ringtone
@@ -595,6 +596,16 @@ class AlarmScreen(Screen):
         # ИСПРАВЛЕНО: Воспроизводим в отдельном потоке чтобы не блокировать UI
         threading.Thread(target=play_in_thread, daemon=True).start()
 
+    def _play_click_sound(self):
+        """ИСПРАВЛЕНО: Воспроизведение звука клика с использованием sound_manager"""
+        try:
+            from app.sound_manager import sound_manager
+            sound_manager.play_click()
+        except ImportError:
+            # Fallback если sound_manager недоступен
+            self._play_sound("click")
+        except Exception as e:
+            logger.error(f"Error playing click sound: {e}")
 
     # ========================================
     # UI ОБНОВЛЕНИЕ И КОНФИГУРАЦИЯ
@@ -771,108 +782,53 @@ class AlarmScreen(Screen):
         )
 
     # ========================================
-    # ДИАГНОСТИКА И ОБСЛУЖИВАНИЕ
+    # ДИАГНОСТИКА И ОБСЛУЖИВАНИЕ - ИСПРАВЛЕНО
     # ========================================
 
-    def diagnose_audio_system(self):
-        """ИСПРАВЛЕНО: Безопасная диагностика аудио системы с множественными проверками"""
+    def test_audio_system(self):
+        """ИСПРАВЛЕНО: Простая проверка аудио системы без избыточного логирования"""
         try:
             app = App.get_running_app()
             
             logger.info("🔧 === ALARM SCREEN AUDIO DIAGNOSIS ===")
             
-            # Метод 1: Проверка app.audio_service
             if hasattr(app, 'audio_service') and app.audio_service:
                 logger.info("✅ app.audio_service exists")
                 
-                # Верификация экземпляра
-                try:
-                    verification = app.audio_service.verify_instance()
-                    logger.info(f"Service verification: {verification}")
+                # Простая проверка состояния
+                if hasattr(app.audio_service, 'diagnose_state'):
+                    logger.info("✅ diagnose_state method exists")
                     
-                    # Проверяем наличие diagnose_state
-                    if hasattr(app.audio_service, 'diagnose_state'):
-                        logger.info("✅ diagnose_state method exists")
-                        
-                        # Выполняем диагностику
-                        diagnosis = app.audio_service.diagnose_state()
-                        
-                        for key, value in diagnosis.items():
-                            logger.info(f"{key}: {value}")
-                            
-                        # Проверяем доступность рингтонов
-                        logger.info(f"Selected ringtone: {self.selected_ringtone}")
-                        logger.info(f"Available ringtones: {len(self.ringtone_list)}")
-                        
-                        return diagnosis
-                    else:
-                        logger.error("❌ diagnose_state method missing from AudioService")
-                        return {
-                            "error": "diagnose_state_method_missing",
-                            "verification": verification,
-                            "available_methods": verification.get("methods", [])
-                        }
-                        
-                except Exception as method_error:
-                    logger.error(f"❌ Error calling AudioService methods: {method_error}")
-                    return {"error": f"method_call_failed: {method_error}"}
+                    # Выполняем диагностику
+                    diagnosis = app.audio_service.diagnose_state()
+                    
+                    # Логируем только основные параметры
+                    logger.info(f"instance_id: {diagnosis.get('instance_id')}")
+                    logger.info(f"service_version: {diagnosis.get('service_version')}")
+                    logger.info(f"mixer_initialized: {diagnosis.get('mixer_initialized')}")
+                    logger.info(f"is_playing: {diagnosis.get('is_playing')}")
+                    logger.info(f"current_file: {diagnosis.get('current_file')}")
+                    logger.info(f"is_long_audio: {diagnosis.get('is_long_audio')}")
+                    logger.info(f"pygame_busy: {diagnosis.get('pygame_busy')}")
+                    logger.info(f"pygame_init: {diagnosis.get('pygame_init')}")
+                    logger.info(f"audio_device: {diagnosis.get('audio_device')}")
+                    logger.info(f"alsa_available: {diagnosis.get('alsa_available')}")
+                    
+                    # Проверяем доступность рингтонов
+                    logger.info(f"Selected ringtone: {self.selected_ringtone}")
+                    logger.info(f"Available ringtones: {len(self.ringtone_list)}")
+                    
+                    return diagnosis
+                else:
+                    logger.error("❌ diagnose_state method missing from AudioService")
+                    return {"error": "diagnose_state_method_missing"}
             else:
                 logger.error("❌ app.audio_service not available")
-                
-                # Метод 2: Попытка прямого импорта и создания экземпляра
-                try:
-                    logger.info("🔄 Attempting direct AudioService import...")
-                    from services.audio_service import AudioService
-                    
-                    # Создаем временный экземпляр для диагностики
-                    temp_audio_service = AudioService()
-                    logger.info("✅ Temporary AudioService created")
-                    
-                    if hasattr(temp_audio_service, 'diagnose_state'):
-                        logger.info("✅ diagnose_state available on temporary instance")
-                        diagnosis = temp_audio_service.diagnose_state()
-                        diagnosis["temporary_instance"] = True
-                        diagnosis["app_audio_service_missing"] = True
-                        return diagnosis
-                    else:
-                        logger.error("❌ Even temporary AudioService missing diagnose_state")
-                        return {
-                            "error": "diagnose_state_missing_everywhere",
-                            "temporary_instance_created": True,
-                            "available_methods": [method for method in dir(temp_audio_service) if not method.startswith('_')]
-                        }
-                        
-                except ImportError as import_error:
-                    logger.error(f"❌ Cannot import AudioService: {import_error}")
-                    return {"error": f"import_failed: {import_error}"}
-                except Exception as create_error:
-                    logger.error(f"❌ Cannot create AudioService: {create_error}")
-                    return {"error": f"creation_failed: {create_error}"}
-            
-            # Метод 3: Общая диагностика состояния приложения
-            app_diagnosis = {
-                "error": "audio_service_completely_unavailable",
-                "app_has_audio_service": hasattr(app, 'audio_service'),
-                "audio_service_value": str(getattr(app, 'audio_service', 'NOT_SET')),
-                "app_attributes": [attr for attr in dir(app) if 'audio' in attr.lower()],
-                "ringtone_info": {
-                    "selected": self.selected_ringtone,
-                    "available_count": len(self.ringtone_list),
-                    "list": self.ringtone_list[:3] if len(self.ringtone_list) > 3 else self.ringtone_list
-                }
-            }
-            
-            logger.info(f"App diagnosis: {app_diagnosis}")
-            return app_diagnosis
+                return {"error": "audio_service_not_available"}
                 
         except Exception as e:
-            logger.error(f"❌ Critical error in audio diagnosis: {e}")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
-            return {
-                "error": f"critical_diagnosis_error: {e}",
-                "traceback": traceback.format_exc()
-            }
+            logger.error(f"❌ Error in audio system test: {e}")
+            return {"error": f"test_failed: {e}"}
 
     def refresh_theme(self):
         """Обновление темы"""
