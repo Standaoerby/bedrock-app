@@ -82,7 +82,8 @@ class SettingsScreen(BaseScreen):
 
     def on_screen_leave(self):
         """Логика выхода с экрана настроек"""
-        self.stop_settings_updates()
+        self.stop_settings_updates()    
+
 
     def on_theme_refresh(self, theme_manager):
         """Специфичное обновление темы для страницы настроек"""
@@ -102,7 +103,7 @@ class SettingsScreen(BaseScreen):
             logger.error(f"Error in settings theme refresh: {e}")
 
     # ======================================
-    # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обработчики полей ввода
+    # Обработчики полей ввода
     # ======================================
 
     def on_username_change(self, widget, value):
@@ -114,10 +115,10 @@ class SettingsScreen(BaseScreen):
             # Обновляем свойство
             self.username = cleaned_value
             
-            # Сохраняем в user_config
+            # ИСПРАВЛЕНО: Используем правильный метод set() вместо []
             app = App.get_running_app()
             if hasattr(app, 'user_config'):
-                app.user_config['username'] = cleaned_value
+                app.user_config.set('username', cleaned_value)  # ✅ ПРАВИЛЬНО
                 logger.debug(f"Username updated: '{cleaned_value}'")
             
         except Exception as e:
@@ -187,17 +188,16 @@ class SettingsScreen(BaseScreen):
             logger.error(f"Error changing birth year: {e}")
 
     def _auto_save_birth_data(self):
-        """Автоматическое сохранение данных рождения"""
+        """ИСПРАВЛЕНО: Автосохранение данных о дне рождения"""
         try:
             app = App.get_running_app()
             if hasattr(app, 'user_config'):
                 app.user_config.update({
-                    'birth_day': int(self.birth_day),
-                    'birth_month': int(self.birth_month),
-                    'birth_year': int(self.birth_year)
+                    "birth_day": int(self.birth_day),
+                    "birth_month": int(self.birth_month),
+                    "birth_year": int(self.birth_year)
                 })
-                # user_config.update() автоматически сохраняет
-                logger.debug(f"Birth data auto-saved: {self.birth_day}/{self.birth_month}/{self.birth_year}")
+                logger.debug("Birth data auto-saved")
         except Exception as e:
             logger.error(f"Error auto-saving birth data: {e}")
 
@@ -364,14 +364,12 @@ class SettingsScreen(BaseScreen):
             logger.error(f"Error loading settings: {e}")
 
     def save_all_settings(self):
-        """Сохранение всех настроек"""
+        """ИСПРАВЛЕНО: Сохранение всех настроек через update()"""
         try:
             app = App.get_running_app()
             if hasattr(app, 'user_config'):
-                config = app.user_config
-                
-                # Сохраняем все настройки
-                config.update({
+                # ИСПРАВЛЕНО: Используем правильный метод update()
+                app.user_config.update({
                     "theme": self.current_theme,
                     "variant": self.current_variant,
                     "language": self.current_language,
@@ -383,21 +381,14 @@ class SettingsScreen(BaseScreen):
                     "light_threshold": self.light_sensor_threshold
                 })
                 
-                # Сохраняем в файл (user_config сохраняет сам себя)
-                app.user_config.save()
-                
                 logger.info("Settings saved successfully")
                 
-                # Показываем уведомление (ИСПРАВЛЕНО: используем add)
+                # Показываем уведомление
                 if hasattr(app, 'notification_service') and app.notification_service:
                     app.notification_service.add("Settings saved successfully", "system")
             
         except Exception as e:
             logger.error(f"Error saving settings: {e}")
-            # Показываем ошибку (ИСПРАВЛЕНО: используем add)
-            app = App.get_running_app()
-            if hasattr(app, 'notification_service') and app.notification_service:
-                app.notification_service.add("Error saving settings", "error")
 
     # ======================================
     # ПРОВЕРКА СЕРВИСОВ

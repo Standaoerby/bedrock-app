@@ -54,6 +54,8 @@ class HomeScreen(BaseScreen):
         super().__init__(**kwargs)  # BaseScreen автоматически подписывается на события
         
         # События для обновлений
+        self._home_initialized = False
+        self._force_refresh_in_progress = False
         self._update_events = []
         
         # Переменные для оптимизации обновлений
@@ -71,46 +73,60 @@ class HomeScreen(BaseScreen):
     # ========================================
 
     def on_screen_initialized(self):
-        """Переопределяем метод BaseScreen для специфичной инициализации"""
+        """ИСПРАВЛЕНО: Предотвращение повторной инициализации"""
+        if self._home_initialized:
+            logger.debug("HomeScreen already initialized, skipping")
+            return
+            
         try:
             logger.info("🏠 HomeScreen initializing...")
             
             # Выполняем первичную инициализацию данных
             self.update_all_data()
             
-            # ИСПРАВЛЕНО: Принудительно обновляем тему
-            Clock.schedule_once(lambda dt: self._force_initial_theme_refresh(), 0.1)
+            # ИСПРАВЛЕНО: Принудительно обновляем тему (только один раз)
+            if not self._force_refresh_in_progress:
+                self._force_refresh_in_progress = True
+                Clock.schedule_once(lambda dt: self._force_initial_theme_refresh(), 0.1)
             
+            self._home_initialized = True
             logger.info("✅ HomeScreen initialization completed")
             
         except Exception as e:
             logger.error(f"❌ Error in HomeScreen initialization: {e}")
 
     def _force_initial_theme_refresh(self):
-        """НОВОЕ: Принудительное обновление темы при инициализации"""
+        """ИСПРАВЛЕНО: Принудительное обновление темы (без дублирования)"""
         try:
-            logger.info("🎨 HomeScreen: forcing initial theme refresh...")
+            if not self._force_refresh_in_progress:
+                return  # Уже выполнено
+                
+            logger.debug("🎨 HomeScreen: forcing initial theme refresh...")  # DEBUG вместо INFO
             
-            # Проверяем наличие theme_manager
             tm = self.get_theme_manager()
             if not tm:
                 logger.warning("❌ HomeScreen: ThemeManager not available")
-                # Пробуем получить через Clock с задержкой
-                Clock.schedule_once(lambda dt: self._force_initial_theme_refresh(), 0.5)
+                Clock.schedule_once(lambda dt: self._retry_theme_refresh(), 0.5)
                 return
             
             if not tm.is_loaded():
                 logger.warning("❌ HomeScreen: Theme not loaded yet")
-                # Пробуем снова через некоторое время
-                Clock.schedule_once(lambda dt: self._force_initial_theme_refresh(), 0.5)
+                Clock.schedule_once(lambda dt: self._retry_theme_refresh(), 0.5)
                 return
             
             # Тема доступна - обновляем
             self.refresh_theme()
-            logger.info("✅ HomeScreen: initial theme refresh completed")
+            self._force_refresh_in_progress = False
+            logger.debug("✅ HomeScreen: initial theme refresh completed")  # DEBUG вместо INFO
             
         except Exception as e:
             logger.error(f"❌ Error in HomeScreen force theme refresh: {e}")
+            self._force_refresh_in_progress = False
+
+    def _retry_theme_refresh(self):
+        """Повторная попытка обновления темы"""
+        if self._force_refresh_in_progress:
+            self._force_initial_theme_refresh()
 
     def on_pre_enter(self, *args):
         """Вызывается при входе на экран"""
