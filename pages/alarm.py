@@ -68,7 +68,7 @@ class AlarmScreen(Screen):
             
             # ДИАГНОСТИКА: Автоматическая проверка аудио-системы
             Clock.schedule_once(lambda dt: self.diagnose_audio_system(), 1.0)
-            
+            event_bus.subscribe("alarm_changed", self._on_alarm_changed)
             self._initialized = True
         except Exception as e:
             logger.error(f"Error in AlarmScreen.on_pre_enter: {e}")
@@ -90,6 +90,10 @@ class AlarmScreen(Screen):
                 self._sound_check_event = None
         except Exception as e:
             logger.error(f"Error in AlarmScreen.on_pre_leave: {e}")
+        try:
+            event_bus.unsubscribe("alarm_changed", self._on_alarm_changed)
+        except Exception as e:
+            logger.error(f"Error unsubscribing from alarm_changed: {e}")
 
     # ========================================
     # ИСПРАВЛЕНО: Методы времени соответствуют KV файлу
@@ -170,6 +174,34 @@ class AlarmScreen(Screen):
     # ========================================
     # ИСПРАВЛЕНО: Toggle методы соответствуют KV файлу
     # ========================================
+    def _on_alarm_changed(self, event_data):
+        """НОВОЕ: Обработчик изменений настроек будильника из других источников"""
+        try:
+            # Игнорируем события от самой страницы alarm
+            source = event_data.get("source", "")
+            if source in ["set_alarm", "update_api"]:
+                logger.debug("Ignoring alarm change from self")
+                return
+                
+            # Обновляем UI если данные изменились извне (например, через toggle на главной)
+            alarm = event_data.get("alarm", {})
+            if alarm:
+                old_time = self.alarm_time
+                old_active = self.alarm_active
+                
+                self.alarm_time = alarm.get("time", self.alarm_time)
+                self.alarm_active = alarm.get("enabled", self.alarm_active)
+                self.alarm_repeat = alarm.get("repeat", self.alarm_repeat)
+                self.selected_ringtone = alarm.get("ringtone", self.selected_ringtone)
+                self.alarm_fadein = alarm.get("fadein", self.alarm_fadein)
+                
+                # Обновляем UI если что-то изменилось
+                if old_time != self.alarm_time or old_active != self.alarm_active:
+                    self.update_ui()
+                    logger.debug(f"Alarm UI updated from external change (source: {source})")
+                
+        except Exception as e:
+            logger.error(f"Error handling alarm change event: {e}")
 
     def on_active_toggled(self, active):
         """Переключение активности будильника - СООТВЕТСТВУЕТ alarm.kv"""

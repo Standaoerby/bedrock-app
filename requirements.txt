@@ -6,6 +6,7 @@ aiohttp
 python-dotenv
 Pillow
 pygame
+watchdog
 
 # Raspberry Pi GPIO libraries
 rpi-lgpio
