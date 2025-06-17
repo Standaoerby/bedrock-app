@@ -1,3 +1,4 @@
+# widgets/top_menu.py - ИСПРАВЛЕНО: Добавлена подписка на theme_changed
 from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import StringProperty
 from kivy.app import App
@@ -13,8 +14,9 @@ class TopMenu(BoxLayout):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Подписка на события
+        # ИСПРАВЛЕНО: Подписка на события включает theme_changed
         event_bus.subscribe("language_changed", self.refresh_text)
+        event_bus.subscribe("theme_changed", self.refresh_theme)  # ДОБАВЛЕНО
         self._last_refresh_time = 0
         self._refresh_scheduled = False
 
@@ -29,8 +31,9 @@ class TopMenu(BoxLayout):
     def on_kv_post(self, base_widget):
         """Вызывается после загрузки KV"""
         try:
-            # Отложенное обновление текста
+            # Отложенное обновление текста и темы
             Clock.schedule_once(lambda dt: self.refresh_text(), 0.1)
+            Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)  # ДОБАВЛЕНО
         except Exception as e:
             logger.error(f"Error in TopMenu on_kv_post: {e}")
 
@@ -66,8 +69,8 @@ class TopMenu(BoxLayout):
         except Exception as e:
             logger.error(f"Error playing click sound: {e}")
 
-    def refresh_theme(self):
-        """Оптимизированное обновление темы меню"""
+    def refresh_theme(self, *args):
+        """ИСПРАВЛЕНО: Оптимизированное обновление темы меню с поддержкой event_bus"""
         try:
             # Предотвращаем слишком частые обновления
             import time
@@ -123,8 +126,8 @@ class TopMenu(BoxLayout):
                     if hasattr(btn, 'font_name') and font_path:
                         btn.font_name = font_path
             
-            logger.debug("Menu theme refreshed efficiently")
-                        
+            logger.debug("Menu theme refreshed efficiently - responding to theme_changed event")
+                   
         except Exception as e:
             logger.error(f"Error in _do_refresh_theme: {e}")
                 
