@@ -1,6 +1,6 @@
 # services/alarm_service.py
 """
-ИСПРАВЛЕННЫЙ AlarmService - надежное управление настройками будильника с правильными путями
+ИСПРАВЛЕННЫЙ AlarmService - унифицированные пути конфигурации и улучшенная надежность
 """
 import os
 import json
@@ -11,8 +11,8 @@ from app.event_bus import event_bus
 
 class AlarmService:
     def __init__(self):
-        # ИСПРАВЛЕНО: Находим правильный путь к конфигурации
-        self.config_file = self._find_config_path()
+        # ИСПРАВЛЕНО: Унифицированный путь конфигурации
+        self.config_file = self._get_unified_config_path()
         self._lock = threading.RLock()
         
         # Настройки по умолчанию
@@ -37,99 +37,105 @@ class AlarmService:
         
         logger.info("AlarmService initialized")
     
-    def _find_config_path(self):
-        """НОВОЕ: Поиск правильного пути к файлу конфигурации"""
+    def _get_unified_config_path(self):
+        """ИСПРАВЛЕНО: Унифицированный путь конфигурации для всех компонентов"""
         
-        # Пробуем разные возможные пути
-        possible_paths = [
-            # Относительно текущей директории
-            "config/alarm.json",
-            "./config/alarm.json",
-            
-            # Относительно директории скрипта
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "alarm.json"),
-            
-            # Абсолютные пути
-            os.path.abspath("config/alarm.json"),
-            os.path.abspath("./config/alarm.json"),
-            
-            # На случай если запускаемся из подпапки
-            "../config/alarm.json",
-        ]
+        # Определяем корневую директорию проекта
+        # Если мы в services/, то корень на уровень выше
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir.endswith('services'):
+            project_root = os.path.dirname(current_dir)
+        else:
+            project_root = current_dir
         
-        current_dir = os.getcwd()
-        logger.debug(f"Current working directory: {current_dir}")
+        # Стандартный путь относительно корня проекта
+        config_path = os.path.join(project_root, "config", "alarm.json")
         
-        # Проверяем каждый путь
-        for path in possible_paths:
-            abs_path = os.path.abspath(path)
-            logger.debug(f"Checking config path: {abs_path}")
-            
-            if os.path.exists(abs_path):
-                logger.info(f"✅ Found config file: {abs_path}")
-                return abs_path
-            else:
-                logger.debug(f"❌ Config not found: {abs_path}")
+        logger.debug(f"Unified config path: {config_path}")
+        logger.debug(f"Project root: {project_root}")
+        logger.debug(f"Current working dir: {os.getcwd()}")
         
-        # Если ничего не найдено, используем первый путь (будет создан)
-        default_path = os.path.abspath("config/alarm.json")
-        logger.info(f"📁 Config will be created at: {default_path}")
-        return default_path
+        return config_path
     
     def _load_config(self):
-        """Загрузка конфигурации из файла"""
+        """ИСПРАВЛЕНО: Загрузка конфигурации с улучшенной обработкой ошибок"""
         try:
-            logger.debug(f"Attempting to load config from: {self.config_file}")
+            # Проверяем существует ли файл
+            if not os.path.exists(self.config_file):
+                logger.info(f"Config file not found, creating default: {self.config_file}")
+                self._save_config()  # Создаем файл с настройками по умолчанию
+                return
             
-            if os.path.exists(self.config_file):
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    
-                logger.debug(f"Raw config data: {data}")
-                    
-                if isinstance(data, dict) and "alarm" in data:
-                    # Проверяем и дополняем недостающие поля
-                    alarm = data["alarm"]
-                    logger.debug(f"Loaded alarm config: {alarm}")
-                    
-                    for key, default_value in self.default_alarm.items():
-                        if key not in alarm:
-                            alarm[key] = default_value
-                            logger.debug(f"Added missing key '{key}' with default: {default_value}")
-                    
-                    with self._lock:
-                        self.alarm_data = data
-                    
-                    logger.info("✅ Alarm config loaded successfully")
-                    logger.debug(f"Final alarm data: {self.alarm_data}")
-                else:
-                    logger.warning("Invalid config format, using defaults")
-                    self._save_config()
-            else:
-                logger.info(f"No config file found at {self.config_file}, creating default")
-                self._save_config()
-                
+            logger.debug(f"Loading config from: {self.config_file}")
+            
+            with open(self.config_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # Проверяем структуру
+            if not isinstance(data, dict) or 'alarm' not in data:
+                logger.warning(f"Invalid config structure, using defaults")
+                self.alarm_data = {"alarm": self.default_alarm.copy()}
+                self._save_config()  # Пересохраняем правильную структуру
+                return
+            
+            # Дополняем отсутствующие поля значениями по умолчанию
+            loaded_alarm = data['alarm']
+            complete_alarm = self.default_alarm.copy()
+            complete_alarm.update(loaded_alarm)
+            
+            with self._lock:
+                self.alarm_data = {"alarm": complete_alarm}
+            
+            logger.info(f"Config loaded successfully: enabled={complete_alarm.get('enabled')}, time={complete_alarm.get('time')}")
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in config file: {e}")
+            logger.info("Creating new config with defaults")
+            self.alarm_data = {"alarm": self.default_alarm.copy()}
+            self._save_config()
+            
         except Exception as e:
             logger.error(f"Error loading config: {e}")
             import traceback
             logger.error(f"Config load traceback: {traceback.format_exc()}")
             
-            # При ошибке используем дефолтные настройки
-            with self._lock:
-                self.alarm_data = {"alarm": self.default_alarm.copy()}
-            self._save_config()
+            # В случае любой ошибки используем настройки по умолчанию
+            self.alarm_data = {"alarm": self.default_alarm.copy()}
     
     def _save_config(self):
-        """Сохранение конфигурации в файл"""
+        """ИСПРАВЛЕНО: Сохранение конфигурации с проверкой целостности"""
         try:
             with self._lock:
                 data = self.alarm_data.copy()
             
+            # Проверяем целостность данных перед сохранением
+            if not isinstance(data, dict) or 'alarm' not in data:
+                logger.error("Invalid data structure, cannot save")
+                return
+            
+            alarm = data['alarm']
+            if not isinstance(alarm, dict):
+                logger.error("Invalid alarm structure, cannot save")
+                return
+            
+            # Создаем директорию если нужно
+            config_dir = os.path.dirname(self.config_file)
+            os.makedirs(config_dir, exist_ok=True)
+            
             logger.debug(f"Saving config to: {self.config_file}")
             logger.debug(f"Config data: {data}")
             
-            with open(self.config_file, 'w', encoding='utf-8') as f:
+            # Создаем временный файл для атомарной записи
+            temp_file = self.config_file + '.tmp'
+            
+            with open(temp_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
+            
+            # Атомарно перемещаем временный файл
+            if os.path.exists(temp_file):
+                if os.path.exists(self.config_file):
+                    os.remove(self.config_file)
+                os.rename(temp_file, self.config_file)
             
             logger.debug("Config saved successfully")
             
@@ -137,6 +143,14 @@ class AlarmService:
             logger.error(f"Error saving config: {e}")
             import traceback
             logger.error(f"Config save traceback: {traceback.format_exc()}")
+            
+            # Удаляем временный файл в случае ошибки
+            temp_file = self.config_file + '.tmp'
+            if os.path.exists(temp_file):
+                try:
+                    os.remove(temp_file)
+                except:
+                    pass
     
     def get_alarm(self):
         """Получение текущих настроек будильника"""
@@ -146,16 +160,27 @@ class AlarmService:
             return alarm.copy()
     
     def update_alarm(self, **kwargs):
-        """Обновление настроек будильника"""
+        """ИСПРАВЛЕНО: Обновление настроек будильника с валидацией"""
         try:
             logger.debug(f"update_alarm called with: {kwargs}")
             
             with self._lock:
                 current_alarm = self.alarm_data.get("alarm", self.default_alarm.copy())
                 
-                # Обновляем только переданные параметры
+                # Обновляем только переданные и валидные параметры
                 for key, value in kwargs.items():
                     if key in self.default_alarm:
+                        # Дополнительная валидация для некоторых полей
+                        if key == "time" and value:
+                            if not self._validate_time_format(value):
+                                logger.warning(f"Invalid time format: {value}, skipping")
+                                continue
+                        elif key == "enabled":
+                            value = bool(value)  # Приводим к булеву типу
+                        elif key == "repeat" and not isinstance(value, list):
+                            logger.warning(f"Invalid repeat format: {value}, skipping")
+                            continue
+                        
                         old_value = current_alarm.get(key)
                         current_alarm[key] = value
                         logger.debug(f"Updated {key}: {old_value} -> {value}")
@@ -178,13 +203,33 @@ class AlarmService:
             return False
     
     def set_alarm(self, alarm_dict):
-        """Полная замена настроек будильника"""
+        """ИСПРАВЛЕНО: Полная замена настроек будильника с валидацией"""
         try:
             logger.debug(f"set_alarm called with: {alarm_dict}")
             
+            if not isinstance(alarm_dict, dict):
+                logger.error(f"Invalid alarm_dict type: {type(alarm_dict)}")
+                return False
+            
             # Проверяем и дополняем настройки
             new_alarm = self.default_alarm.copy()
-            new_alarm.update(alarm_dict)
+            
+            for key, value in alarm_dict.items():
+                if key in self.default_alarm:
+                    # Валидация значений
+                    if key == "time" and value:
+                        if not self._validate_time_format(value):
+                            logger.warning(f"Invalid time format: {value}, using default")
+                            continue
+                    elif key == "enabled":
+                        value = bool(value)
+                    elif key == "repeat" and not isinstance(value, list):
+                        logger.warning(f"Invalid repeat format: {value}, using default")
+                        continue
+                    
+                    new_alarm[key] = value
+                else:
+                    logger.warning(f"Unknown alarm parameter in set_alarm: {key}")
             
             with self._lock:
                 self.alarm_data["alarm"] = new_alarm
@@ -199,6 +244,25 @@ class AlarmService:
             logger.error(f"Error setting alarm: {e}")
             import traceback
             logger.error(f"Set alarm traceback: {traceback.format_exc()}")
+            return False
+    
+    def _validate_time_format(self, time_str):
+        """НОВОЕ: Валидация формата времени"""
+        try:
+            if not isinstance(time_str, str):
+                return False
+            
+            parts = time_str.split(':')
+            if len(parts) != 2:
+                return False
+            
+            hours, minutes = parts
+            hour_int = int(hours)
+            minute_int = int(minutes)
+            
+            return 0 <= hour_int <= 23 and 0 <= minute_int <= 59
+            
+        except (ValueError, TypeError):
             return False
     
     def enable_alarm(self, enabled=True):
@@ -218,17 +282,18 @@ class AlarmService:
         return self.update_alarm(ringtone=ringtone)
     
     def _notify_alarm_change(self):
-        """Отправка события об изменении настроек"""
+        """ИСПРАВЛЕНО: Отправка события об изменении настроек"""
         try:
             alarm = self.get_alarm()
             
-            # Новое событие
+            # Формируем данные события
             event_data = {
                 "enabled": alarm.get("enabled", False),
                 "time": alarm.get("time", "07:30"),
                 "repeat": alarm.get("repeat", []),
                 "ringtone": alarm.get("ringtone", ""),
-                "fadein": alarm.get("fadein", False)
+                "fadein": alarm.get("fadein", False),
+                "source": "alarm_service"
             }
             
             logger.debug(f"Publishing alarm change events: {event_data}")
@@ -239,66 +304,48 @@ class AlarmService:
             # Для совместимости отправляем старое событие
             event_bus.publish("alarm_settings_changed", alarm)
             
-            logger.debug("Alarm change events sent")
+            logger.debug("Alarm change events sent successfully")
             
         except Exception as e:
             logger.error(f"Error notifying alarm change: {e}")
             import traceback
             logger.error(f"Notify alarm change traceback: {traceback.format_exc()}")
     
-    def get_config_path(self):
-        """Получение пути к файлу конфигурации"""
-        return self.config_file
-    
-    def reset_to_defaults(self):
-        """Сброс к настройкам по умолчанию"""
-        try:
-            with self._lock:
-                self.alarm_data = {"alarm": self.default_alarm.copy()}
-            
-            self._save_config()
-            self._notify_alarm_change()
-            
-            logger.info("Alarm reset to defaults")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error resetting alarm: {e}")
-            return False
-    
+    # НОВОЕ: Методы для диагностики
     def diagnose(self):
-        """НОВОЕ: Диагностика состояния AlarmService"""
+        """Диагностика состояния AlarmService"""
         logger.info("🔧 === ALARM SERVICE DIAGNOSTIC ===")
         
-        logger.info(f"[config_file      ] {self.config_file}")
-        logger.info(f"[config_exists    ] {os.path.exists(self.config_file)}")
-        logger.info(f"[working_directory] {os.getcwd()}")
+        logger.info(f"[config_file       ] {self.config_file}")
+        logger.info(f"[config_exists     ] {os.path.exists(self.config_file)}")
         
         if os.path.exists(self.config_file):
             try:
-                size = os.path.getsize(self.config_file)
-                logger.info(f"[config_size      ] {size} bytes")
-                
-                with open(self.config_file, 'r') as f:
-                    content = f.read()
-                logger.info(f"[config_content   ] {len(content)} chars")
-                
+                stat = os.stat(self.config_file)
+                logger.info(f"[config_size       ] {stat.st_size} bytes")
+                logger.info(f"[config_modified   ] {stat.st_mtime}")
             except Exception as e:
-                logger.info(f"[config_error     ] {e}")
+                logger.info(f"[config_stat       ] Error: {e}")
         
-        # Показываем текущие данные
-        with self._lock:
-            alarm = self.alarm_data.get("alarm", {})
+        try:
+            alarm = self.get_alarm()
+            logger.info(f"[alarm_enabled     ] {alarm.get('enabled')}")
+            logger.info(f"[alarm_time        ] {alarm.get('time')}")
+            logger.info(f"[alarm_repeat      ] {alarm.get('repeat')}")
+            logger.info(f"[alarm_ringtone    ] {alarm.get('ringtone')}")
+            logger.info(f"[alarm_fadein      ] {alarm.get('fadein')}")
+        except Exception as e:
+            logger.info(f"[alarm_data        ] Error: {e}")
         
-        logger.info(f"[current_time     ] {alarm.get('time', 'MISSING')}")
-        logger.info(f"[current_enabled  ] {alarm.get('enabled', 'MISSING')}")
-        logger.info(f"[current_repeat   ] {alarm.get('repeat', 'MISSING')}")
-        logger.info(f"[current_ringtone ] {alarm.get('ringtone', 'MISSING')}")
-        
-        logger.info("🔧 === END DIAGNOSTIC ===")
-        
-        return {
-            "config_file": self.config_file,
-            "config_exists": os.path.exists(self.config_file),
-            "current_alarm": alarm
-        }
+        logger.info("🔧 === END ALARM SERVICE DIAGNOSTIC ===")
+    
+    def get_config_path(self):
+        """Получение пути к файлу конфигурации (для внешнего использования)"""
+        return self.config_file
+    
+    def force_reload(self):
+        """НОВОЕ: Принудительная перезагрузка конфигурации"""
+        logger.info("Force reloading alarm configuration")
+        self._load_config()
+        self._notify_alarm_change()
+        logger.info("Configuration reloaded successfully")

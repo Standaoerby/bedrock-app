@@ -289,6 +289,52 @@ class AudioService:
             kwargs={"fadein": fadein},
             daemon=True,
         ).start()
+        
+    def play_loop(self, filepath, fadein=0):
+        """НОВОЕ: Воспроизведение в цикле для будильников"""
+        if not filepath or not os.path.isfile(filepath):
+            logger.warning(f"Audio file not found: {filepath}")
+            return
+            
+        if not self.is_mixer_initialized():
+            logger.error("❌ AudioService play_loop error: mixer not initialized")
+            self._safe_init_audio()
+            
+            if not self.is_mixer_initialized():
+                logger.error("❌ AudioService: Failed to reinitialize mixer")
+                return
+            
+        try:
+            with self._init_lock:
+                file_size = os.path.getsize(filepath)
+                self.is_long_audio = file_size > 1024 * 1024
+                
+                logger.debug(f"Playing audio in loop: {os.path.basename(filepath)}, fadein={fadein}")
+                
+                # Останавливаем предыдущее воспроизведение
+                if mixer.music.get_busy():
+                    mixer.music.stop()
+                    time.sleep(0.05)
+                
+                # Загружаем и воспроизводим в цикле
+                mixer.music.load(filepath)
+                
+                # ИСПРАВЛЕНО: loops=-1 для бесконечного цикла
+                if fadein > 0:
+                    mixer.music.play(loops=-1, fade_ms=int(fadein * 1000))
+                else:
+                    mixer.music.play(loops=-1)
+                
+                # Обновляем состояние
+                self.is_playing = True
+                self.current_file = filepath
+                self.last_play_time = time.time()
+                
+                logger.info(f"✅ Started playing in loop: {os.path.basename(filepath)}")
+                
+        except Exception as e:
+            logger.error(f"❌ AudioService play_loop error: {e}")
+            self._reset_state()
 
     def stop(self):
         """ИСПРАВЛЕНО: Остановка воспроизведения с проверкой mixer"""

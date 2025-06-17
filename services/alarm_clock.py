@@ -1,6 +1,6 @@
 # services/alarm_clock.py
 """
-УЛУЧШЕННЫЙ AlarmClock - надежный будильник с расширенной диагностикой
+ИСПРАВЛЕННЫЙ AlarmClock - надежный будильник с правильной логикой проверки времени
 """
 import threading
 from datetime import datetime, timedelta
@@ -21,11 +21,12 @@ class AlarmClock:
         self.alarm_popup = None
         
         # НОВОЕ: Статистика и диагностика
-        self._version = "2.1.1"
+        self._version = "2.2.0"  # Увеличена версия после исправления
         self._instance_id = id(self)
         self._check_count = 0
         self._last_check_time = None
         self._last_alarm_config = None
+        self._last_triggered_minute = None  # НОВОЕ: Защита от повторного срабатывания
         
         logger.info(f"AlarmClock v{self._version} initialized (ID: {self._instance_id})")
     
@@ -87,8 +88,8 @@ class AlarmClock:
                 elif not self._alarm_active and self._should_trigger_alarm():
                     self._trigger_alarm()
                 
-                # Ждем 30 секунд
-                self._stop_event.wait(30)
+                # ИСПРАВЛЕНО: Уменьшен интервал проверки до 15 секунд для более точного времени
+                self._stop_event.wait(15)
                 
             except Exception as e:
                 logger.error(f"Error in alarm check loop: {e}")
@@ -99,7 +100,7 @@ class AlarmClock:
         logger.info(f"Alarm check loop finished (total checks: {self._check_count})")
     
     def _should_trigger_alarm(self):
-        """Проверка условий срабатывания будильника с диагностикой"""
+        """ИСПРАВЛЕНО: Правильная проверка условий срабатывания будильника"""
         try:
             app = App.get_running_app()
             if not hasattr(app, 'alarm_service'):
@@ -130,10 +131,17 @@ class AlarmClock:
                 logger.info(f"📋 Alarm config changed: {current_config}")
                 self._last_alarm_config = current_config
             
+            # ИСПРАВЛЕНО: Правильная логика - срабатываем когда время СОВПАДАЕТ
             if current_time_str != alarm_time:
                 # Логируем только каждую минуту чтобы не спамить
-                if current_time.second < 30:
+                if current_time.second < 15:  # Изменено с 30 на 15 из-за нового интервала
                     logger.debug(f"⏱️ Current: {current_time_str}, Target: {alarm_time}")
+                return False
+            
+            # НОВОЕ: Защита от повторного срабатывания в ту же минуту
+            current_minute_key = f"{current_time.strftime('%Y-%m-%d')}_{current_time_str}"
+            if self._last_triggered_minute == current_minute_key:
+                logger.debug(f"⏸️ Alarm already triggered for {current_minute_key}, skipping")
                 return False
             
             # Проверяем дни недели
@@ -146,6 +154,9 @@ class AlarmClock:
                     return False
                 else:
                     logger.info(f"✅ Alarm day match: {current_day} in {repeat_days}")
+            
+            # НОВОЕ: Сохраняем что сработали в эту минуту
+            self._last_triggered_minute = current_minute_key
             
             logger.info(f"🚨 ALARM TRIGGER CONDITION MET: {alarm_time} on {current_time.strftime('%A')}")
             return True
@@ -291,7 +302,7 @@ class AlarmClock:
             self.stop_alarm()
     
     def get_status(self):
-        """НОВОЕ: Получение текущего статуса для диагностики"""
+        """Получение текущего статуса для диагностики"""
         status = {
             "version": self._version,
             "instance_id": self._instance_id,
@@ -301,17 +312,18 @@ class AlarmClock:
             "last_check": self._last_check_time.strftime('%H:%M:%S') if self._last_check_time else None,
             "snooze_until": self._snooze_until.strftime('%H:%M:%S') if self._snooze_until else None,
             "last_config": self._last_alarm_config,
+            "last_triggered_minute": self._last_triggered_minute,
             "thread_alive": self.thread.is_alive() if self.thread else False
         }
         return status
     
     def diagnose(self):
-        """НОВОЕ: Полная диагностика состояния AlarmClock"""
+        """Полная диагностика состояния AlarmClock"""
         logger.info("🔧 === ALARM CLOCK DIAGNOSTIC ===")
         
         status = self.get_status()
         for key, value in status.items():
-            logger.info(f"[{key:15}] {value}")
+            logger.info(f"[{key:18}] {value}")
             
         # Проверяем доступность зависимостей
         app = App.get_running_app()
@@ -319,19 +331,50 @@ class AlarmClock:
         alarm_service_available = hasattr(app, 'alarm_service') and app.alarm_service is not None
         audio_service_available = hasattr(app, 'audio_service') and app.audio_service is not None
         
-        logger.info(f"[alarm_service   ] {'✅ Available' if alarm_service_available else '❌ Missing'}")
-        logger.info(f"[audio_service   ] {'✅ Available' if audio_service_available else '❌ Missing'}")
+        logger.info(f"[alarm_service     ] {'✅ Available' if alarm_service_available else '❌ Missing'}")
+        logger.info(f"[audio_service     ] {'✅ Available' if audio_service_available else '❌ Missing'}")
         
         if alarm_service_available:
             try:
                 alarm = app.alarm_service.get_alarm()
                 if alarm:
-                    logger.info(f"[alarm_config    ] time={alarm.get('time')}, enabled={alarm.get('enabled')}")
+                    logger.info(f"[alarm_config      ] time={alarm.get('time')}, enabled={alarm.get('enabled')}")
+                    logger.info(f"[alarm_repeat      ] {alarm.get('repeat', [])}")
+                    logger.info(f"[alarm_ringtone    ] {alarm.get('ringtone', 'default')}")
                 else:
-                    logger.info(f"[alarm_config    ] ❌ No configuration")
+                    logger.info(f"[alarm_config      ] ❌ No configuration")
             except Exception as e:
-                logger.info(f"[alarm_config    ] ❌ Error: {e}")
+                logger.info(f"[alarm_config      ] ❌ Error: {e}")
         
         logger.info("🔧 === END DIAGNOSTIC ===")
         
         return status
+    
+    # НОВОЕ: Метод для тестирования будильника
+    def test_alarm_trigger(self, test_time=None):
+        """Тестирование срабатывания будильника с указанным временем"""
+        if test_time is None:
+            test_time = (datetime.now() + timedelta(minutes=1)).strftime("%H:%M")
+        
+        logger.info(f"🧪 Testing alarm trigger for {test_time}")
+        
+        app = App.get_running_app()
+        if hasattr(app, 'alarm_service') and app.alarm_service:
+            # Временно устанавливаем тестовое время
+            original_alarm = app.alarm_service.get_alarm()
+            test_alarm = original_alarm.copy()
+            test_alarm['time'] = test_time
+            test_alarm['enabled'] = True
+            
+            app.alarm_service.set_alarm(test_alarm)
+            logger.info(f"✅ Test alarm set for {test_time}")
+            
+            # Планируем восстановление через 2 минуты
+            def restore_original():
+                app.alarm_service.set_alarm(original_alarm)
+                logger.info("✅ Original alarm restored after test")
+            
+            Clock.schedule_once(lambda dt: restore_original(), 120)
+            
+        else:
+            logger.error("❌ Cannot test alarm - alarm_service not available")

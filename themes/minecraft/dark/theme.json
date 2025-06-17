@@ -12,7 +12,14 @@
     "clock_main": "#666666",
     "menu_color": "#25252580",
     "menu_button_text": "#888888",
-    "menu_button_text_active": "#3CB371"
+    "menu_button_text_active": "#3CB371",
+    "popup_bg": "#282B2350",
+    "alarm_primary": "#FF4C4C",
+    "alarm_stop_bg": "#CC4C4C",
+    "alarm_stop": "#FFFFFF",
+    "alarm_snooze_bg": "#FF9A4C",
+    "alarm_snooze": "#FFFFFF",
+    "border": "#4C4C4C"
   },
   "menu": {
     "menu_button_height": 48,

@@ -51,12 +51,17 @@ class AlarmScreen(Screen):
         event_bus.subscribe("language_changed", self.refresh_text)
 
     def on_pre_enter(self, *args):
-        """Вызывается при входе на экран"""
+        """Вызывается при входе на экран - ИСПРАВЛЕНО"""
         logger.info("Entering AlarmScreen")
         try:
             Clock.schedule_once(lambda dt: self.stop_ringtone(), 0.2)
             self.load_ringtones()
-            self.load_alarm_config()
+            
+            # ИСПРАВЛЕНО: Сначала пытаемся загрузить из сервиса, затем из файла
+            if not self.load_alarm_from_service():
+                logger.info("Service load failed, loading from config file")
+                self.load_alarm_config()
+            
             self.update_ui()
             # Отложенная инициализация темы
             Clock.schedule_once(lambda dt: self.refresh_theme(), 0.1)
@@ -72,6 +77,74 @@ class AlarmScreen(Screen):
             self._initialized = True
         except Exception as e:
             logger.error(f"Error in AlarmScreen.on_pre_enter: {e}")
+
+    def load_alarm_from_service(self):
+        """НОВОЕ: Загрузка настроек будильника из alarm_service"""
+        try:
+            app = App.get_running_app()
+            if not hasattr(app, 'alarm_service') or not app.alarm_service:
+                logger.warning("alarm_service not available for loading")
+                return False
+            
+            alarm = app.alarm_service.get_alarm()
+            if not alarm:
+                logger.warning("No alarm configuration found in service")
+                return False
+            
+            # Загружаем настройки
+            self.alarm_time = alarm.get("time", "07:30")
+            self.alarm_active = alarm.get("enabled", False)
+            self.alarm_repeat = alarm.get("repeat", ["Mon", "Tue", "Wed", "Thu", "Fri"])
+            self.selected_ringtone = alarm.get("ringtone", "Bathtime In Clerkenwell.mp3")
+            self.alarm_fadein = alarm.get("fadein", False)
+            
+            # Проверяем что выбранный рингтон существует в списке
+            if self.selected_ringtone not in self.ringtone_list:
+                logger.warning(f"Selected ringtone '{self.selected_ringtone}' not in available list")
+                if self.ringtone_list:
+                    self.selected_ringtone = self.ringtone_list[0]
+                    logger.info(f"Reset ringtone to: {self.selected_ringtone}")
+            
+            logger.info(f"Alarm loaded from service: {self.alarm_time}, enabled={self.alarm_active}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error loading alarm from service: {e}")
+            return False
+
+    def save_alarm_via_service(self, silent=False):
+        """НОВОЕ: Сохранение через alarm_service"""
+        try:
+            app = App.get_running_app()
+            if not hasattr(app, 'alarm_service') or not app.alarm_service:
+                logger.warning("alarm_service not available, using file save")
+                return self.save_alarm_config_original(silent)
+            
+            # Формируем конфигурацию
+            config = {
+                'time': self.alarm_time,
+                'enabled': self.alarm_active,
+                'repeat': list(self.alarm_repeat),
+                'ringtone': self.selected_ringtone,
+                'fadein': self.alarm_fadein
+            }
+            
+            # Сохраняем через alarm_service
+            success = app.alarm_service.set_alarm(config)
+            
+            if success:
+                logger.info(f"Alarm config saved via service: {self.alarm_time}")
+                if not silent:
+                    self._play_sound("confirm")
+                return True
+            else:
+                logger.error("Failed to save via service, trying file save")
+                return self.save_alarm_config_original(silent)
+                
+        except Exception as e:
+            logger.error(f"Error saving via service: {e}")
+            # Fallback к оригинальному методу
+            return self.save_alarm_config_original(silent)
 
     def on_pre_leave(self, *args):
         """Вызывается при выходе с экрана"""
@@ -389,7 +462,40 @@ class AlarmScreen(Screen):
     # ========================================
     # АУДИО ВОСПРОИЗВЕДЕНИЕ
     # ========================================
-
+    def _play_sound(self, sound_name):
+        """ИСПРАВЛЕНО: Воспроизведение звуков с улучшенным fallback"""
+        try:
+            # Используем sound_manager для UI звуков
+            from app.sound_manager import sound_manager
+            
+            if sound_name == "click":
+                sound_manager.play_click()
+            elif sound_name == "error":
+                sound_manager.play_error()
+            elif sound_name == "confirm":
+                sound_manager.play_confirm()
+            else:
+                # Попытка через универсальный метод
+                if hasattr(sound_manager, '_play_sound'):
+                    sound_manager._play_sound(sound_name)
+                else:
+                    logger.warning(f"Unknown sound: {sound_name}")
+                    
+        except ImportError:
+            logger.warning("sound_manager not available, trying audio_service")
+            try:
+                # Fallback через audio_service
+                app = App.get_running_app()
+                if hasattr(app, 'audio_service') and app.audio_service:
+                    sound_file = f"sounds/{sound_name}.ogg"
+                    if os.path.exists(sound_file):
+                        app.audio_service.play(sound_file)
+                    else:
+                        logger.warning(f"Sound file not found: {sound_file}")
+            except Exception as fallback_error:
+                logger.error(f"Fallback sound failed: {fallback_error}")
+        except Exception as e:
+            logger.error(f"Error playing sound '{sound_name}': {e}")
     def play_ringtone(self):
         """ИСПРАВЛЕНО: Воспроизведение рингтона с проверкой AudioService"""
         try:
@@ -715,7 +821,19 @@ class AlarmScreen(Screen):
             logger.error(f"Error loading alarm config: {e}")
 
     def save_alarm_config(self, silent=False):
-        """Сохранение конфигурации будильника"""
+        """Сохранение конфигурации будильника - ИСПРАВЛЕНО"""
+        return self.save_alarm_via_service(silent)
+    def _schedule_auto_save(self, delay=1.5):
+        """Планирование автоматического сохранения"""
+        if self._auto_save_event:
+            self._auto_save_event.cancel()
+        
+        self._settings_changed = True
+        self._auto_save_event = Clock.schedule_once(
+            lambda dt: self.save_alarm_config(silent=True), delay
+        )
+    def save_alarm_config_original(self, silent=False):
+        """Оригинальный метод сохранения в файл"""
         try:
             config = {
                 'alarm': {
@@ -733,9 +851,9 @@ class AlarmScreen(Screen):
             with open("config/alarm.json", 'w') as f:
                 json.dump(config, f, indent=2)
             
-            logger.info(f"Alarm config saved: {self.alarm_time}")
+            logger.info(f"Alarm config saved to file: {self.alarm_time}")
             
-            # ИСПРАВЛЕНО: Отправляем событие для синхронизации с home.py
+            # Отправляем событие для синхронизации
             try:
                 event_bus.publish("alarm_settings_changed", {
                     "time": self.alarm_time,
@@ -754,20 +872,10 @@ class AlarmScreen(Screen):
                 
             return True
         except Exception as e:
-            logger.error(f"Error saving alarm: {e}")
+            logger.error(f"Error saving alarm to file: {e}")
             if not silent:
                 self._play_sound("error")
             return False
-
-    def _schedule_auto_save(self, delay=1.5):
-        """Планирование автоматического сохранения"""
-        if self._auto_save_event:
-            self._auto_save_event.cancel()
-        
-        self._settings_changed = True
-        self._auto_save_event = Clock.schedule_once(
-            lambda dt: self.save_alarm_config(silent=True), delay
-        )
 
     # ========================================
     # ДИАГНОСТИКА И ОБСЛУЖИВАНИЕ - ИСПРАВЛЕНО

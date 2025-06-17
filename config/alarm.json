@@ -1,17 +1,17 @@
 {
   "alarm": {
-    "time": "05:23",
     "enabled": true,
+    "time": "06:17",
     "repeat": [
       "Tue",
       "Wed",
-      "Mon",
       "Thu",
+      "Mon",
       "Fri",
       "Sat",
       "Sun"
     ],
-    "ringtone": "No Wind Resistance!.mp3",
-    "fadein": true
+    "ringtone": "Bathtime In Clerkenwell.mp3",
+    "fadein": false
   }
 }
