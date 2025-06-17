@@ -1,17 +1,17 @@
 {
   "alarm": {
-    "time": "04:16",
+    "time": "05:23",
     "enabled": true,
     "repeat": [
-      "Sun",
-      "Sat",
-      "Fri",
-      "Thu",
-      "Wed",
       "Tue",
-      "Mon"
+      "Wed",
+      "Mon",
+      "Thu",
+      "Fri",
+      "Sat",
+      "Sun"
     ],
-    "ringtone": "Life Goes On.mp3",
+    "ringtone": "No Wind Resistance!.mp3",
     "fadein": true
   }
 }

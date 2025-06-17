@@ -1,7 +1,8 @@
 # services/alarm_popup.py
 """
-ФИНАЛЬНЫЙ AlarmPopup - простой и надежный popup для будильника
+ИСПРАВЛЕННЫЙ AlarmPopup - правильные пути к рингтонам
 """
+import os
 from kivy.uix.modalview import ModalView
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -26,13 +27,40 @@ class AlarmPopup(ModalView):
         # Автоматическое закрытие через 10 минут
         self._auto_dismiss_event = Clock.schedule_once(self._auto_dismiss, 600)
     
+    def _find_ringtone_path(self, ringtone_filename):
+        """ИСПРАВЛЕНО: Поиск правильного пути к рингтону (как в alarm.py)"""
+        if not ringtone_filename:
+            logger.error("No ringtone filename provided")
+            return None
+            
+        # Те же пути что использует alarm.py
+        possible_paths = [
+            f"assets/sounds/ringtones/{ringtone_filename}",
+            f"sounds/ringtones/{ringtone_filename}",
+            f"assets/ringtones/{ringtone_filename}",
+            f"ringtones/{ringtone_filename}",
+            f"media/ringtones/{ringtone_filename}"
+        ]
+        
+        logger.debug(f"Searching for ringtone: {ringtone_filename}")
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                logger.info(f"✅ Found ringtone: {path}")
+                return path
+            else:
+                logger.debug(f"❌ Not found: {path}")
+        
+        logger.error(f"❌ Ringtone not found in any location: {ringtone_filename}")
+        return None
+    
     def _build_ui(self):
         """Создание интерфейса"""
         main_layout = BoxLayout(orientation='vertical', padding=20, spacing=20)
         
         # Заголовок
         title_label = Label(
-            text="🚨 ALARM! 🚨",
+            text="WAKE UP!",
             font_size='48sp',
             size_hint_y=0.3,
             halign='center',
@@ -42,7 +70,7 @@ class AlarmPopup(ModalView):
         
         # Время
         time_label = Label(
-            text=f"Wake up!\nTime: {self.alarm_time}",
+            text=f"",
             font_size='24sp',
             size_hint_y=0.3,
             halign='center'
@@ -61,7 +89,7 @@ class AlarmPopup(ModalView):
         button_layout.add_widget(stop_button)
         
         snooze_button = Button(
-            text="SNOOZE\n5 min",
+            text="SNOOZE",
             background_color=[1, 0.6, 0.2, 1],
             font_size='18sp'
         )
@@ -74,24 +102,46 @@ class AlarmPopup(ModalView):
     def open_alarm(self):
         """Открытие popup и воспроизведение звука"""
         try:
-            # Воспроизводим звук
-            app = App.get_running_app()
-            if hasattr(app, 'audio_service') and app.audio_service:
-                ringtone_path = f"ringtones/{self.ringtone}"
-                app.audio_service.play(ringtone_path, loop=True)
-                logger.info(f"Playing alarm ringtone: {ringtone_path}")
+            logger.info(f"🔔 Opening alarm popup: {self.alarm_time}")
             
-            # Открываем popup
+            # ИСПРАВЛЕНО: Ищем правильный путь к рингтону
+            ringtone_path = self._find_ringtone_path(self.ringtone)
+            
+            if ringtone_path:
+                # Воспроизводим звук
+                app = App.get_running_app()
+                if hasattr(app, 'audio_service') and app.audio_service:
+                    try:
+                        logger.info(f"🎵 Playing ringtone: {ringtone_path}")
+                        app.audio_service.play(ringtone_path, loop=True)
+                        logger.info("✅ Ringtone playback started")
+                    except Exception as audio_error:
+                        logger.error(f"❌ Error playing ringtone: {audio_error}")
+                else:
+                    logger.warning("❌ Audio service not available")
+            else:
+                logger.error(f"❌ Cannot play ringtone - file not found: {self.ringtone}")
+            
+            # Открываем popup в любом случае
             self.open()
-            logger.info("Alarm popup opened")
+            logger.info("✅ Alarm popup opened")
             
         except Exception as e:
-            logger.error(f"Error opening alarm popup: {e}")
+            logger.error(f"❌ Error opening alarm popup: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            
+            # В случае ошибки все равно показываем popup
+            try:
+                self.open()
+                logger.info("⚠️ Alarm popup opened without sound")
+            except:
+                logger.error("💥 Failed to open popup at all")
     
     def _stop_alarm(self, instance):
         """Остановка будильника"""
         try:
-            logger.info("Stop button pressed")
+            logger.info("🛑 Stop button pressed")
             
             # Получаем alarm_clock и останавливаем
             app = App.get_running_app()
@@ -104,13 +154,13 @@ class AlarmPopup(ModalView):
                 self.dismiss()
                 
         except Exception as e:
-            logger.error(f"Error stopping alarm: {e}")
+            logger.error(f"❌ Error stopping alarm: {e}")
             self.dismiss()
     
     def _snooze_alarm(self, instance):
         """Отложить будильник на 5 минут"""
         try:
-            logger.info("Snooze button pressed")
+            logger.info("😴 Snooze button pressed")
             
             # Получаем alarm_clock и откладываем
             app = App.get_running_app()
@@ -123,13 +173,13 @@ class AlarmPopup(ModalView):
                 self.dismiss()
                 
         except Exception as e:
-            logger.error(f"Error snoozing alarm: {e}")
+            logger.error(f"❌ Error snoozing alarm: {e}")
             self.dismiss()
     
     def _auto_dismiss(self, dt):
         """Автоматическое закрытие через 10 минут"""
         try:
-            logger.info("Auto-dismissing alarm after 10 minutes")
+            logger.info("⏰ Auto-dismissing alarm after 10 minutes")
             
             app = App.get_running_app()
             if hasattr(app, 'alarm_clock') and app.alarm_clock:
@@ -140,7 +190,7 @@ class AlarmPopup(ModalView):
                 self.dismiss()
                 
         except Exception as e:
-            logger.error(f"Error auto-dismissing alarm: {e}")
+            logger.error(f"❌ Error auto-dismissing alarm: {e}")
             self.dismiss()
     
     def dismiss(self, *args):
@@ -152,8 +202,8 @@ class AlarmPopup(ModalView):
             
             # Закрываем popup
             super().dismiss(*args)
-            logger.info("Alarm popup dismissed")
+            logger.info("❌ Alarm popup dismissed")
             
         except Exception as e:
-            logger.error(f"Error dismissing popup: {e}")
+            logger.error(f"❌ Error dismissing popup: {e}")
             super().dismiss(*args)

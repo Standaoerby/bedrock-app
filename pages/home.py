@@ -53,6 +53,10 @@ class HomeScreen(Screen):
         self._cached_alarm_data = None
         self._alarm_data_changed = True
         
+        # ИСПРАВЛЕНО: Флаги для предотвращения перезаписи времени из событий
+        self._alarm_time_from_event = False  # Флаг что время пришло из события
+        self._last_event_time = None         # Последнее время из события
+        
         # Переменные для оптимизации обновлений
         self._update_schedulers = {}
         self._last_full_update = 0
@@ -85,7 +89,7 @@ class HomeScreen(Screen):
         event_bus.subscribe("alarm_settings_changed", self._on_alarm_settings_changed)
         
         logger.info("HomeScreen initialized with optimizations")
-
+        
     def on_pre_enter(self, *args):
         """Вызывается при входе на экран"""
         logger.info("Entering HomeScreen")
@@ -107,11 +111,12 @@ class HomeScreen(Screen):
         return None
 
     def start_updates(self):
-        """Запуск периодических обновлений"""
+        """ИСПРАВЛЕНО: Запуск периодических обновлений без конфликта времени будильника"""
         self._update_events = [
             Clock.schedule_interval(lambda dt: self.update_time(), 1),           # Время каждую секунду
             Clock.schedule_interval(lambda dt: self.update_weather(), 300),      # Погода каждые 5 минут
-            Clock.schedule_interval(lambda dt: self.update_alarm_status(), 60),  # Будильник каждую минуту
+            # ИСПРАВЛЕНО: Убираем периодическое обновление будильника - используем только события!
+            # Clock.schedule_interval(lambda dt: self.update_alarm_status(), 60),  # ← УДАЛЕНО!
             Clock.schedule_interval(lambda dt: self.update_notifications(), 30), # Уведомления каждые 30 сек
             Clock.schedule_interval(lambda dt: self.scroll_notification(), 0.1), # Прокрутка уведомлений
         ]
@@ -124,9 +129,10 @@ class HomeScreen(Screen):
         self._update_events = []
 
     def update_all_data(self):
-        """Полное обновление всех данных"""
+        """ИСПРАВЛЕНО: Полное обновление всех данных только при входе на экран"""
         self.update_time()
         self.update_weather()
+        # ИСПРАВЛЕНО: Обновляем будильник только один раз при входе, дальше - только события
         self.update_alarm_status()
         self.update_notifications()
 
@@ -232,11 +238,11 @@ class HomeScreen(Screen):
     # ========================================
 
     def update_alarm_status(self, *args):
-        """ИСПРАВЛЕННОЕ обновление статуса будильника с принудительной синхронизацией"""
+        """ИСПРАВЛЕНО: Обновление статуса будильника БЕЗ перезаписи времени из событий"""
         try:
             current_time = time.time()
             
-            # Проверяем нужно ли обновление (debouncing)
+            # ОПТИМИЗАЦИЯ: Проверяем нужно ли обновление
             if not self._alarm_data_changed and (current_time - self._last_alarm_update) < self._alarm_update_delay:
                 return
             
@@ -249,11 +255,19 @@ class HomeScreen(Screen):
             if hasattr(app, 'alarm_service') and app.alarm_service:
                 alarm = app.alarm_service.get_alarm()
                 if alarm:
-                    # Обновляем время будильника
-                    new_alarm_time = alarm.get("time", "07:30")
-                    if self.current_alarm_time != new_alarm_time:
-                        self.current_alarm_time = new_alarm_time
-                        logger.debug(f"Alarm time updated to: {new_alarm_time}")
+                    # ИСПРАВЛЕНО: НЕ перезаписываем время если оно уже обновлено из события
+                    if not getattr(self, '_alarm_time_from_event', False):
+                        # Обновляем время будильника только если НЕ было события
+                        new_alarm_time = alarm.get("time", "07:30")
+                        if self.current_alarm_time != new_alarm_time:
+                            self.current_alarm_time = new_alarm_time
+                            logger.debug(f"Alarm time updated from service: {new_alarm_time}")
+                    else:
+                        # Проверяем что время в сервисе совпадает с событием
+                        service_time = alarm.get("time", "07:30")
+                        event_time = getattr(self, '_last_event_time', None)
+                        if event_time and service_time != event_time:
+                            logger.debug(f"Service time ({service_time}) differs from event time ({event_time}), keeping event time")
                     
                     # Обновляем статус
                     enabled = alarm.get("enabled", False)
@@ -279,21 +293,29 @@ class HomeScreen(Screen):
                     else:
                         alarm_clock_status = "Not initialized"
                         logger.warning("AlarmClock service not available!")
-                    
+
                     logger.debug(f"AlarmClock status: {alarm_clock_status}")
                     
                 else:
-                    # Нет конфигурации будильника
-                    self._set_alarm_defaults()
-                    logger.warning("No alarm configuration found")
+                    # ИСПРАВЛЕНО: НЕ сбрасываем время если оно пришло из события
+                    if not getattr(self, '_alarm_time_from_event', False):
+                        self._set_alarm_defaults()
+                        logger.warning("No alarm configuration found")
+                    else:
+                        logger.debug("No alarm config, but time from event - keeping event time")
             else:
-                # Сервис недоступен
-                self._set_alarm_service_offline()
-                logger.warning("AlarmService not available")
+                # ИСПРАВЛЕНО: НЕ сбрасываем время если оно пришло из события
+                if not getattr(self, '_alarm_time_from_event', False):
+                    self._set_alarm_service_offline()
+                    logger.warning("AlarmService not available")
+                else:
+                    logger.debug("AlarmService not available, but time from event - keeping event time")
                 
         except Exception as e:
             logger.error(f"Error updating alarm status: {e}")
-            self._set_alarm_error_state()
+            # ИСПРАВЛЕНО: НЕ сбрасываем время при ошибке если оно пришло из события
+            if not getattr(self, '_alarm_time_from_event', False):
+                self._set_alarm_error_state()
 
     def _get_localized_text(self, key, default):
         """Получение локализованного текста с fallback"""
@@ -306,25 +328,38 @@ class HomeScreen(Screen):
             return default
 
     def _set_alarm_defaults(self):
-        """Установка значений по умолчанию"""
-        if self.current_alarm_time != "07:30":
-            self.current_alarm_time = "07:30"
+        """ИСПРАВЛЕНО: Установка значений по умолчанию БЕЗ перезаписи времени из событий"""
+        # ИСПРАВЛЕНО: НЕ сбрасываем время если оно обновлено из события
+        if not getattr(self, '_alarm_time_from_event', False):
+            if self.current_alarm_time != "07:30":
+                self.current_alarm_time = "07:30"
+                logger.debug("Reset alarm time to default")
+        
         if self.alarm_status_text != "OFF":
             self.alarm_status_text = "OFF"
             self._schedule_single_theme_refresh()
 
+
     def _set_alarm_service_offline(self):
-        """Установка статуса когда сервис недоступен"""
-        if self.current_alarm_time != "07:30":
-            self.current_alarm_time = "07:30"
+        """ИСПРАВЛЕНО: Установка статуса когда сервис недоступен БЕЗ перезаписи времени"""
+        # ИСПРАВЛЕНО: НЕ сбрасываем время если оно обновлено из события
+        if not getattr(self, '_alarm_time_from_event', False):
+            if self.current_alarm_time != "07:30":
+                self.current_alarm_time = "07:30"
+                logger.debug("Reset alarm time due to service offline")
+        
         if self.alarm_status_text != "SERVICE OFFLINE":
             self.alarm_status_text = "SERVICE OFFLINE"
             self._schedule_single_theme_refresh()
 
     def _set_alarm_error_state(self):
-        """Установка статуса при ошибке"""
-        if self.current_alarm_time != "07:30":
-            self.current_alarm_time = "07:30"
+        """ИСПРАВЛЕНО: Установка статуса при ошибке БЕЗ перезаписи времени"""
+        # ИСПРАВЛЕНО: НЕ сбрасываем время если оно обновлено из события  
+        if not getattr(self, '_alarm_time_from_event', False):
+            if self.current_alarm_time != "07:30":
+                self.current_alarm_time = "07:30"
+                logger.debug("Reset alarm time due to error")
+        
         if self.alarm_status_text != "ERROR":
             self.alarm_status_text = "ERROR"
             self._schedule_single_theme_refresh()
@@ -651,25 +686,53 @@ class HomeScreen(Screen):
             logger.error(f"Error refreshing text: {e}")
 
     def _on_alarm_settings_changed(self, event_data):
-        """ИСПРАВЛЕНО: Немедленная обработка изменений настроек будильника"""
+        """ИСПРАВЛЕНО: Обработчик изменения настроек будильника - использует данные из события"""
         try:
-            logger.info("Alarm settings changed event received, forcing immediate refresh")
+            logger.info("Alarm settings changed event received, updating directly from event")
+            logger.debug(f"Event data: {event_data}")
             
-            # Сбрасываем весь кэш и принудительно обновляем
-            self._alarm_data_changed = True
-            self._cached_alarm_data = None
-            self._last_alarm_update = 0
-            
-            # НОВОЕ: Двойное обновление для гарантии
-            self.update_alarm_status()
-            
-            # Планируем еще одно обновление через 1 секунду для перестраховки
-            Clock.schedule_once(lambda dt: self.update_alarm_status(), 1.0)
-            
-            logger.debug("Alarm status refresh completed")
+            # ИСПРАВЛЕНО: Используем данные НАПРЯМУЮ из события
+            if isinstance(event_data, dict):
+                # Обновляем время будильника
+                new_time = event_data.get("time")
+                if new_time and new_time != self.current_alarm_time:
+                    old_time = self.current_alarm_time
+                    self.current_alarm_time = new_time
+                    logger.info(f"✅ Alarm time updated from event: {old_time} → {new_time}")
+                
+                # Обновляем статус
+                enabled = event_data.get("enabled", False)
+                new_status = self._get_localized_text("alarm_on", "ON") if enabled else self._get_localized_text("alarm_off", "OFF")
+                if new_status != self.alarm_status_text:
+                    old_status = self.alarm_status_text
+                    self.alarm_status_text = new_status
+                    logger.info(f"✅ Alarm status updated from event: {old_status} → {new_status}")
+                    
+                    # Планируем обновление темы
+                    self._schedule_single_theme_refresh()
+                
+                # ИСПРАВЛЕНО: Отмечаем что время обновлено из события - НЕ перезаписывать!
+                self._alarm_time_from_event = True
+                self._last_event_time = new_time
+                
+                # Сбрасываем кэш для принудительного обновления при следующем вызове update_alarm_status
+                self._alarm_data_changed = True
+                self._cached_alarm_data = None
+                self._last_alarm_update = 0
+                
+                logger.debug("✅ Event-based alarm update completed successfully")
+                
+            else:
+                logger.warning(f"Invalid event data format: {type(event_data)}")
+                # Fallback к стандартному обновлению
+                self._alarm_data_changed = True
+                self.update_alarm_status()
             
         except Exception as e:
             logger.error(f"Error handling alarm settings change: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
             
     def force_alarm_status_refresh(self):
         """НОВОЕ: Принудительное обновление статуса будильника"""
