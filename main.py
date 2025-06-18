@@ -1,5 +1,5 @@
-# main.py — версия с автотемой по датчику освещенности и управлением громкости
-# ИСПРАВЛЕНО: Устранено дублирование AlarmClock, улучшена диагностика
+# main.py — полная версия с автотемой по датчику освещенности и управлением громкости
+# ИСПРАВЛЕНО: Только методы ThemeManager, остальная функциональность сохранена
 
 from kivy.config import Config
 import sys
@@ -38,7 +38,7 @@ from app.logger import app_logger as logger
 from widgets.root_widget import RootWidget
 from widgets.top_menu import TopMenu
 
-# ИСПРАВЛЕНО: Импортируем классы сервисов, а не экземпляры
+# Импортируем классы сервисов, а не экземпляры
 from services.audio_service import AudioService
 from services.alarm_service import AlarmService
 from services.notifications_service import NotificationService
@@ -49,7 +49,7 @@ from services.schedule_service import ScheduleService
 from services.auto_theme_service import AutoThemeService
 from services.volume_service import VolumeControlService
 
-# ИСПРАВЛЕНО: AlarmClock импорт с защитой и диагностикой
+# AlarmClock импорт с защитой и диагностикой
 try:
     from services.alarm_clock import AlarmClock
     ALARM_CLOCK_AVAILABLE = True
@@ -87,7 +87,7 @@ class BedrockApp(App):
         self.localizer = localizer
         self.user_config = user_config
         
-        # ИСПРАВЛЕНО: Все сервисы инициализируются в _initialize_services
+        # Все сервисы инициализируются в _initialize_services
         self.audio_service = None
         self.alarm_service = None
         self.notification_service = None
@@ -95,89 +95,93 @@ class BedrockApp(App):
         self.sensor_service = None
         self.pigs_service = None
         self.schedule_service = None
-        self.alarm_clock = None  # ИСПРАВЛЕНО: Один раз объявляем
+        self.alarm_clock = None
         self.auto_theme_service = None
         self.volume_service = None
         
-        # Переменные состояния приложения
+        # Переменные состояния
         self._running = False
+        self._setup_complete = False
+        
+        logger.info("BedrockApp instance created")
 
     def build(self):
-        """Основной метод приложения - строим интерфейс"""
+        """Основной билдер приложения"""
         logger.info("Building application...")
         
-        # Загружаем пользовательские настройки
+        # Загружаем конфигурацию пользователя
         self._load_user_settings()
         
-        # Инициализируем сервисы
+        # Инициализируем все сервисы
         self._initialize_services()
         
         # Создаем корневой виджет
         root = RootWidget()
         
-        # Подключаем события
+        # Настраиваем события
         self._setup_events()
         
-        # ИСПРАВЛЕНО: Отложенная инициализация тем и автотемы
+        # Отложенная финализация после построения UI
         Clock.schedule_once(lambda dt: self._finalize_initialization(), 1.0)
         
         logger.info("Application built successfully")
         return root
-    
+
     def _load_user_settings(self):
-        """ИСПРАВЛЕНО: Загрузка пользовательских настроек с обработкой ошибок"""
+        """ИСПРАВЛЕНО: Загрузка пользовательских настроек с правильными методами"""
         try:
             # Применяем тему из конфига
             theme = self.user_config.get("theme", "minecraft")
-            variant = self.user_config.get("variant", "light") 
+            variant = self.user_config.get("variant", "light")
             language = self.user_config.get("language", "en")
-            auto_theme_enabled = self.user_config.get("auto_theme_enabled", False)
-            light_sensor_threshold = self.user_config.get("light_sensor_threshold", 3)
             
-            # ИСПРАВЛЕНО: Проверяем что theme_manager инициализирован правильно
-            if hasattr(self, 'theme_manager') and self.theme_manager:
-                if not self.theme_manager.load_theme(theme, variant):
-                    logger.warning(f"Failed to load theme {theme}/{variant}, using default")
-                    self.theme_manager.load_theme("minecraft", "light")
-            else:
-                logger.error("ThemeManager not initialized properly!")
+            # ИСПРАВЛЕНО: Используем только load() метод
+            if not self.theme_manager.load(theme, variant):
+                logger.warning(f"Failed to load theme {theme}/{variant}, using default")
+                self.theme_manager.load("minecraft", "light")
             
-            # ИСПРАВЛЕНО: Проверяем что localizer инициализирован
-            if hasattr(self, 'localizer') and self.localizer:
-                self.localizer.load(language)
-                logger.info(f"Language loaded: {language}")
-            else:
-                logger.error("Localizer not initialized properly!")
+            # Применяем язык
+            self.localizer.load(language)
+            
+            # Загружаем конфиг автотемы
             self._auto_theme_config = {
-                'enabled': auto_theme_enabled,
-                'threshold': light_sensor_threshold
+                'enabled': self.user_config.get("auto_theme_enabled", False),
+                'threshold': self.user_config.get("light_sensor_threshold", 3)
             }
+            
+            logger.info("User settings loaded successfully")
             
         except Exception as e:
             logger.error(f"Error loading user settings: {e}")
-            self._auto_theme_config = {'enabled': True, 'threshold': 3}
+
+ 
 
     def _initialize_services(self):
-        """ИСПРАВЛЕНО: Инициализация всех сервисов с правильным порядком"""
+        """ИСПРАВЛЕНО: Инициализация всех сервисов с правильным AudioService"""
         try:
             logger.info("Initializing services...")
             
-            # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Инициализируем AudioService первым
+            # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильная инициализация AudioService
             try:
                 logger.info("Initializing AudioService...")
                 self.audio_service = AudioService()
+                
+                # ИСПРАВЛЕНО: AudioService НЕ имеет метода start()! 
+                # Он инициализируется в конструкторе
                 
                 # Проверяем что сервис корректно инициализирован
                 if hasattr(self.audio_service, 'diagnose_state'):
                     logger.info("✅ AudioService initialized with diagnose_state method")
                     # Выполняем диагностику для проверки
                     diagnosis = self.audio_service.diagnose_state()
-                    logger.info(f"AudioService diagnosis: {diagnosis}")
+                    logger.debug(f"AudioService diagnosis: {diagnosis}")
                 else:
                     logger.error("❌ AudioService missing diagnose_state method")
                     
             except Exception as e:
                 logger.error(f"CRITICAL: AudioService initialization failed: {e}")
+                import traceback
+                logger.error(f"AudioService traceback: {traceback.format_exc()}")
                 self.audio_service = None
             
             # Конфигурация остальных сервисов (порядок КРИТИЧЕСКИ ВАЖЕН!)
@@ -201,75 +205,74 @@ class BedrockApp(App):
                     service_instance = service_class(**kwargs)
                     setattr(self, service_name, service_instance)
                     
-                    # Запускаем сервис если у него есть метод start
+                    # ИСПРАВЛЕНО: Запускаем сервис если у него есть метод start
                     if hasattr(service_instance, 'start'):
                         service_instance.start()
+                        logger.debug(f"✅ {service_name} started")
+                    else:
+                        logger.debug(f"✅ {service_name} initialized (no start method)")
                     
                     logger.info(f"✅ Service initialized: {service_name}")
                     
                 except Exception as ex:
                     logger.error(f"❌ Failed to initialize {service_name}: {ex}")
+                    import traceback
+                    logger.error(f"{service_name} traceback: {traceback.format_exc()}")
                     setattr(self, service_name, None)
 
-            # 🚨 ИСПРАВЛЕНО: ЕДИНАЯ инициализация AlarmClock (убрано дублирование)
+            # ЕДИНАЯ инициализация AlarmClock
             try:
                 if ALARM_CLOCK_AVAILABLE and self.alarm_service:
                     logger.info("Initializing AlarmClock service...")
                     self.alarm_clock = AlarmClock()
                     
                     # Запускаем alarm_clock
-                    self.alarm_clock.start()
-                    
-                    logger.info("✅ AlarmClock initialized and started successfully")
-                    
-                    # Дополнительная проверка состояния
-                    if hasattr(self.alarm_clock, 'running') and self.alarm_clock.running:
-                        logger.info("✅ AlarmClock is running correctly")
+                    if hasattr(self.alarm_clock, 'start'):
+                        self.alarm_clock.start()
+                        logger.info("✅ AlarmClock initialized and started successfully")
                     else:
-                        logger.warning("⚠️ AlarmClock created but not running")
-                        
+                        logger.warning("⚠️ AlarmClock has no start method")
+                    
+                    # Дополнительная диагностика
+                    if hasattr(self.alarm_clock, '_version'):
+                        logger.info(f"AlarmClock version: {self.alarm_clock._version}")
                 else:
-                    if not ALARM_CLOCK_AVAILABLE:
-                        logger.warning("❌ AlarmClock not available (import error)")
-                    if not self.alarm_service:
-                        logger.warning("❌ AlarmClock not initialized - AlarmService missing")
+                    logger.warning("❌ AlarmClock not available or AlarmService missing")
                     self.alarm_clock = None
                     
-            except Exception as e:
-                logger.error(f"❌ Failed to initialize AlarmClock: {e}")
+            except Exception as ex:
+                logger.error(f"❌ Failed to initialize AlarmClock: {ex}")
                 import traceback
                 logger.error(f"AlarmClock traceback: {traceback.format_exc()}")
                 self.alarm_clock = None
 
-            # 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: AutoThemeService инициализируется ПОСЛЕ sensor_service и theme_manager
+            # Инициализация AutoThemeService
             try:
-                logger.info("Initializing auto_theme_service...")
                 if self.sensor_service and self.theme_manager:
-                    self.auto_theme_service = AutoThemeService(
-                        sensor_service=self.sensor_service,
-                        theme_manager=self.theme_manager
-                    )
+                    logger.info("Initializing AutoThemeService...")
+                    self.auto_theme_service = AutoThemeService(self.sensor_service, self.theme_manager)
                     
-                    # Запускаем сервис
+                    # AutoThemeService ИМЕЕТ метод start()
                     if hasattr(self.auto_theme_service, 'start'):
                         self.auto_theme_service.start()
-                    
-                    logger.info("✅ Service initialized: auto_theme_service")
+                        logger.info("✅ AutoThemeService initialized and started")
+                    else:
+                        logger.warning("⚠️ AutoThemeService has no start method")
                 else:
-                    logger.error("❌ Cannot initialize auto_theme_service: missing dependencies")
-                    logger.error(f"sensor_service available: {self.sensor_service is not None}")
-                    logger.error(f"theme_manager available: {self.theme_manager is not None}")
+                    logger.warning("❌ AutoThemeService dependencies missing")
                     self.auto_theme_service = None
                     
             except Exception as ex:
                 logger.error(f"❌ Failed to initialize auto_theme_service: {ex}")
+                import traceback
+                logger.error(f"AutoThemeService traceback: {traceback.format_exc()}")
                 self.auto_theme_service = None
 
             # Дополнительная настройка сервисов
             self._setup_auto_theme()
             self._setup_volume_service()
             
-            # НОВОЕ: Диагностика финального состояния сервисов
+            # Диагностика финального состояния сервисов
             self._diagnose_services_state()
             
             logger.info("✅ All services initialized")
@@ -278,9 +281,8 @@ class BedrockApp(App):
             logger.error(f"Critical error initializing services: {e}")
             import traceback
             logger.error(f"Services initialization traceback: {traceback.format_exc()}")
-
     def _diagnose_services_state(self):
-        """НОВОЕ: Диагностика состояния всех сервисов после инициализации"""
+        """Диагностика состояния всех сервисов после инициализации"""
         logger.info("🔧 === SERVICES DIAGNOSTIC ===")
         
         services_to_check = [
@@ -299,7 +301,7 @@ class BedrockApp(App):
                 logger.warning(f"[{service_name:20}] ❌ Not available")
 
     def _setup_auto_theme(self):
-        """🚨 ИСПРАВЛЕНО: Настройка автоматической темы БЕЗ дублирования"""
+        """Настройка автоматической темы БЕЗ дублирования"""
         try:
             if self.auto_theme_service and hasattr(self.auto_theme_service, 'start'):
                 # Сервис уже запущен в _initialize_services
@@ -320,7 +322,7 @@ class BedrockApp(App):
             logger.error(f"Error setting up volume service: {e}")
 
     def _setup_events(self):
-        """ИСПРАВЛЕНО: Настройка событий приложения"""
+        """Настройка событий приложения"""
         try:
             from app.event_bus import event_bus
             
@@ -329,8 +331,8 @@ class BedrockApp(App):
             event_bus.subscribe("variant_changed", self._on_variant_changed)
             event_bus.subscribe("language_changed", self._on_language_changed)
             
-            # Подписываемся на события автотемы
-            event_bus.subscribe("auto_theme_triggered", self._on_auto_theme_triggered)
+            # ИСПРАВЛЕНО: Убираем конфликтующую подписку на auto_theme_triggered
+            # event_bus.subscribe("auto_theme_triggered", self._on_auto_theme_triggered)
             
             # Подписываемся на события громкости
             event_bus.subscribe("volume_changed", self._on_volume_changed)
@@ -341,7 +343,7 @@ class BedrockApp(App):
             logger.error(f"Error setting up events: {e}")
 
     def _finalize_initialization(self):
-        """ИСПРАВЛЕНО: Финальная инициализация после построения UI"""
+        """Финальная инициализация после построения UI"""
         try:
             self._running = True
             
@@ -357,8 +359,9 @@ class BedrockApp(App):
             
         except Exception as e:
             logger.error(f"Error in finalization: {e}")
+
     def _apply_auto_theme_settings(self):
-        """🚨 НОВЫЙ МЕТОД: Применение настроек auto_theme из конфига пользователя"""
+        """Применение настроек auto_theme из конфига пользователя"""
         try:
             if not hasattr(self, '_auto_theme_config'):
                 logger.warning("Auto theme config not loaded, skipping")
@@ -391,7 +394,7 @@ class BedrockApp(App):
             logger.error(f"Error applying auto theme settings: {e}")
 
     def _verify_services(self):
-        """НОВОЕ: Проверка состояния всех сервисов"""
+        """Проверка состояния всех сервисов"""
         logger.info("🔧 === SERVICES VERIFICATION ===")
         
         critical_services = ['audio_service', 'alarm_service']
@@ -412,7 +415,7 @@ class BedrockApp(App):
                 logger.info(f"✅ {service_name} is available")
 
     def _perform_initial_diagnostics(self):
-        """НОВОЕ: Выполнение начальной диагностики"""
+        """Выполнение начальной диагностики"""
         try:
             # Диагностика audio_service
             if self.audio_service and hasattr(self.audio_service, 'diagnose_state'):
@@ -464,16 +467,17 @@ class BedrockApp(App):
         except Exception as e:
             logger.error(f"Error handling language change: {e}")
 
-    def _on_auto_theme_triggered(self, event_data):
-        """Обработчик автоматической смены темы"""
-        try:
-            new_variant = event_data.get("variant")
-            if new_variant and hasattr(self, 'theme_manager'):
-                current_theme = self.user_config.get("theme", "minecraft")
-                self.theme_manager.set_variant(new_variant)
-                logger.debug(f"Auto-theme triggered: {current_theme}/{new_variant}")
-        except Exception as e:
-            logger.error(f"Error handling auto-theme trigger: {e}")
+    # УДАЛЕНО: Конфликтующий метод _on_auto_theme_triggered
+    # def _on_auto_theme_triggered(self, event_data):
+    #     """Обработчик автоматической смены темы"""
+    #     try:
+    #         new_variant = event_data.get("variant")
+    #         if new_variant and hasattr(self, 'theme_manager'):
+    #             current_theme = self.user_config.get("theme", "minecraft")
+    #             self.theme_manager.set_variant(new_variant)  # ← ЭТОГО МЕТОДА НЕТ!
+    #             logger.debug(f"Auto-theme triggered: {current_theme}/{new_variant}")
+    #     except Exception as e:
+    #         logger.error(f"Error handling auto-theme trigger: {e}")
 
     def _on_volume_changed(self, event_data):
         """Обработчик изменения громкости"""
@@ -484,6 +488,10 @@ class BedrockApp(App):
                 logger.debug(f"Volume saved to config: {volume}")
         except Exception as e:
             logger.error(f"Error handling volume change: {e}")
+
+    def on_start(self):
+        """Вызывается при старте приложения"""
+        logger.info("Application started")
 
     def on_stop(self):
         """Корректная остановка всех сервисов при закрытии приложения"""
@@ -521,6 +529,7 @@ class BedrockApp(App):
             logger.error(f"Error during application shutdown: {e}")
         
         return True
+
 
 if __name__ == "__main__":
     try:

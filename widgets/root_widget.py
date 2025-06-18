@@ -1,5 +1,5 @@
 # widgets/root_widget.py
-# ИСПРАВЛЕНО: Добавлен атрибут screen_manager для совместимости
+# ИСПРАВЛЕНО: Добавлено полное обновление темы для RootWidget
 
 from kivy.properties import StringProperty
 from kivy.uix.floatlayout import FloatLayout
@@ -9,23 +9,23 @@ from app.logger import app_logger as logger
 
 
 class RootWidget(FloatLayout):
-    """ИСПРАВЛЕНО: Корневой виджет приложения с правильными атрибутами"""
+    """ИСПРАВЛЕНО: Корневой виджет с полным обновлением темы"""
     
     current_page = StringProperty("home")
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Подписка на события
-        event_bus.subscribe("theme_changed", self.refresh_theme_everywhere)
+        # ИСПРАВЛЕНО: Подписка на полное обновление темы + overlay
+        event_bus.subscribe("theme_changed", self.refresh_theme_completely)
         
-        # ИСПРАВЛЕНО: Инициализируем screen_manager как None
+        # Инициализируем screen_manager как None
         # Будет установлен после загрузки KV файла
         self.screen_manager = None
 
     def on_kv_post(self, base_widget):
-        """НОВОЕ: Вызывается после загрузки KV файла"""
+        """Вызывается после загрузки KV файла"""
         try:
-            # ИСПРАВЛЕНО: Устанавливаем screen_manager из ids после загрузки KV
+            # Устанавливаем screen_manager из ids после загрузки KV
             if hasattr(self, 'ids') and 'sm' in self.ids:
                 self.screen_manager = self.ids.sm
                 logger.debug("screen_manager initialized from KV")
@@ -43,7 +43,7 @@ class RootWidget(FloatLayout):
         return None
         
     def switch_screen(self, page_name):
-        """ИСПРАВЛЕНО: Переключение экрана с улучшенной обработкой ошибок"""
+        """Переключение экрана с улучшенной обработкой ошибок"""
         try:
             # Метод 1: Используем screen_manager атрибут
             if self.screen_manager:
@@ -78,47 +78,83 @@ class RootWidget(FloatLayout):
             logger.error(f"Error switching screen to {page_name}: {e}")
             return False
 
-    def _update_overlay(self):
+    def refresh_theme_completely(self, *args):
+        """🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ПОЛНОЕ обновление темы RootWidget"""
+        try:
+            logger.debug("RootWidget: Complete theme refresh")
+            
+            tm = self.get_theme_manager()
+            if not tm or not tm.is_loaded():
+                logger.warning("ThemeManager not loaded, cannot refresh RootWidget theme")
+                return
+            
+            # 1. Обновляем background изображение
+            if hasattr(self, 'ids') and 'background_image' in self.ids:
+                new_bg = tm.get_image("background")
+                if new_bg and new_bg != self.ids.background_image.source:
+                    self.ids.background_image.source = new_bg
+                    logger.debug(f"✅ RootWidget background updated: {new_bg}")
+            
+            # 2. Обновляем overlay изображение для текущей страницы
+            self._update_overlay()
+            
+            # 3. Обновляем canvas если есть фоновые цвета
+            if hasattr(self, 'canvas'):
+                self.canvas.ask_update()
+                logger.debug("✅ RootWidget canvas updated")
+            
+            # 4. Если есть другие UI элементы в RootWidget - обновляем их
+            self._update_root_ui_elements()
+            
+            logger.debug("🎉 RootWidget theme completely refreshed")
+            
+        except Exception as e:
+            logger.error(f"Error in RootWidget complete theme refresh: {e}")
+
+    def _update_overlay(self, *args):
         """Обновление overlay изображения для текущей страницы"""
         try:
             tm = self.get_theme_manager()
             if tm and tm.is_loaded() and hasattr(self, 'ids') and 'overlay_image' in self.ids:
-                new_overlay = tm.get_image("overlay_" + self.current_page)
+                overlay_name = f"overlay_{self.current_page}"
+                new_overlay = tm.get_image(overlay_name)
                 if new_overlay and new_overlay != self.ids.overlay_image.source:
                     self.ids.overlay_image.source = new_overlay
-                    logger.debug(f"Updated overlay for page: {self.current_page}")
+                    logger.debug(f"✅ Overlay updated for page: {self.current_page}")
+                elif not new_overlay:
+                    logger.debug(f"⚠️ No overlay image found for page: {self.current_page}")
             else:
                 logger.debug("Cannot update overlay - theme manager not available or not loaded")
         except Exception as e:
             logger.error(f"Error updating overlay: {e}")
 
-    def refresh_theme_everywhere(self, *args, **kwargs):
-        """Обновление темы для всех элементов"""
+    def _update_root_ui_elements(self):
+        """Обновление других UI элементов в RootWidget"""
         try:
             tm = self.get_theme_manager()
             if not tm or not tm.is_loaded():
-                logger.warning("ThemeManager not loaded, cannot refresh theme")
                 return
             
-            # Получаем новые пути к изображениям
-            new_bg = tm.get_image("background")
-            new_overlay = tm.get_image("overlay_" + self.current_page)
-            
-            # Обновляем только если изображения действительно изменились и существуют
+            # Если в RootWidget есть другие элементы (кнопки, лейблы и т.д.) - обновляем их
             if hasattr(self, 'ids'):
-                if 'background_image' in self.ids and new_bg and self.ids.background_image.source != new_bg:
-                    self.ids.background_image.source = new_bg
-                    logger.debug(f"Updated background image: {new_bg}")
+                for widget_id, widget in self.ids.items():
+                    # Обновляем цвета текста если есть
+                    if hasattr(widget, 'color') and widget_id != 'background_image' and widget_id != 'overlay_image':
+                        if hasattr(widget, 'text'):  # Это текстовый элемент
+                            widget.color = tm.get_rgba("text")
+                            logger.debug(f"✅ Updated color for {widget_id}")
                     
-                if 'overlay_image' in self.ids and new_overlay and self.ids.overlay_image.source != new_overlay:
-                    self.ids.overlay_image.source = new_overlay
-                    logger.debug(f"Updated overlay image: {new_overlay}")
-                    
+                    # Обновляем шрифты если есть
+                    if hasattr(widget, 'font_name'):
+                        widget.font_name = tm.get_font("main")
+                        logger.debug(f"✅ Updated font for {widget_id}")
+                        
         except Exception as e:
-            logger.error(f"Error refreshing theme: {e}")
+            logger.error(f"Error updating root UI elements: {e}")
 
+    # Оставляем остальные методы без изменений
     def get_current_screen(self):
-        """НОВОЕ: Получить текущий экран"""
+        """Получить текущий экран"""
         try:
             if self.screen_manager:
                 return self.screen_manager.current_screen
@@ -130,7 +166,7 @@ class RootWidget(FloatLayout):
             return None
 
     def get_screen_by_name(self, name):
-        """НОВОЕ: Получить экран по имени"""
+        """Получить экран по имени"""
         try:
             if self.screen_manager:
                 return self.screen_manager.get_screen(name)
@@ -142,7 +178,7 @@ class RootWidget(FloatLayout):
             return None
 
     def diagnose_state(self):
-        """НОВОЕ: Диагностика состояния RootWidget"""
+        """Диагностика состояния RootWidget"""
         try:
             return {
                 "current_page": self.current_page,
@@ -157,28 +193,10 @@ class RootWidget(FloatLayout):
             return {"error": str(e)}
 
     def verify_instance(self):
-        """НОВОЕ: Верификация экземпляра RootWidget"""
+        """Верификация экземпляра RootWidget"""
         return {
             "class_name": self.__class__.__name__,
             "has_screen_manager": hasattr(self, 'screen_manager'),
             "screen_manager_value": str(self.screen_manager),
             "methods": [method for method in dir(self) if not method.startswith('_')]
         }
-
-
-def validate_root_widget_module():
-    """НОВОЕ: Валидация модуля RootWidget для отладки"""
-    try:
-        widget = RootWidget()
-        assert hasattr(widget, 'screen_manager'), "screen_manager attribute missing"
-        assert hasattr(widget, 'switch_screen'), "switch_screen method missing"
-        assert hasattr(widget, 'current_page'), "current_page property missing"
-        print("✅ RootWidget module validation passed")
-        return True
-    except Exception as e:
-        print(f"❌ RootWidget module validation failed: {e}")
-        return False
-
-# Только в режиме разработки
-if __name__ == "__main__":
-    validate_root_widget_module()
