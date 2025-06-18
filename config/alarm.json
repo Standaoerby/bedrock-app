@@ -1,15 +1,15 @@
 {
   "alarm": {
     "enabled": true,
-    "time": "06:18",
+    "time": "06:20",
     "repeat": [
       "Tue",
       "Wed",
-      "Thu",
       "Mon",
-      "Fri",
       "Sat",
-      "Sun"
+      "Sun",
+      "Thu",
+      "Fri"
     ],
     "ringtone": "Dragonborn.mp3",
     "fadein": true

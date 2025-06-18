@@ -380,9 +380,7 @@ class BedrockApp(App):
                     
                     # Активируем сервис
                     self.auto_theme_service.set_enabled(True)
-                    
-                    # Делаем первичную проверку
-                    Clock.schedule_once(lambda dt: self.auto_theme_service.force_check(), 2.0)
+
                     
                     logger.info(f"✅ Auto-theme activated from config: threshold={threshold}s")
                 else:

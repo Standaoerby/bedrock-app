@@ -514,7 +514,10 @@ class SettingsScreen(Screen):
                     app.auto_theme_service.calibrate_sensor(int(self.light_sensor_threshold))
                     
                     # Делаем первичную проверку
-                    app.auto_theme_service.force_check()
+                    Clock.schedule_once(
+                        lambda dt: app.auto_theme_service.force_check(), 
+                        3.0  # 3 секунды задержки
+                    )
                     logger.info("Auto-theme enabled and calibrated")
                 else:
                     logger.info("Auto-theme disabled")

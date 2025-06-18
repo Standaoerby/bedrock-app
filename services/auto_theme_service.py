@@ -112,38 +112,51 @@ class AutoThemeService:
                 time.sleep(5)  # Ждем дольше при ошибке
 
     def _check_light_and_switch(self):
-        """Проверка освещенности и переключение темы"""
+        """ИСПРАВЛЕНО: Правильная проверка освещенности и переключение темы"""
         try:
             is_bright = self.sensor_service.get_light_level()
             
+            # Случай 1: Состояние освещенности изменилось
             if self.current_light_state != is_bright:
-                # Состояние изменилось
+                logger.debug(f"💡 Light state changed: {self.current_light_state} → {is_bright}")
                 self.current_light_state = is_bright
                 self.state_start_time = time.time()
                 self.state_stable = False
                 return False
             
-            # Состояние стабильно
+            # Случай 2: Состояние НЕ изменилось, но еще не стабильно
             if not self.state_stable and self.state_start_time:
                 elapsed = time.time() - self.state_start_time
                 if elapsed >= self.threshold_seconds:
-                    # Состояние стабильно достаточно долго
+                    # Состояние стабильно достаточно долго - переключаем тему
                     self.state_stable = True
                     variant = "light" if is_bright else "dark"
+                    logger.info(f"⏰ Light stable for {elapsed:.1f}s, switching to {variant}")
                     self._switch_theme(variant)
                     return True
-                    
-            self.state_stable = False
+                else:
+                    logger.debug(f"⏳ Waiting for stability: {elapsed:.1f}s / {self.threshold_seconds}s")
+                    return False
+            
+            # Случай 3: Состояние уже стабильно - НЕ трогаем ничего!
+            # ИСПРАВЛЕНО: НЕ сбрасываем state_stable если он уже True
+            return self.state_stable
                 
         except Exception as e:
             logger.error(f"Error checking light level: {e}")
             return False
             
-        return False
-            
     def _switch_theme(self, variant):
-        """Thread-safe переключение темы через главный поток Kivy"""
+        """ИСПРАВЛЕНО: Thread-safe переключение темы с защитой от спама"""
         try:
+            # ДОБАВЛЕНО: Защита от спама переключений
+            current_time = time.time()
+            if hasattr(self, '_last_switch_time'):
+                if current_time - self._last_switch_time < 5.0:  # Не чаще раз в 5 секунд
+                    logger.debug(f"Theme switch throttled (too frequent): {variant}")
+                    return
+            
+            self._last_switch_time = current_time
             Clock.schedule_once(lambda dt: self._do_switch_theme_on_main_thread(variant), 0)
                 
         except Exception as e:
