@@ -11,7 +11,7 @@ from kivy.clock import Clock  # 🚨 КРИТИЧЕСКИ ВАЖНО: Импор
 class AutoThemeService:
     """
     Сервис автоматического переключения темы на основе освещенности
-    Версия 1.2.0 - ИСПРАВЛЕНО: Добавлен метод calibrate_sensor с параметром
+    Версия 1.3.0 - ИСПРАВЛЕНО: Все критические ошибки и улучшена консистентность
     """
     
     def __init__(self, sensor_service, theme_manager):
@@ -95,7 +95,7 @@ class AutoThemeService:
                 self.state_stable = False
                 
                 # 🚨 ИСПРАВЛЕНО: Одно компактное сообщение вместо трёх
-                logger.info(f"Auto-theme calibrated: {self.threshold_seconds}s threshold, confidence: {confidence}")
+                logger.info(f"Auto-theme calibrated: {self.threshold_seconds}s threshold, confidence: {confidence:.2f}")
             else:
                 logger.warning("Sensor service doesn't support light calibration")
                 
@@ -162,11 +162,18 @@ class AutoThemeService:
                 time.sleep(1)
                 
     def _check_light_level(self):
-        """Проверка уровня освещенности и переключение темы"""
+        """🚨 ИСПРАВЛЕНО: Проверка уровня освещенности и переключение темы"""
         try:
             # 🚨 ИСПРАВЛЕНО: Используем правильный метод get_light_level() вместо is_light_detected()
             is_light = self.sensor_service.get_light_level()
+            
             current_time = time.time()
+            
+            # 🚨 ИСПРАВЛЕНО: Инициализируем состояние при первом запуске
+            if self.current_light_state is None:
+                self.current_light_state = is_light
+                logger.info(f"🔄 Auto-theme initialized: {'Light' if is_light else 'Dark'} mode detected")
+                return False
             
             # Логика гистерезиса для предотвращения частых переключений
             if is_light != self.current_light_state:
@@ -175,7 +182,7 @@ class AutoThemeService:
                     # Начинаем отсчет времени
                     self.state_start_time = current_time
                     self.state_stable = False
-                    logger.debug(f"Light state changed to {'light' if is_light else 'dark'}, starting timer")
+                    logger.info(f"Light state changed to {'light' if is_light else 'dark'}, starting timer")
                     
                 elif current_time - self.state_start_time >= self.threshold_seconds:
                     # Состояние стабильно в течение порогового времени
@@ -187,7 +194,7 @@ class AutoThemeService:
                         new_variant = "light" if is_light else "dark"
                         self._switch_theme(new_variant)
                         
-                        # 🚨 ИСПРАВЛЕНО: Более читаемое и компактное логирование
+                        # 🚨 ИСПРАВЛЕНО: Правильное логирование БЕЗ обрыва строки
                         confidence = 1.00 if current_time - self.state_start_time >= self.threshold_seconds else 0.75
                         logger.info(f"🌓 Auto-theme: {'Dark→Light' if is_light else 'Light→Dark'} (confidence: {confidence:.2f}) → {new_variant} theme")
                         
@@ -196,17 +203,19 @@ class AutoThemeService:
             else:
                 # Состояние не изменилось - сбрасываем таймер
                 if self.state_start_time is not None:
-                    logger.debug("Light state returned to previous - resetting timer")
+                    logger.info("Light state returned to previous - resetting timer")
                 self.state_start_time = None
                 self.state_stable = False
                 
             # Если изменений нет или они нестабильны
             if not self.state_stable:
-                logger.debug("🔍 No light change detected")
+                logger.info("🔍 No stable light change detected")
                 
         except Exception as e:
             logger.error(f"Error checking light level: {e}")
             return False
+            
+        return False
             
     def _switch_theme(self, variant):
         """🚨 ИСПРАВЛЕНО: Thread-safe переключение темы через главный поток Kivy"""
@@ -218,40 +227,112 @@ class AutoThemeService:
             logger.error(f"Error scheduling theme switch: {e}")
             
     def _do_switch_theme_on_main_thread(self, variant):
-        """🚨 ИСПРАВЛЕНО: Выполнение переключения темы в главном потоке БЕЗ дублирования логов"""
+        """🚨 ОКОНЧАТЕЛЬНО ИСПРАВЛЕНО: Выполнение переключения темы с правильным вызовом методов"""
+        logger.info(f"🎨 Starting theme switch to variant: {variant}")
+        
         try:
             app = App.get_running_app()
-            if app and hasattr(app, 'theme_manager'):
-                # Получаем текущую тему
-                current_theme = app.theme_manager.current_theme
+            if not app:
+                logger.error("❌ Cannot switch theme - App instance not available")
+                return
                 
-                # Проверяем, нужно ли переключать
-                current_variant = getattr(app.theme_manager, 'current_variant', None)
-                if current_variant == variant:
-                    return  # Тема уже установлена
+            logger.info(f"✅ App instance found: {type(app).__name__}")
                 
-                # Переключаем вариант темы (в главном потоке)
-                app.theme_manager.load_theme(current_theme, variant)
+            if not hasattr(app, 'theme_manager') or not app.theme_manager:
+                logger.error("❌ Cannot switch theme - ThemeManager not available")
+                return
+            
+            logger.info(f"✅ ThemeManager found: {type(app.theme_manager).__name__}")
+            
+            # Получаем текущую тему
+            current_theme = getattr(app.theme_manager, 'current_theme', None)
+            if not current_theme:
+                current_theme = getattr(app.theme_manager, 'theme_name', None)
+            if not current_theme:
+                logger.warning("⚠️ No current theme set, using default 'minecraft'")
+                current_theme = "minecraft"
+            
+            logger.info(f"📋 Current theme: {current_theme}")
+            
+            # Проверяем, нужно ли переключать
+            current_variant = getattr(app.theme_manager, 'current_variant', None)
+            if not current_variant:
+                current_variant = getattr(app.theme_manager, 'variant', None)
                 
-                # Обновляем конфиг пользователя
-                if hasattr(app, 'user_config'):
+            logger.info(f"📋 Current variant: {current_variant} → New variant: {variant}")
+                
+            if current_variant == variant:
+                logger.info(f"⏭️ Theme variant already set to {variant}, skipping")
+                return  # Тема уже установлена
+            
+            # 🚨 ИСПРАВЛЕНО: Используем правильный метод load_theme с проверкой существования
+            logger.info(f"🔄 Loading theme: {current_theme}/{variant}")
+            
+            if hasattr(app.theme_manager, 'load_theme'):
+                success = app.theme_manager.load_theme(current_theme, variant)
+                logger.info(f"📋 load_theme() result: {success}")
+            elif hasattr(app.theme_manager, 'load'):
+                success = app.theme_manager.load(current_theme, variant)
+                logger.info(f"📋 load() result: {success}")
+            else:
+                logger.error("❌ ThemeManager has no load_theme or load method")
+                return
+                
+            if not success:
+                logger.error(f"❌ Failed to load theme {current_theme}/{variant}")
+                return
+            
+            logger.info(f"✅ Theme loaded successfully: {current_theme}/{variant}")
+            
+            # Обновляем конфиг пользователя
+            if hasattr(app, 'user_config') and app.user_config:
+                try:
                     app.user_config.set('variant', variant)
-                
-                # 🚨 ИСПРАВЛЕНО: Публикуем событие в главном потоке БЕЗ дополнительного логирования
+                    logger.info(f"✅ Variant saved to config: {variant}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to save variant to config: {e}")
+            
+            # 🚨 ИСПРАВЛЕНО: Публикуем событие для обновления UI
+            try:
+                from app.event_bus import event_bus
                 event_bus.publish("theme_changed", {
                     "theme": current_theme,
                     "variant": variant,
                     "source": "auto_theme_service"
                 })
-                
-                # 🚨 ИСПРАВЛЕНО: НЕ логируем здесь - логирование уже произошло в _check_light_level
-                
-            else:
-                logger.error("Cannot switch theme - ThemeManager not available")
-                
+                logger.info(f"✅ theme_changed event published")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to publish theme_changed event: {e}")
+            
+            # 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем правильное имя метода!
+            try:
+                if hasattr(app.root, 'refresh_theme_everywhere'):
+                    Clock.schedule_once(lambda dt: app.root.refresh_theme_everywhere(), 0.1)
+                    logger.info(f"✅ Root widget refresh_theme_everywhere() scheduled")
+                elif hasattr(app.root, 'refresh_theme'):
+                    Clock.schedule_once(lambda dt: app.root.refresh_theme(), 0.1)
+                    logger.info(f"✅ Root widget refresh_theme() scheduled")
+                else:
+                    logger.warning(f"⚠️ Root widget has no refresh_theme methods")
+                    # Пытаемся обновить тему напрямую через все экраны
+                    try:
+                        if hasattr(app.root, 'screen_manager') and app.root.screen_manager:
+                            for screen_name in app.root.screen_manager.screen_names:
+                                screen = app.root.screen_manager.get_screen(screen_name)
+                                if hasattr(screen, 'refresh_theme'):
+                                    Clock.schedule_once(lambda dt, s=screen: s.refresh_theme(), 0.1)
+                                    logger.info(f"✅ Screen {screen_name}.refresh_theme() scheduled")
+                    except Exception as e2:
+                        logger.warning(f"⚠️ Failed to refresh individual screens: {e2}")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to refresh UI: {e}")
+            
+            logger.info(f"🎉 Theme successfully switched to {current_theme}/{variant}")
+            
         except Exception as e:
-            logger.error(f"Error switching theme in main thread: {e}")
-
+            logger.error(f"❌ Error switching theme in main thread: {e}")
+            import traceback
+            logger.error(f"Theme switch traceback: {traceback.format_exc()}")
 
 # ИСПРАВЛЕНО: НЕ создаем глобальный экземпляр
 # Каждое приложение должно создать свой экземпляр через main.py
@@ -268,8 +349,11 @@ def validate_auto_theme_service_module():
                 
         class MockThemeManager:
             def load_theme(self, theme, variant):
-                pass
+                return True
+            def load(self, theme, variant):
+                return True
             current_theme = "minecraft"
+            current_variant = "light"
         
         service = AutoThemeService(MockSensorService(), MockThemeManager())
         assert hasattr(service, 'calibrate_sensor'), "calibrate_sensor method missing"

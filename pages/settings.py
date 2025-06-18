@@ -505,6 +505,8 @@ class SettingsScreen(Screen):
         
         # Интеграция с AutoThemeService
         if hasattr(app, 'auto_theme_service') and app.auto_theme_service:
+            # В методе toggle_auto_theme() ПОСЛЕ строки 25:
+            app.auto_theme_service.set_enabled(self.auto_theme_enabled)  # ← ДОБАВИТЬ ЭТО!
             try:
                 if self.auto_theme_enabled:
                     # Калибруем датчик с текущими настройками
