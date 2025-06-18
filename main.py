@@ -131,6 +131,8 @@ class BedrockApp(App):
             theme = self.user_config.get("theme", "minecraft")
             variant = self.user_config.get("variant", "light") 
             language = self.user_config.get("language", "en")
+            auto_theme_enabled = self.user_config.get("auto_theme_enabled", False)
+            light_sensor_threshold = self.user_config.get("light_sensor_threshold", 3)
             
             # ИСПРАВЛЕНО: Проверяем что theme_manager инициализирован правильно
             if hasattr(self, 'theme_manager') and self.theme_manager:
@@ -146,9 +148,14 @@ class BedrockApp(App):
                 logger.info(f"Language loaded: {language}")
             else:
                 logger.error("Localizer not initialized properly!")
+            self._auto_theme_config = {
+                'enabled': auto_theme_enabled,
+                'threshold': light_sensor_threshold
+            }
             
         except Exception as e:
             logger.error(f"Error loading user settings: {e}")
+            self._auto_theme_config = {'enabled': True, 'threshold': 3}
 
     def _initialize_services(self):
         """ИСПРАВЛЕНО: Инициализация всех сервисов с правильным порядком"""
@@ -340,6 +347,8 @@ class BedrockApp(App):
             
             # Проверяем состояние всех сервисов
             self._verify_services()
+
+            self._apply_auto_theme_settings()
             
             # Выполняем начальную диагностику
             self._perform_initial_diagnostics()
@@ -348,6 +357,38 @@ class BedrockApp(App):
             
         except Exception as e:
             logger.error(f"Error in finalization: {e}")
+    def _apply_auto_theme_settings(self):
+        """🚨 НОВЫЙ МЕТОД: Применение настроек auto_theme из конфига пользователя"""
+        try:
+            if not hasattr(self, '_auto_theme_config'):
+                logger.warning("Auto theme config not loaded, skipping")
+                return
+                
+            auto_theme_enabled = self._auto_theme_config.get('enabled', False)
+            threshold = self._auto_theme_config.get('threshold', 3)
+            
+            logger.info(f"Applying auto theme settings: enabled={auto_theme_enabled}, threshold={threshold}")
+            
+            if hasattr(self, 'auto_theme_service') and self.auto_theme_service:
+                # Применяем настройки
+                if auto_theme_enabled:
+                    # Калибруем датчик с настройками из конфига
+                    self.auto_theme_service.calibrate_sensor(int(threshold))
+                    
+                    # Активируем сервис
+                    self.auto_theme_service.set_enabled(True)
+                    
+                    # Делаем первичную проверку
+                    Clock.schedule_once(lambda dt: self.auto_theme_service.force_check(), 2.0)
+                    
+                    logger.info(f"✅ Auto-theme activated from config: threshold={threshold}s")
+                else:
+                    logger.info("Auto-theme disabled in config")
+            else:
+                logger.warning("auto_theme_service not available, cannot apply settings")
+                
+        except Exception as e:
+            logger.error(f"Error applying auto theme settings: {e}")
 
     def _verify_services(self):
         """НОВОЕ: Проверка состояния всех сервисов"""
