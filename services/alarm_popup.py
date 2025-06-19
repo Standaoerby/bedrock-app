@@ -88,7 +88,7 @@ class AlarmPopup(ModalView):
         
         # === ЗАГОЛОВОК ===
         title_label = Label(
-            text="⏰ WAKE UP!",
+            text="WAKE UP CUTIE! :)",
             font_size='42sp',
             size_hint_y=0.25,
             halign='center',

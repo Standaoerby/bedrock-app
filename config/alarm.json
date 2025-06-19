@@ -1,17 +1,9 @@
 {
   "alarm": {
-    "enabled": true,
-    "time": "06:20",
-    "repeat": [
-      "Tue",
-      "Wed",
-      "Mon",
-      "Sat",
-      "Sun",
-      "Thu",
-      "Fri"
-    ],
-    "ringtone": "Dragonborn.mp3",
+    "enabled": false,
+    "time": "23:41",
+    "repeat": [],
+    "ringtone": "Shanty Man.mp3",
     "fadein": true
   }
 }
